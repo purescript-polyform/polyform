@@ -3,13 +3,23 @@ module Main where
 import Prelude
 
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Console (CONSOLE, log, logShow)
+import Control.Monad.Except (ExceptT(..), runExceptT)
+import Data.Array (catMaybes)
+import Data.Bifunctor (lmap)
+import Data.Either (Either(..), note)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.Maybe (Maybe)
+import Data.Int (fromString)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
-import Data.StrMap (StrMap)
+import Data.StrMap (StrMap, fromFoldable, lookup)
+import Data.Symbol (SProxy(..))
+import Data.Tuple (Tuple(..), fst, snd)
+import Data.Variant (Variant, inj)
+import Debug.Trace (traceAnyA)
+import Type.Prelude (class IsSymbol, reflectSymbol)
 
 data V e a = Invalid e | Valid e a
 derive instance functorV ∷ Functor (V e)
@@ -20,6 +30,11 @@ valid a = Valid mempty a
 newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _
 derive instance functorValidation ∷ (Functor m) ⇒ Functor (Validation m e a)
+
+runValidation (Validation f) = f
+
+pureV ∷ ∀ a b e m. (Monad m) ⇒ (Monoid e) ⇒ (a → b) →  Validation m e a b
+pureV f = Validation $ pure <<< valid <<< f
 
 instance applyValidation ∷ (Semigroup e, Monad m) ⇒ Apply (Validation m e a) where
   apply vf va = Validation $ \i → do
@@ -48,6 +63,9 @@ data Form = Form (Array String) (Array Field)
 derive instance genericForm ∷ Generic Form _
 instance showForm ∷ Show Form where show = genericShow
 
+formError ∷ ∀ a. String → V Form a
+formError msg = Invalid $ Form [msg] []
+
 instance semigroupForm ∷ Semigroup Form where
   append (Form e1 f1) (Form e2 f2)
     = Form (e1 <> e2) (f1 <> f2)
@@ -73,6 +91,8 @@ derive instance genericOption ∷ Generic Option _
 instance showOption ∷ Show Option where
   show = genericShow
 type Options = Array Option
+
+option :: String -> Boolean -> String -> Option
 option v c l = Option { value: v, checked: c, label: l }
 
 data Field
@@ -91,47 +111,152 @@ type QueryField = Array (Maybe String)
 
 -- | Field validators combinators
 
--- scalar ∷ ∀ a m. (Monad m) ⇒ Array a → Either e (m (Array a) a)
--- scalar = pureV s
---  where
---   s [a] = Right a
---   s arr = Left arr
--- 
---scalar' ∷ ∀ a v m. (Monad m) ⇒ Validation m (Variant (scalar ∷ Array a | v)) (Array a) a
---scalar' = tag (SProxy ∷ SProxy "scalar") scalar
---
---int ∷ ∀ m. (Monad m) ⇒ Validation m String String Int
---int = pureV (\s → note s (fromString s))
---
---int' ∷ ∀ m v. (Monad m) ⇒ Validation m (Variant (int ∷ String | v)) String Int
---int' = tag (SProxy ∷ SProxy "int") int
---
+type FieldValidation m e a b = a → ExceptT e m b
 
---optional ∷ ∀ a b e m. (Monad m) ⇒ Validation m e a b → Validation m e (Array a) (Maybe b)
---optional v = dimap (head >>> note unit) hush (right v)
---
---catMaybesV :: forall a e m. (Monad m) ⇒ Validation m e (Array (Maybe a)) (Array a)
---catMaybesV = pureV (catMaybes >>> Right)
---
---emptyArrayV ∷ ∀ a m. (Monad m) ⇒ Validation m (Array a) (Array a) Unit
---emptyArrayV = pureV $ (case _ of
---  [] → Right unit
---  a → Left a)
---
---nonEmptyArray ∷ ∀ a m. (Monad m) ⇒ Validation m Unit (Array a) (NonEmpty Array a)
---nonEmptyArray  =
---  pureV $ (uncons >=> (\r → pure (r.head :| r.tail))) >>> note unit
---
---nonEmptyArray' ∷ ∀ a v m. (Monad m) ⇒ Validation m (Variant (nonEmptyArray ∷ Unit | v)) (Array a) (NonEmpty Array a)
---nonEmptyArray' = tag (SProxy ∷ SProxy "nonEmptyArray") nonEmptyArray
---
---nonEmptyString ∷ ∀ m v. (Monad m) ⇒ Validation m (Variant (nonEmptyArray ∷ Unit, scalar ∷ Array String | v)) (Array (Maybe String)) String
---nonEmptyString =
---  catMaybesV >>> scalar' >>> (tag (SProxy ∷ SProxy "nonEmptyArray") $ pureV (case _ of
---    "" → Left unit
---    s → Right s))
---
---
---main :: forall e. Eff (console :: CONSOLE | e) Unit
+tag :: forall a b e m p r r'
+  . RowCons p e r r'
+  ⇒ Monad m
+  ⇒ IsSymbol p
+  ⇒ SProxy p
+  → FieldValidation m e a b
+  → FieldValidation m (Variant r') a b
+tag p v =
+  ExceptT <$> ((lmap (inj p) <$> _) <$> (runExceptT <$> v))
+
+scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (Array a) a
+scalar i = ExceptT <<< pure <<< s $ i
+ where
+  s [a] = Right a
+  s arr = Left arr
+
+scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
+scalar' = tag (SProxy ∷ SProxy "scalar") scalar
+
+int ∷ ∀ m. (Monad m) ⇒ FieldValidation m String String Int
+int s = ExceptT <<< pure $ note s (fromString s)
+
+int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (Variant (int ∷ String | e)) String Int
+int' = tag (SProxy ∷ SProxy "int") int
+
+catMaybesV :: forall a e m. (Monad m) ⇒ FieldValidation m e (Array (Maybe a)) (Array a)
+catMaybesV = ExceptT <<< pure <<< (catMaybes >>> Right)
+
+nonEmptyString' ∷ ∀ m v. (Monad m) ⇒ FieldValidation m (Variant (nonEmptyString ∷ Unit, scalar ∷ Array String | v)) (Array (Maybe String)) String
+nonEmptyString' =
+  catMaybesV >=> scalar' >=> (tag (SProxy ∷ SProxy "nonEmptyString") $ (ExceptT <<< pure <<< (case _ of
+    "" → Left unit
+    s → Right s)))
+
+_input ∷ ∀ m
+  . Monad m
+  ⇒ _
+  → String
+  → String
+  → Validation m Form Query String
+_input c name label =
+  Validation v
+ where
+   v = \q → do
+    let i = fromMaybe [] (lookup name q)
+    r ← runExceptT (nonEmptyString' i)
+    pure $ case r of
+      Left e → (Invalid (Form [] [c { label, name, value: Err "Appropriate error message..." "" }]))
+      Right v → (Valid (Form [] [c { label, name, value: Val (Just v) }]) v)
+
+input = _input Input
+password = _input Password
+
+number ∷ ∀ m
+  . Monad m
+  ⇒ String
+  → String
+  → Validation m Form Query Int
+number name label =
+  Validation v
+ where
+   v = \q → do
+    r ← runExceptT ((nonEmptyString' >=> int') (fromMaybe [] (lookup name q)))
+    pure $ case r of
+      Left e → (Invalid (Form [] [Number { label, name, value: Err "Appropriate error message..." "" }]))
+      Right v → (Valid (Form [] [Number { label, name, value: Val (Just v) }]) v)
+
+check ∷ ∀ a m. (Monad m) ⇒ String → (a → Boolean) → Validation m Form a a
+check msg c =
+  Validation (\a → pure $ if c a
+    then valid a
+    else formError msg)
+
+passwordV = (Tuple <$> password "password1" "Password" <*> password "password2" "Password (repeat)") >>> check "Password do not match" (\p → fst p == snd p) >>> pureV (\p → fst p)
+
+newtype Profile = Profile
+  { nickname ∷ String
+  , bio ∷ String
+  , age ∷ Int
+  , password ∷ String
+  }
+derive instance genericProfile ∷ Generic Profile _
+instance showProfile ∷ Show Profile where
+  show = genericShow
+
+
+profile :: forall m.
+   Monad m => Validation m Form Query Profile
+profile = Profile <$> ({nickname: _, bio: _, age: _, password: _} <$> input "nickname" "Nickname" <*> input "bio" "Bio" <*> number "age" "Age" <*> passwordV)
+
+validateAndPrint ∷ ∀ a. (Show a) ⇒ Validation _ Form _ a → _ → _
+validateAndPrint v input = do
+  f ← runValidation v input
+  log "\n"
+  case f of
+    Valid f v → do
+      logShow v
+      logShow f
+    Invalid f → logShow f
+
+
+main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
-  log "Hello sailor!"
+  validateAndPrint passwordV (fromFoldable [Tuple "password1" [Just "admin"]])
+  -- (Form [] [(Input { label: "Password", name: "password1", value: (Val (Just "admin")) }),(Input { label: "Password (repeat)", name: "password2", value: (Err "Appropriate error message..." "") })])
+
+  validateAndPrint passwordV (fromFoldable [Tuple "password1" [Just "admin"], Tuple "password2" [Just "pass"]])
+  -- (Form ["Password do not match"] [(Input { label: "Password", name: "password1", value: (Val (Just "admin")) }),(Input { label: "Password (repeat)", name: "password2", value: (Val (Just "pass")) })])
+
+  validateAndPrint passwordV (fromFoldable [Tuple "password1" [Just "secret"], Tuple "password2" [Just "secret"]])
+  -- (Form [] [(Input { label: "Password", name: "password1", value: (Val (Just "secret")) }),(Input { label: "Password (repeat)", name: "password2", value: (Val (Just "secret")) })])
+
+
+  let
+    onlyNickname =
+      (fromFoldable
+        [Tuple "nickname" [Just "nick"]])
+  validateAndPrint profile onlyNickname
+
+  let
+    nicknameAndPassword =
+      (fromFoldable
+        [ Tuple "nickname" [Just "nick"]
+        , Tuple "password1" [Just "new"]
+        , Tuple "password2" [Just "new"]])
+
+  validateAndPrint profile nicknameAndPassword
+
+  let
+    nicknameAndPasswordMismatch =
+      (fromFoldable
+        [ Tuple "nickname" [Just "nick"]
+        , Tuple "password1" [Just "wrong"]
+        , Tuple "password2" [Just "new"]])
+
+  validateAndPrint profile nicknameAndPasswordMismatch
+
+  let
+    fullProfile =
+      (fromFoldable
+        [ Tuple "nickname" [Just "nick"]
+        , Tuple "bio" [Just "bio"]
+        , Tuple "age" [Just "666"]
+        , Tuple "password1" [Just "new"]
+        , Tuple "password2" [Just "new"]])
+
+  validateAndPrint profile fullProfile
