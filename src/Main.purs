@@ -5,6 +5,7 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Maybe (Maybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
@@ -84,11 +85,53 @@ data Field
 derive instance genericField ∷ Generic Field _
 instance showField ∷ Show Field where show = genericShow
 
-
 -- | http query representation
 type Query = StrMap (Array (Maybe String))
+type QueryField = Array (Maybe String)
 
+-- | Field validators combinators
 
-main :: forall e. Eff (console :: CONSOLE | e) Unit
+-- scalar ∷ ∀ a m. (Monad m) ⇒ Array a → Either e (m (Array a) a)
+-- scalar = pureV s
+--  where
+--   s [a] = Right a
+--   s arr = Left arr
+-- 
+--scalar' ∷ ∀ a v m. (Monad m) ⇒ Validation m (Variant (scalar ∷ Array a | v)) (Array a) a
+--scalar' = tag (SProxy ∷ SProxy "scalar") scalar
+--
+--int ∷ ∀ m. (Monad m) ⇒ Validation m String String Int
+--int = pureV (\s → note s (fromString s))
+--
+--int' ∷ ∀ m v. (Monad m) ⇒ Validation m (Variant (int ∷ String | v)) String Int
+--int' = tag (SProxy ∷ SProxy "int") int
+--
+
+--optional ∷ ∀ a b e m. (Monad m) ⇒ Validation m e a b → Validation m e (Array a) (Maybe b)
+--optional v = dimap (head >>> note unit) hush (right v)
+--
+--catMaybesV :: forall a e m. (Monad m) ⇒ Validation m e (Array (Maybe a)) (Array a)
+--catMaybesV = pureV (catMaybes >>> Right)
+--
+--emptyArrayV ∷ ∀ a m. (Monad m) ⇒ Validation m (Array a) (Array a) Unit
+--emptyArrayV = pureV $ (case _ of
+--  [] → Right unit
+--  a → Left a)
+--
+--nonEmptyArray ∷ ∀ a m. (Monad m) ⇒ Validation m Unit (Array a) (NonEmpty Array a)
+--nonEmptyArray  =
+--  pureV $ (uncons >=> (\r → pure (r.head :| r.tail))) >>> note unit
+--
+--nonEmptyArray' ∷ ∀ a v m. (Monad m) ⇒ Validation m (Variant (nonEmptyArray ∷ Unit | v)) (Array a) (NonEmpty Array a)
+--nonEmptyArray' = tag (SProxy ∷ SProxy "nonEmptyArray") nonEmptyArray
+--
+--nonEmptyString ∷ ∀ m v. (Monad m) ⇒ Validation m (Variant (nonEmptyArray ∷ Unit, scalar ∷ Array String | v)) (Array (Maybe String)) String
+--nonEmptyString =
+--  catMaybesV >>> scalar' >>> (tag (SProxy ∷ SProxy "nonEmptyArray") $ pureV (case _ of
+--    "" → Left unit
+--    s → Right s))
+--
+--
+--main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
   log "Hello sailor!"

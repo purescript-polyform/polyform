@@ -1,0 +1,3 @@
+# purescript-polyformy
+
+An attempt to build simple, composable html form validation API...
