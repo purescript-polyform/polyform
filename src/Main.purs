@@ -2,18 +2,21 @@ module Main where
 
 import Prelude
 
+import Control.Alt (class Alt, (<|>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log, logShow)
 import Control.Monad.Except (ExceptT(..), runExceptT)
+import Control.Monad.Reader (ReaderT(..), runReaderT)
 import Data.Array (catMaybes)
-import Data.Bifunctor (lmap)
+import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.Either (Either(..), note)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Profunctor.Star (Star(..))
 import Data.StrMap (StrMap, fromFoldable, lookup)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(..), fst, snd)
@@ -23,6 +26,10 @@ import Type.Prelude (class IsSymbol, reflectSymbol)
 
 data V e a = Invalid e | Valid e a
 derive instance functorV ∷ Functor (V e)
+
+instance bifunctorV ∷ Bifunctor V where
+  bimap f _ (Invalid e) = Invalid (f e)
+  bimap f g (Valid e a) = Valid (f e) (g a)
 
 valid ∷ ∀ a e. (Monoid e) ⇒ a → V e a
 valid a = Valid mempty a
@@ -74,9 +81,9 @@ instance monoidForm ∷ Monoid Form where
   mempty = Form [] []
 
 -- | Move to this representation
-data FormValue a = Err String String | Val (Maybe a)
-derive instance genericFormValue ∷ Generic (FormValue a) _
-instance showFormValue ∷ (Show a) ⇒ Show (FormValue a) where show = genericShow
+data FieldValue a = Err String String | Val (Maybe a)
+derive instance genericFieldValue ∷ Generic (FieldValue a) _
+instance showFieldValue ∷ (Show a) ⇒ Show (FieldValue a) where show = genericShow
 
 type Value = String
 type Checked = Boolean
@@ -96,11 +103,11 @@ option :: String -> Boolean -> String -> Option
 option v c l = Option { value: v, checked: c, label: l }
 
 data Field
-  = Input { label ∷ String, name ∷ String, value ∷ FormValue String }
-  | Password { label ∷ String, name ∷ String, value ∷ FormValue String }
-  | Number { label ∷ String, name ∷ String, value ∷ FormValue Int }
+  = Input { label ∷ String, name ∷ String, value ∷ FieldValue String }
+  | Password { label ∷ String, name ∷ String, value ∷ FieldValue String }
+  | Number { label ∷ String, name ∷ String, value ∷ FieldValue Int }
   -- | Radio { label ∷ String, name ∷ String, value ∷ Value Boolean }
-  -- | Select { label ∷ String, name ∷ String, options ∷ Array (Tuple String String), value ∷ FormValue String}
+  -- | Select { label ∷ String, name ∷ String, options ∷ Array (Tuple String String), value ∷ FieldValue String}
   -- | Checkbox { label ∷ String, name ∷ String, value ∷ Either (Tuple String Options) Options }
 derive instance genericField ∷ Generic Field _
 instance showField ∷ Show Field where show = genericShow
@@ -111,7 +118,7 @@ type QueryField = Array (Maybe String)
 
 -- | Field validators combinators
 
-type FieldValidation m e a b = a → ExceptT e m b
+type FieldValidation m e a b = Star (ExceptT e m) a b
 
 tag :: forall a b e m p r r'
   . RowCons p e r r'
@@ -121,29 +128,32 @@ tag :: forall a b e m p r r'
   → FieldValidation m e a b
   → FieldValidation m (Variant r') a b
 tag p v =
-  ExceptT <$> ((lmap (inj p) <$> _) <$> (runExceptT <$> v))
+  wrap ((ExceptT <<< (lmap (inj p) <$> _) <<< runExceptT) <$> unwrap v)
 
 scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (Array a) a
-scalar i = ExceptT <<< pure <<< s $ i
+scalar = Star $ \i → ExceptT <<< pure <<< s $ i
  where
   s [a] = Right a
   s arr = Left arr
+
+optional ∷ ∀ a b e m. (Monad m) ⇒ (Semigroup e) ⇒ FieldValidation m e a b → FieldValidation m e a (Maybe b)
+optional v = (Just <$> v) <|> (pure Nothing)
 
 scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
 scalar' = tag (SProxy ∷ SProxy "scalar") scalar
 
 int ∷ ∀ m. (Monad m) ⇒ FieldValidation m String String Int
-int s = ExceptT <<< pure $ note s (fromString s)
+int = Star $ \s → ExceptT <<< pure $ note s (fromString s)
 
 int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (Variant (int ∷ String | e)) String Int
 int' = tag (SProxy ∷ SProxy "int") int
 
 catMaybesV :: forall a e m. (Monad m) ⇒ FieldValidation m e (Array (Maybe a)) (Array a)
-catMaybesV = ExceptT <<< pure <<< (catMaybes >>> Right)
+catMaybesV = Star $ ExceptT <<< pure <<< Right <<< catMaybes
 
 nonEmptyString' ∷ ∀ m v. (Monad m) ⇒ FieldValidation m (Variant (nonEmptyString ∷ Unit, scalar ∷ Array String | v)) (Array (Maybe String)) String
 nonEmptyString' =
-  catMaybesV >=> scalar' >=> (tag (SProxy ∷ SProxy "nonEmptyString") $ (ExceptT <<< pure <<< (case _ of
+  catMaybesV >>> scalar' >>> (tag (SProxy ∷ SProxy "nonEmptyString") (Star $ ExceptT <<< pure <<< (case _ of
     "" → Left unit
     s → Right s)))
 
@@ -158,13 +168,28 @@ _input c name label =
  where
    v = \q → do
     let i = fromMaybe [] (lookup name q)
-    r ← runExceptT (nonEmptyString' i)
+    r ← runExceptT (unwrap nonEmptyString' i)
     pure $ case r of
       Left e → (Invalid (Form [] [c { label, name, value: Err "Appropriate error message..." "" }]))
       Right v → (Valid (Form [] [c { label, name, value: Val (Just v) }]) v)
 
 input = _input Input
 password = _input Password
+
+field ∷ ∀ a e i m. (Monad m) ⇒ String → String → ({ label ∷ String, name ∷ String, value ∷ FieldValue a }  → Field) → FieldValidation m e i a → (i → m (V Field a))
+field name label c val = \i → do
+  r ← runExceptT (unwrap val i)
+  pure $ case r of
+    Left e → (Invalid (c { label, name, value: Err "Appropriate error message..." "" }))
+    Right v → (Valid (c { label, name, value: Val (Just v) }) v)
+
+-- fieldOpt ∷ ∀ a e i m. (Monad m) ⇒ String → String → ({ label ∷ String, name ∷ String, value ∷ FieldValue a }  → Field) → FieldValidation m e i (Maybe a) → (i → m (V Field (Maybe a)))
+-- fieldOpt name label c val = \i → do
+--   r ← runExceptT (unwrap val i)
+--   pure $ case r of
+--     Left e → (Invalid (c { label, name, value: Err "Appropriate error message..." "" }))
+--     Right v → (Valid (c { label, name, value: Val v }) v)
+
 
 number ∷ ∀ m
   . Monad m
@@ -175,7 +200,7 @@ number name label =
   Validation v
  where
    v = \q → do
-    r ← runExceptT ((nonEmptyString' >=> int') (fromMaybe [] (lookup name q)))
+    r ← runExceptT (unwrap (nonEmptyString' >>> int') (fromMaybe [] (lookup name q)))
     pure $ case r of
       Left e → (Invalid (Form [] [Number { label, name, value: Err "Appropriate error message..." "" }]))
       Right v → (Valid (Form [] [Number { label, name, value: Val (Just v) }]) v)
@@ -186,7 +211,6 @@ check msg c =
     then valid a
     else formError msg)
 
-passwordV = (Tuple <$> password "password1" "Password" <*> password "password2" "Password (repeat)") >>> check "Password do not match" (\p → fst p == snd p) >>> pureV (\p → fst p)
 
 newtype Profile = Profile
   { nickname ∷ String
@@ -198,6 +222,7 @@ derive instance genericProfile ∷ Generic Profile _
 instance showProfile ∷ Show Profile where
   show = genericShow
 
+passwordV = (Tuple <$> password "password1" "Password" <*> password "password2" "Password (repeat)") >>> check "Password do not match" (\p → fst p == snd p) >>> pureV (\p → fst p)
 
 profile :: forall m.
    Monad m => Validation m Form Query Profile
