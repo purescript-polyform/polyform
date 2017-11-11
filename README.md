@@ -6,20 +6,20 @@ Pre α-stage.
 
 ## Current status
 
-Basic idea is to build up form during validation process and that form with error messages is final error representation. So either `Invalid` or `Valid` value carries `Form` value `e`:
+Basic idea is to build up form during validation process and the same form with error messages could be used as our final error representation in case of error. So either `Invalid` or `Valid` value carries `Form` value `e`:
 
   ```purescript
     data V e a = Invalid e | Valid e a
   ```
 
-Current form type is also simple product of errors and fields:
+Current form type is just product of (form) errors and fields (fields carry their own validation error):
 
 
   ```purescript
     data Form = Form (Array String) (Array Field)
   ```
 
-Error representation will change soon probably to just `StrMap`...
+Form error representation will change soon probably to just `StrMap`...
 
 During validation process forms are combined by `Applicative` instance and by `Semigroup` instance, so we are able to build more complex validation scenarios and compose forms easily.
 After validation we are going to get form value and in case of validation success also a final value:
