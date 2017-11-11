@@ -1,14 +1,28 @@
-# purescript-polyformy
+# purescript-polyform
 
 An attempt to build simple, composable html form validation API... 
 
 Pre α-stage.
 
-## Status
+## Current status
 
-This library builds upon applicative accumulation idea and adds `Category` instance which allows you to handle more complicated validation scenarios.
+Basic idea is to build up form during validation process and that form with error messages is final error representation. So either `Invalid` or `Valid` value carries `Form` value `e`:
 
-Additionally monoidal `Form` value is aggregated during validation and it is used to represent errors, but also correct scenario, so you after validation you can use it to display appropriate HTML.
+  ```purescript
+    data V e a = Invalid e | Valid e a
+  ```
+
+Current form type is also simple product of errors and fields:
+
+
+  ```purescript
+    data Form = Form (Array String) (Array Field)
+  ```
+
+Error representation will change soon probably to just `StrMap`...
+
+During validation process forms are combined by `Applicative` instance and by `Semigroup` instance, so we are able to build more complex validation scenarios and compose forms easily and
+finally we are going to get form and optionally (in case of validation success) final value:
 
   ```purescript
     newtype Profile = Profile
@@ -21,15 +35,23 @@ Additionally monoidal `Form` value is aggregated during validation and it is use
     instance showProfile ∷ Show Profile where
       show = genericShow
 
-    passwordV = (Tuple <$> password "password1" "Password" <*> password "password2" "Password (repeat)") >>> check "Password do not match" (\p → fst p == snd p) >>> pureV (\p → fst p)
+    profile :: forall m.  Monad m => Validation m Form Query String
+    passwordV =
+      (Tuple <$> password "password1" "Password" <*> password "password2" "Password (repeat)")
+      >>> check "Password do not match" (\p → fst p == snd p)
+      >>> pureV (\p → fst p)
 
     profile :: forall m.  Monad m => Validation m Form Query Profile
-    profile = Profile <$> ({nickname: _, bio: _, age: _, password: _} <$> input "nickname" "Nickname" <*> input "bio" "Bio" <*> number "age" "Age" <*> passwordV)
+    profile =
+      Profile <$>
+        ({nickname: _, bio: _, age: _, password: _}
+          <$> input "nickname" "Nickname"
+          <*> input "bio" "Bio"
+          <*> number "age" "Age"
+          <*> passwordV)
    ```
 
-
-
-  ``` purescript
+   ``` purescript
     validateAndPrint passwordV (fromFoldable [Tuple "password1" [Just "admin"]])
     -- (Form [] [(Input { label: "Password", name: "password1", value: (Val (Just "admin")) }),(Input { label: "Password (repeat)", name: "password2", value: (Err "Appropriate error message..." "") })])
 

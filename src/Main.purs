@@ -31,6 +31,10 @@ instance bifunctorV ∷ Bifunctor V where
   bimap f _ (Invalid e) = Invalid (f e)
   bimap f g (Valid e a) = Valid (f e) (g a)
 
+instance altV ∷ Alt (V e) where
+  alt (Invalid _) v = v
+  alt v _ = v
+
 valid ∷ ∀ a e. (Monoid e) ⇒ a → V e a
 valid a = Valid mempty a
 
@@ -136,8 +140,14 @@ scalar = Star $ \i → ExceptT <<< pure <<< s $ i
   s [a] = Right a
   s arr = Left arr
 
-optional ∷ ∀ a b e m. (Monad m) ⇒ (Semigroup e) ⇒ FieldValidation m e a b → FieldValidation m e a (Maybe b)
-optional v = (Just <$> v) <|> (pure Nothing)
+missing ∷ ∀ a m. (Monad m) ⇒ FieldValidation m QueryField QueryField Unit
+missing = Star $ \i → ExceptT <<< pure <<< s $ i
+ where
+  s [] = Right unit
+  s arr = Left arr
+
+optional ∷ ∀ a b e m. (Monad m) ⇒ (Semigroup e) ⇒ FieldValidation m QueryField QueryField b → FieldValidation m QueryField QueryField (Maybe b)
+optional v = (const Nothing <$> missing) <|> (Just <$> v)
 
 scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
 scalar' = tag (SProxy ∷ SProxy "scalar") scalar
@@ -176,8 +186,8 @@ _input c name label =
 input = _input Input
 password = _input Password
 
-field ∷ ∀ a e i m. (Monad m) ⇒ String → String → ({ label ∷ String, name ∷ String, value ∷ FieldValue a }  → Field) → FieldValidation m e i a → (i → m (V Field a))
-field name label c val = \i → do
+field ∷ ∀ a e i m. (Monad m) ⇒ String → String → ({ label ∷ String, name ∷ String, value ∷ FieldValue a }  → Field) → FieldValidation m e i a → (Validation m Field i a)
+field name label c val = Validation $ \i → do
   r ← runExceptT (unwrap val i)
   pure $ case r of
     Left e → (Invalid (c { label, name, value: Err "Appropriate error message..." "" }))
