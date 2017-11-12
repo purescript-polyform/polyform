@@ -15,7 +15,8 @@
     "purescript-generics-rep": "^5.3.0",
     "purescript-variant": "^4.0.0",
     "purescript-transformers": "^3.4.0",
-    "purescript-profunctor": "^3.2.0"
+    "purescript-profunctor": "^3.2.0",
+    "purescript-invariant": "^3.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
