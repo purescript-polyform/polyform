@@ -38,7 +38,7 @@ After validation we are going to get form value and in case of validation succes
     profile :: forall m.  Monad m => Validation m Form Query String
     passwordV =
       (Tuple <$> password "password1" "Password" <*> password "password2" "Password (repeat)")
-      >>> check "Password do not match" (\p → fst p == snd p)
+      >>> check "passwords" (pure "Password do not match") (\p → pure $ fst p == snd p)
       >>> pureV (\p → fst p)
 
     profile :: forall m.  Monad m => Validation m Form Query Profile
