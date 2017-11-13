@@ -60,6 +60,12 @@ instance applicativeValidation ∷ (Monoid e, Monad m) ⇒ Applicative (Validati
 instance altValidation ∷ (Alt m) ⇒ Alt (Validation m e a) where
   alt (Validation v1) (Validation v2) = Validation (\a → v1 a <|> v2 a)
 
+instance semigroupValidation ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validation m e a b) where
+  append (Validation v1) (Validation v2) = Validation (\a → v1 a <> v2 a)
+
+instance monoidValidation ∷ (Applicative m, Monoid e, Monoid b, Semigroup (m (V e b))) ⇒ Monoid (Validation m e a b) where
+  mempty = Validation <<< const <<< pure $ mempty
+
 instance semigroupoidValidation ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Validation m e) where
   compose v2 v1 =
     Validation $ (\a → do
