@@ -66,7 +66,8 @@ type FieldValidation m e a b = Star (ExceptT e m) a b
 type FieldValidation' m e b = FieldValidation m e FieldQuery b
 
 -- | The same goes for whole form Validation
-type FormValidation m b = Validation m (Form Field) Query b
+type FormValidation m a b = Validation m (Form Field) a b
+type FormValidation' m b = Validation m (Form Field) Query b
 
 tag :: forall a b e m p r r'
   . RowCons p e r r'
@@ -167,7 +168,7 @@ field ∷ ∀ a e i m
   → m String
   → ({ label ∷ String, name ∷ String, value ∷ FieldValue a }  → Field)
   → FieldValidation' m e a
-  → FormValidation m a
+  → FormValidation' m a
 field name l c validator = Validation $ \q → do
   let i = fromMaybe [] (lookup name q)
   r ← runExceptT (unwrap validator i)
@@ -182,7 +183,7 @@ fieldOpt ∷ ∀ a e i m
   → m String
   → ({ label ∷ String, name ∷ String, value ∷ FieldValue a } → Field)
   → FieldValidation' m e (Maybe a)
-  → FormValidation m (Maybe a)
+  → FormValidation' m (Maybe a)
 fieldOpt name mLabel constructor validator = Validation $ \q → do
   let i = fromMaybe [] (lookup name q)
   r ← runExceptT (unwrap validator i)
