@@ -3,7 +3,9 @@ module Data.Validation.Polyform.Simple.Component where
 import Prelude
 
 import Data.Functor.Invariant (class Invariant)
-import Data.Maybe (Maybe(..))
+import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe)
+import Data.Newtype (class Newtype)
 import Data.StrMap (empty)
 import Data.Validation.Polyform.Prim (V, Validation)
 import Data.Validation.Polyform.Simple.Form (Field(Password, Input), FieldValue(FieldVal), Form(Form), Query, input, password)
@@ -21,12 +23,14 @@ import Data.Validation.Polyform.Simple.Form (Field(Password, Input), FieldValue(
 -- | you can find similar type in `purescript-jaws` in `Data.Validation.Jaws.Product`.
 
 newtype FormComponent field m a = FormComponent
-  { init ∷ a → m (Form field)
+  { init ∷ Maybe a → m (Form field)
   , validation ∷ Validation m (Form field) Query a
   }
+derive instance newtypeFormComponent ∷ Newtype (FormComponent f m a) _
+derive instance genericFormComponent ∷ Generic (FormComponent f m a) _
 
 instance invariantFunctorFormComponent ∷ (Functor m) ⇒ Invariant (FormComponent field m) where
-  imap f g (FormComponent { init, validation }) = FormComponent { init: init <<< g, validation: f <$> validation }
+  imap f g (FormComponent { init, validation }) = FormComponent { init: init <<< (g <$> _), validation: f <$> validation }
 
 -- | I'm not sure if this instance is useful as you usually want to aggregate data into custom datatype and not an
 -- | monoidal structure ;-)
@@ -42,7 +46,7 @@ inputComponent name mLabel =
   validation = input name mLabel
   init s = do
     label ← mLabel
-    pure (Form empty [ Input { label, name, value: FieldVal <<< Just $ s }])
+    pure (Form empty [ Input { label, name, value: FieldVal s }])
 
 passwordComponent ∷ ∀ m. (Monad m) ⇒ String → m String → FormComponent Field m String
 passwordComponent name mLabel =
@@ -51,4 +55,4 @@ passwordComponent name mLabel =
   validation = password name mLabel
   init s = do
     label ← mLabel
-    pure (Form empty [ Password { label, name, value: FieldVal <<< Just $ s }])
+    pure (Form empty [ Password { label, name, value: FieldVal s }])
