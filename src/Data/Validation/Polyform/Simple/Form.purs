@@ -41,12 +41,15 @@ instance monoidForm ∷ Monoid (Form field) where
 type RawValue = String
 data FieldValue a = FieldErr ErrMessage RawValue | FieldVal (Maybe a)
 derive instance genericFieldValue ∷ Generic (FieldValue a) _
+derive instance functorFieldValue ∷ Functor FieldValue
 instance showFieldValue ∷ (Show a) ⇒ Show (FieldValue a) where show = genericShow
 
+type FieldAttrs v = (label ∷ String, id ∷ String, name ∷ String | v)
+
 data Field
-  = Input { label ∷ String, name ∷ String, value ∷ FieldValue String }
-  | Password { label ∷ String, name ∷ String, value ∷ FieldValue String }
-  | Number { label ∷ String, name ∷ String, value ∷ FieldValue Int }
+  = Input (Record (FieldAttrs (value ∷ FieldValue String)))
+  | Password (Record (FieldAttrs (value ∷ FieldValue String)))
+  | Number (Record (FieldAttrs (value ∷ FieldValue Int)))
 --   -- | Radio { label ∷ String, name ∷ String, value ∷ Value Boolean }
 --   -- | Select { label ∷ String, name ∷ String, options ∷ Array (Tuple String String), value ∷ FieldValue String}
 --   -- | Checkbox { label ∷ String, name ∷ String, value ∷ Either (Tuple String Options) Options }
@@ -164,46 +167,38 @@ type Form' = Form Field
 
 field ∷ ∀ a e i m
   . (Monad m)
-  ⇒ String
-  → m String
-  → ({ label ∷ String, name ∷ String, value ∷ FieldValue a }  → Field)
+  ⇒ m (Record (FieldAttrs ()))
+  → (Record (FieldAttrs (value ∷ FieldValue a)) → Field)
   → FieldValidation' m e a
   → FormValidation' m a
-field name l c validator = Validation $ \q → do
+field mAttrs constructor validator = Validation $ \q → do
+  { label, name, id } ← mAttrs
   let i = fromMaybe [] (lookup name q)
   r ← runExceptT (unwrap validator i)
-  label ← l
   pure $ case r of
-    Left e → Invalid (Form empty [c { label, name, value: FieldErr "Appropriate error message..." "" }])
-    Right v → Valid (Form empty [c { label, name, value: FieldVal (Just v) }]) v
+    Left e → Invalid (Form empty [constructor { label, id, name, value: FieldErr "Appropriate error message..." "" }])
+    Right v → Valid (Form empty [constructor { label, id, name, value: FieldVal (Just v) }]) v
 
 fieldOpt ∷ ∀ a e i m
   . Monad m
-  ⇒ String
-  → m String
-  → ({ label ∷ String, name ∷ String, value ∷ FieldValue a } → Field)
+  ⇒ m (Record (FieldAttrs ()))
+  → (Record (FieldAttrs (value ∷ FieldValue a)) → Field)
   → FieldValidation' m e (Maybe a)
   → FormValidation' m (Maybe a)
-fieldOpt name mLabel constructor validator = Validation $ \q → do
+fieldOpt mAttrs constructor validator = Validation $ \q → do
+  { label, name, id } ← mAttrs
   let i = fromMaybe [] (lookup name q)
   r ← runExceptT (unwrap validator i)
-  label ← mLabel
   pure $ case r of
-    Left e → Invalid (Form empty [ (constructor { label, name, value: FieldErr "Appropriate error message..." "" }) ])
-    Right v → Valid (Form empty [ (constructor { label, name, value: FieldVal v }) ]) v
+    Left e → Invalid (Form empty [ (constructor { label, name, id, value: FieldErr "Appropriate error message..." "" }) ])
+    Right v → Valid (Form empty [ (constructor { label, name, id, value: FieldVal v }) ]) v
 
-input name mLabel = field name mLabel Input nonEmptyScalar'
+input mAttrs = field mAttrs Input nonEmptyScalar'
+inputOpt mAttrs = fieldOpt mAttrs Input (optional nonEmptyScalar')
 
-inputOpt ∷ forall t665. Monad t665 => String -> t665 String -> Validation t665 (Form Field) (StrMap (Array (Maybe String))) (Maybe String)
-inputOpt name mLabel = fieldOpt name mLabel Input (optional nonEmptyScalar')
+password mAttrs = field mAttrs Password nonEmptyScalar'
+passwordOpt mAttrs = fieldOpt mAttrs Password (optional nonEmptyScalar')
 
-password name mLabel = field name mLabel Password nonEmptyScalar'
-
-passwordOpt ∷ forall t665. Monad t665 => String -> t665 String -> Validation t665 (Form Field) (StrMap (Array (Maybe String))) (Maybe String)
-passwordOpt name mLabel = fieldOpt name mLabel Password (optional nonEmptyScalar')
-
-number name mLabel = field name mLabel Number (nonEmptyScalar' >>> int')
-
-numberOpt ∷ forall t665. Monad t665 => String -> t665 String -> Validation t665 (Form Field) (StrMap (Array (Maybe String))) (Maybe Int)
-numberOpt name mLabel = fieldOpt name mLabel Number (optional (nonEmptyScalar' >>> int'))
+number mAttrs = field mAttrs Number (nonEmptyScalar' >>> int')
+numberOpt mAttrs = fieldOpt mAttrs Number (optional (nonEmptyScalar' >>> int'))
 
