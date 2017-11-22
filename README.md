@@ -6,13 +6,13 @@ Pre α-stage.
 
 ## Current status
 
-Basic idea is to build up form during validation process and the same form with error messages could be used as our final error representation in case of error. So either `Invalid` or `Valid` value carries `Form` value `e`:
+This lib extends applicative validation idea a bit further (I mean `purescript-validation`). The idea is to build up a form and validation result during the whole validation process - so form is a result of failed validation but also successful validation steps. So either `Invalid` or `Valid` variant carries `Form` value `e`:
 
   ```purescript
     data V e a = Invalid e | Valid e a
   ```
 
-Current form type is just product of (form) errors and fields (fields carry their own validation error):
+Current (used as proof of concept) form type is just product of (form) errors and fields (fields carry their own validation error):
 
 
   ```purescript
