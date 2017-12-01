@@ -18,7 +18,10 @@ import Data.Validation.Polyform.Simple.Form (Field(Password, Input), FieldValue(
 -- | Validation can be combined into product by using applicative instance.
 
 newtype FormComponent field m a = FormComponent
-  { init ∷ Maybe a → m (Form field)
+  { --  init ∷ Op (m (Form field)) (Maybe a)
+    init ∷ (Maybe a) → m (Form field)
+  -- | ^ we are getting `Divisible` instance from `Op` which allows us to compose smaller
+  -- | initializers into large ones
   , validation ∷ Validation m (Form field) Query a
   }
 derive instance newtypeFormComponent ∷ Newtype (FormComponent f m a) _

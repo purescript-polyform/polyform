@@ -23,13 +23,6 @@ import Type.Prelude (class IsSymbol)
 
 data Form field = Form (StrMap String) (Array field)
 derive instance genericForm ∷ Generic (Form field) _
--- instance showForm ∷ (Show field) ⇒ Show (Form field) where show = genericShow
-
-type ErrLabel = String
-type ErrMessage = String
--- | Create form error in monadic context, so you can use translations/localizations etc.
-formError ∷ ∀ a field m. (Apply m) ⇒ ErrLabel → m ErrMessage → m (V (Form field) a)
-formError label = map (Invalid <<< (\msg → Form (fromFoldable [Tuple label msg]) []))
 
 instance semigroupForm ∷ Semigroup (Form field) where
   append (Form e1 f1) (Form e2 f2)
@@ -37,6 +30,13 @@ instance semigroupForm ∷ Semigroup (Form field) where
 
 instance monoidForm ∷ Monoid (Form field) where
   mempty = Form empty mempty
+
+
+type ErrLabel = String
+type ErrMessage = String
+-- | Create form error in monadic context, so you can use translations/localizations etc.
+formError ∷ ∀ a field m. (Apply m) ⇒ ErrLabel → m ErrMessage → m (V (Form field) a)
+formError label = map (Invalid <<< (\msg → Form (fromFoldable [Tuple label msg]) []))
 
 type RawValue = String
 data FieldValue a = FieldErr ErrMessage RawValue | FieldVal (Maybe a)
