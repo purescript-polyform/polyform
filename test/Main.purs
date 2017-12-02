@@ -30,7 +30,7 @@ infixr 6 type Tuple as ∧
 
 -- main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = launchAff $ runTest $ do
-  suite "AsOptions" do
+  suite "Options type class" do
     test "all options are generated" $ do
       let opts = asOptions' (Proxy ∷ Proxy Opts)
       equal (("X" /\ X) : ("Y" /\ Y) : ("Z" /\ Z) : Nil) opts
@@ -43,7 +43,7 @@ main = launchAff $ runTest $ do
       equal (runExceptT (unwrap prs "X'")) (Identity $ Left "error")
     test "parser fails for wrong value" $ do
       equal (runExceptT (unwrap prs "Unkwown")) (Identity $ Left "error")
-  suite "Choices type class" $ do
+  suite "choicesParser" $ do
     let prs = choicesParser' (Proxy ∷ Proxy Opts)
     test "parses single value" $ do
       equal (runExceptT (unwrap ((_."X") <$> prs) ["X"])) (Identity $ Right true)

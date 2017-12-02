@@ -161,22 +161,15 @@ type Select e opt =
   , value ∷ Either e String
   }
 
-class ToOptionValue opt where
+class Options opt where
   toOptionValue ∷ opt → String
+  asOptions ∷ (Proxy opt) → (List (Tuple String opt))
+  asRepParser ∷ ∀ m. (Monad m) ⇒ (Proxy opt) → FieldValidation m String String opt
 
-instance toOptionsConstructor ∷ (IsSymbol name) ⇒ ToOptionValue (Constructor name NoArguments) where
-  toOptionValue (Constructor NoArguments) = reflectSymbol (SProxy ∷ SProxy name)
-
-instance toOptionsSum ∷ (ToOptionValue a, ToOptionValue b) ⇒ ToOptionValue (Sum a b) where
+instance asOptionsSum ∷ (Options a, Options b) ⇒ Options (Sum a b) where
   toOptionValue (Inl v) = toOptionValue v
   toOptionValue (Inr v) = toOptionValue v
 
-class AsOptions opt where
-  asOptions ∷ (Proxy opt) → (List (Tuple String opt))
-
-  asRepParser ∷ ∀ m. (Monad m) ⇒ (Proxy opt) → FieldValidation m String String opt
-
-instance asOptionsSum ∷ (AsOptions a, AsOptions b) ⇒ AsOptions (Sum a b) where
   asOptions _ =
     map (Inl <$> _) (asOptions (Proxy ∷ Proxy a))
     <> map (Inr <$> _) (asOptions (Proxy ∷ Proxy b))
@@ -184,7 +177,9 @@ instance asOptionsSum ∷ (AsOptions a, AsOptions b) ⇒ AsOptions (Sum a b) whe
   asRepParser _ =
     (Inl <$> asRepParser (Proxy ∷ Proxy a)) <|> (Inr <$> asRepParser (Proxy ∷ Proxy b))
 
-instance asOptionsConstructor ∷ (IsSymbol name) ⇒ AsOptions (Constructor name NoArguments) where
+instance asOptionsConstructor ∷ (IsSymbol name) ⇒ Options (Constructor name NoArguments) where
+  toOptionValue _ = reflectSymbol (SProxy ∷ SProxy name)
+
   asOptions _ =
     singleton (Tuple value option)
    where
@@ -198,16 +193,16 @@ instance asOptionsConstructor ∷ (IsSymbol name) ⇒ AsOptions (Constructor nam
    where
     value = reflectSymbol (SProxy ∷ SProxy name)
 
-toOptionValue' ∷ ∀ opt optRep. (Generic opt optRep) ⇒ (ToOptionValue optRep) ⇒ opt → String
+toOptionValue' ∷ ∀ opt optRep. (Generic opt optRep) ⇒ (Options optRep) ⇒ opt → String
 toOptionValue' v = toOptionValue (from v)
 
-asOptions' ∷ ∀ a aRep. (Generic a aRep) ⇒ (AsOptions aRep) ⇒ Proxy a → List (Tuple String a)
+asOptions' ∷ ∀ a aRep. (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → List (Tuple String a)
 asOptions' _ = map (to <$> _) (asOptions (Proxy ∷ Proxy aRep))
 
-asParser ∷ ∀ a aRep m. (Monad m) ⇒ (Generic a aRep) ⇒ (AsOptions aRep) ⇒ Proxy a → FieldValidation m String String a
+asParser ∷ ∀ a aRep m. (Monad m) ⇒ (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → FieldValidation m String String a
 asParser _ = to <$> (asRepParser (Proxy ∷ Proxy aRep))
 
-class (AsOptions c) ⇐ Choices c (c' ∷ # Type) | c → c' where
+class (Options c) ⇐ Choices c (c' ∷ # Type) | c → c' where
   -- validation result row
   -- choices rendering
   choicesParser ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) (Record c')
