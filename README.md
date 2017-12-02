@@ -4,6 +4,15 @@ An attempt to build simple, composable html form validation API...
 
 Pre α-stage.
 
+## Goals
+
+  * Form should be easly renderable, so you can write really generic renderer and pass it form value (validated or not) and get desired html
+
+  * Validation should return well typed result value __and form__ value or form filled with errors, so you can always generate html for it
+
+  * Provide only bare minimal representation of html form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
+
+
 ## Current status
 
 This lib extends applicative validation idea a bit further (I mean `purescript-validation`). The idea is to build up a form and validation result during the whole validation process - so form is a result of failed validation but also successful validation steps. So either `Invalid` or `Valid` variant carries `Form` value `e`:
