@@ -10,7 +10,7 @@ Pre α-stage.
 
   * Validation should return well typed result value __and form__ value or form filled with errors, so you can always generate html for it
 
-  * Provide only bare minimal representation of html form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
+  * Provide only minimal representation of html form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
 
 
 ## Current status
