@@ -10,17 +10,18 @@ import Data.Either (Either(..), note)
 import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Int (fromString)
-import Data.List (List, singleton)
+import Data.List (List, any, singleton)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Profunctor.Star (Star(..))
+import Data.Record (insert, set)
 import Data.StrMap (StrMap, empty, fromFoldable, lookup)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(Tuple))
 import Data.Validation.Polyform.Prim (V(..), Validation(..), pureV)
 import Data.Variant (Variant, inj)
-import Type.Prelude (class IsSymbol, Proxy(..), reflectSymbol)
+import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
 data Form field = Form (StrMap String) (Array field)
 derive instance genericForm ∷ Generic (Form field) _
@@ -197,7 +198,6 @@ instance asOptionsConstructor ∷ (IsSymbol name) ⇒ AsOptions (Constructor nam
    where
     value = reflectSymbol (SProxy ∷ SProxy name)
 
-
 toOptionValue' ∷ ∀ opt optRep. (Generic opt optRep) ⇒ (ToOptionValue optRep) ⇒ opt → String
 toOptionValue' v = toOptionValue (from v)
 
@@ -206,6 +206,47 @@ asOptions' _ = map (to <$> _) (asOptions (Proxy ∷ Proxy aRep))
 
 asParser ∷ ∀ a aRep m. (Monad m) ⇒ (Generic a aRep) ⇒ (AsOptions aRep) ⇒ Proxy a → FieldValidation m String String a
 asParser _ = to <$> (asRepParser (Proxy ∷ Proxy aRep))
+
+class (AsOptions c) ⇐ Choices c (c' ∷ # Type) | c → c' where
+  -- validation result row
+  -- choices rendering
+  choicesParser ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) (Record c')
+
+singletonRecord ∷ forall label row val
+  . IsSymbol label
+  ⇒ RowLacks label ()
+  ⇒ RowCons label val () row
+  ⇒  SProxy label
+  → val
+  → Record row
+singletonRecord p v = insert p v {}
+
+-- I've to witness a lot in order to compile this stuff ;-)
+instance choicesConstructor ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ()) ⇒ Choices (Constructor name NoArguments) row where
+  choicesParser proxy =
+    parser
+   where
+    parser =
+      let
+        pName = (SProxy ∷ SProxy name)
+      in
+        Star (\vs → pure $ (singletonRecord (SProxy ∷ SProxy name) (any (reflectSymbol pName == _) vs)))
+
+instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br row, RowLacks name br) ⇒ Choices (Sum (Constructor name NoArguments) b) row where
+  choicesParser proxy =
+    parser
+   where
+    parser =
+      let
+        pName = (SProxy ∷ SProxy name)
+      in
+        Star (\vs → do
+          br ← unwrap (choicesParser (Proxy ∷ Proxy b)) vs
+          pure $ (insert (SProxy ∷ SProxy name) (any (reflectSymbol pName == _) vs) br))
+
+
+choicesParser' ∷ ∀ a aRep row m. (Monad m) ⇒ (Generic a aRep) ⇒ (Choices aRep row) ⇒ Proxy a → FieldValidation m String (Array String) (Record row)
+choicesParser' _ = (choicesParser (Proxy ∷ Proxy aRep))
 
 -- --
 -- -- instance genericEnumNoArguments :: GenericEnum NoArguments where
