@@ -23,9 +23,9 @@ import Data.Validation.Polyform.Prim (V(..), Validation(..), pureV)
 import Data.Variant (Variant, inj)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
-data Form field = Form (StrMap String) (Array field)
-derive instance genericForm ∷ Generic (Form field) _
-derive instance functorForm ∷ Functor Form
+data Form error field = Form error (Array field)
+derive instance genericForm ∷ Generic (Form err field) _
+derive instance functorForm ∷ Functor (Form err)
 
 -- | HTTP query representation
 type FieldQuery = Array (Maybe String)
@@ -102,20 +102,20 @@ emptyOrMissing = emptyScalar <|> missing
 emptyOrMissing' = tag (SProxy ∷ SProxy "emptyOrMissing") emptyOrMissing
 
 
-type FormValidation m field a b = Validation m (Form field) a b
-type FormValidation' m field b = FormValidation m field Query b
+type FormValidation m err field a b = Validation m (Form err field) a b
+type FormValidation' m err field b = FormValidation m err field Query b
 
-newtype FormField m a b field = FormField (FormValidation m field a b)
-derive instance newtypeFormField ∷ Newtype (FormField m a b field) _
-instance functorFormField ∷ (Functor m) ⇒ Functor (FormField m a b) where
+newtype FormField m err a b field = FormField (FormValidation m err field a b)
+derive instance newtypeFormField ∷ Newtype (FormField m err a b field) _
+instance functorFormField ∷ (Functor m) ⇒ Functor (FormField m err a b) where
   map f (FormField (Validation v)) =
     FormField (Validation ((lmap (f <$> _) <$> _) <$> v))
 
-mapField ∷ ∀ a b field field' m
+mapField ∷ ∀ a b err field field' m
   . (Functor m)
   ⇒ (field → field')
-  → FormValidation m field a b
-  → FormValidation m field' a b
+  → FormValidation m err field a b
+  → FormValidation m err field' a b
 mapField f = unwrap <<< map f <<< FormField
 
 type Input e a =
@@ -123,30 +123,30 @@ type Input e a =
   , value ∷ Either e a
   }
 
-inputValidation ∷ ∀ e m v. (Monad m) ⇒ String  → FieldValidation' m e v → FormValidation' m (Input e v) v
+inputValidation ∷ ∀ e err m v. (Monad m) ⇒ Monoid err ⇒ String  → FieldValidation' m e v → FormValidation' m err (Input e v) v
 inputValidation name validation = Validation $ \query → do
   let
     raw = fromMaybe [] (lookup name query)
   r ← runExceptT (unwrap validation raw)
   pure $ case r of
-    Left e → Invalid (Form empty [{name, value: Left e}])
-    Right v → Valid (Form empty [{name, value: Right v}]) v
+    Left e → Invalid (Form mempty [{name, value: Left e}])
+    Right v → Valid (Form mempty [{name, value: Right v}]) v
 
-optInputValidation ∷ ∀ e m v. (Monad m) ⇒ String → FieldValidation' m e v → FormValidation' m (Input e (Maybe v)) (Maybe v)
+optInputValidation ∷ ∀ e err m v. (Monad m) ⇒ (Monoid err) ⇒ String → FieldValidation' m e v → FormValidation' m err (Input e (Maybe v)) (Maybe v)
 optInputValidation name validation = Validation $ \query → do
   let
     raw = fromMaybe [] (lookup name query)
   e ← runExceptT (unwrap emptyOrMissing raw)
   r ← runExceptT (unwrap validation raw)
   pure $ case e, r of
-    Right _, _ → Valid (Form empty [{name, value: Right Nothing}]) Nothing
-    _, Left e → Invalid (Form empty [{name, value: Left e}])
-    _, Right v → Valid (Form empty [{name, value: Right (Just v)}]) (Just v)
+    Right _, _ → Valid (Form mempty [{name, value: Right Nothing}]) Nothing
+    _, Left e → Invalid (Form mempty [{name, value: Left e}])
+    _, Right v → Valid (Form mempty [{name, value: Right (Just v)}]) (Just v)
 
-input ∷ ∀ e m. (Monad m) ⇒ String → FormValidation' m (Input (NonEmtpyScalarErr e) String) String
+input ∷ ∀ e err m. Monad m ⇒ Monoid err ⇒ String → FormValidation' m err (Input (NonEmtpyScalarErr e) String) String
 input name = inputValidation name nonEmptyScalar'
 
-optInput ∷ ∀ e m. (Monad m) ⇒ String → FormValidation' m (Input (ScalarErr String e) (Maybe String)) (Maybe String)
+optInput ∷ ∀ e err m. Monad m ⇒ Monoid err ⇒ String → FormValidation' m err (Input (ScalarErr String e) (Maybe String)) (Maybe String)
 optInput name = optInputValidation name (catMaybesV >>> scalar')
 
 
@@ -243,8 +243,3 @@ instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br ro
 choicesParser' ∷ ∀ a aRep row m. (Monad m) ⇒ (Generic a aRep) ⇒ (Choices aRep row) ⇒ Proxy a → FieldValidation m String (Array String) (Record row)
 choicesParser' _ = (choicesParser (Proxy ∷ Proxy aRep))
 
--- --
--- -- instance genericEnumNoArguments :: GenericEnum NoArguments where
--- --   toOptionValue = []
--- 
--- 

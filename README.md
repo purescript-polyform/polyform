@@ -13,7 +13,7 @@ Pre α-stage.
   * Provide only minimal representation of html form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
 
 
-## Current status
+## Validation
 
 This lib extends applicative validation idea a bit further (I mean `purescript-validation`). The idea is to build up a form and validation result during the whole validation process - so form is a result of failed validation but also successful validation steps. So either `Invalid` or `Valid` variant carries `Form` value `e`:
 
@@ -25,10 +25,8 @@ Current (used as proof of concept) form type is just product of (form) errors an
 
 
   ```purescript
-    data Form = Form (Array String) (Array Field)
+    data Form e field = Form e (Array field)
   ```
-
-Form error representation will change soon probably to just `StrMap`...
 
 During validation process forms are combined by `Applicative` instance and by `Semigroup` instance, so we are able to build more complex validation scenarios and compose forms easily.
 After validation we are going to get form value and in case of validation success also a final value:
