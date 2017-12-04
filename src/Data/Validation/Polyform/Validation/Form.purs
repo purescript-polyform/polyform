@@ -1,4 +1,4 @@
-module Data.Validation.Polyform.Prim where
+module Data.Validation.Polyform.Validation.Form where
 
 import Prelude
 
@@ -78,7 +78,5 @@ instance semigroupoidValidation ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Val
             Invalid e' → Invalid (e <> e')
         Invalid e → pure (Invalid e))
 
-
 instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e) where
-  -- first pure is from `V` Applicative and second is from `m` instance
   id = Validation $ pure <<< pure

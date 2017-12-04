@@ -9,17 +9,18 @@ import Data.Bifunctor (lmap)
 import Data.Either (Either(..), note)
 import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
 import Data.Generic.Rep.Show (genericShow)
+import Data.Identity (Identity(..))
 import Data.Int (fromString)
 import Data.List (List, any, singleton)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.Profunctor.Star (Star(..))
+import Data.Profunctor.Star (Star(..), hoistStar)
 import Data.Record (insert, set)
 import Data.StrMap (StrMap, empty, fromFoldable, lookup)
 import Data.Symbol (SProxy(..))
 import Data.Tuple (Tuple(Tuple))
-import Data.Validation.Polyform.Prim (V(..), Validation(..), pureV)
+import Data.Validation.Polyform.Validation.Form (V(..), Validation(..), pureV)
 import Data.Variant (Variant, inj)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
@@ -161,51 +162,59 @@ type Select e opt =
   , value ∷ Either e String
   }
 
+newtype Last a = Last a
+derive instance newtypeLast ∷ Newtype (Last a) _
+instance semigroupLast ∷ Semigroup (Last a) where
+  append f _ = f
+
 class Options opt where
-  toOptionValue ∷ opt → String
-  asOptions ∷ (Proxy opt) → (List (Tuple String opt))
-  asRepParser ∷ ∀ m. (Monad m) ⇒ (Proxy opt) → FieldValidation m String String opt
+  toOptionValueImpl ∷ opt → String
+  optionsImpl ∷ (Proxy opt) → (List (Tuple String opt))
+  -- | This `Last` wrapper is to simplify error handling
+  -- | as it is has simple Semigroup instance which takes only first value.
+  -- | I drop this wrapper later on.
+  optionsParserImpl ∷ ∀ m. (Monad m) ⇒ (Proxy opt) → FieldValidation m (Last String) String opt
 
 instance asOptionsSum ∷ (Options a, Options b) ⇒ Options (Sum a b) where
-  toOptionValue (Inl v) = toOptionValue v
-  toOptionValue (Inr v) = toOptionValue v
+  toOptionValueImpl (Inl v) = toOptionValueImpl v
+  toOptionValueImpl (Inr v) = toOptionValueImpl v
 
-  asOptions _ =
-    map (Inl <$> _) (asOptions (Proxy ∷ Proxy a))
-    <> map (Inr <$> _) (asOptions (Proxy ∷ Proxy b))
+  optionsImpl _ =
+    map (Inl <$> _) (optionsImpl (Proxy ∷ Proxy a))
+    <> map (Inr <$> _) (optionsImpl (Proxy ∷ Proxy b))
 
-  asRepParser _ =
-    (Inl <$> asRepParser (Proxy ∷ Proxy a)) <|> (Inr <$> asRepParser (Proxy ∷ Proxy b))
+  optionsParserImpl _ =
+    (Inl <$> optionsParserImpl (Proxy ∷ Proxy a)) <|> (Inr <$> optionsParserImpl (Proxy ∷ Proxy b))
 
 instance asOptionsConstructor ∷ (IsSymbol name) ⇒ Options (Constructor name NoArguments) where
-  toOptionValue _ = reflectSymbol (SProxy ∷ SProxy name)
+  toOptionValueImpl _ = reflectSymbol (SProxy ∷ SProxy name)
 
-  asOptions _ =
+  optionsImpl _ =
     singleton (Tuple value option)
    where
     option = ((Constructor NoArguments) ∷ Constructor name NoArguments)
     value = reflectSymbol (SProxy ∷ SProxy name)
 
-  asRepParser _ =
+  optionsParserImpl _ =
     Star (\s → if s == value
       then (pure ((Constructor NoArguments) ∷ Constructor name NoArguments))
-      else (ExceptT <<< pure $ Left "error"))
+      else (withExceptT Last $ ExceptT<<< pure $ Left (s)))
    where
     value = reflectSymbol (SProxy ∷ SProxy name)
 
-toOptionValue' ∷ ∀ opt optRep. (Generic opt optRep) ⇒ (Options optRep) ⇒ opt → String
-toOptionValue' v = toOptionValue (from v)
+toOptionValue ∷ ∀ opt optRep. (Generic opt optRep) ⇒ (Options optRep) ⇒ opt → String
+toOptionValue v = toOptionValueImpl (from v)
 
-asOptions' ∷ ∀ a aRep. (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → List (Tuple String a)
-asOptions' _ = map (to <$> _) (asOptions (Proxy ∷ Proxy aRep))
+options ∷ ∀ a aRep. (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → List (Tuple String a)
+options _ = map (to <$> _) (optionsImpl (Proxy ∷ Proxy aRep))
 
-asParser ∷ ∀ a aRep m. (Monad m) ⇒ (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → FieldValidation m String String a
-asParser _ = to <$> (asRepParser (Proxy ∷ Proxy aRep))
+optionsParser ∷ ∀ a aRep e m. (Monad m) ⇒ (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → FieldValidation m String String a
+optionsParser _ = hoistStar (withExceptT unwrap) $ to <$> (optionsParserImpl (Proxy ∷ Proxy aRep))
 
 class (Options c) ⇐ Choices c (c' ∷ # Type) | c → c' where
   -- validation result row
   -- choices rendering
-  choicesParser ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) (Record c')
+  choicesParserImpl ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) (Record c')
 
 singletonRecord ∷ forall label row val
   . IsSymbol label
@@ -218,7 +227,7 @@ singletonRecord p v = insert p v {}
 
 -- I've to witness a lot in order to compile this stuff ;-)
 instance choicesConstructor ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ()) ⇒ Choices (Constructor name NoArguments) row where
-  choicesParser proxy =
+  choicesParserImpl proxy =
     parser
    where
     parser =
@@ -228,7 +237,7 @@ instance choicesConstructor ∷ (IsSymbol name, RowCons name Boolean () row, Row
         Star (\vs → pure $ (singletonRecord (SProxy ∷ SProxy name) (any (reflectSymbol pName == _) vs)))
 
 instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br row, RowLacks name br) ⇒ Choices (Sum (Constructor name NoArguments) b) row where
-  choicesParser proxy =
+  choicesParserImpl proxy =
     parser
    where
     parser =
@@ -236,10 +245,10 @@ instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br ro
         pName = (SProxy ∷ SProxy name)
       in
         Star (\vs → do
-          br ← unwrap (choicesParser (Proxy ∷ Proxy b)) vs
+          br ← unwrap (choicesParserImpl (Proxy ∷ Proxy b)) vs
           pure $ (insert (SProxy ∷ SProxy name) (any (reflectSymbol pName == _) vs) br))
 
 
-choicesParser' ∷ ∀ a aRep row m. (Monad m) ⇒ (Generic a aRep) ⇒ (Choices aRep row) ⇒ Proxy a → FieldValidation m String (Array String) (Record row)
-choicesParser' _ = (choicesParser (Proxy ∷ Proxy aRep))
+choicesParser ∷ ∀ a aRep row m. (Monad m) ⇒ (Generic a aRep) ⇒ (Choices aRep row) ⇒ Proxy a → FieldValidation m String (Array String) (Record row)
+choicesParser _ = (choicesParserImpl (Proxy ∷ Proxy aRep))
 
