@@ -8,19 +8,16 @@ import Data.Array (catMaybes)
 import Data.Bifunctor (lmap)
 import Data.Either (Either(..), note)
 import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
-import Data.Generic.Rep.Show (genericShow)
-import Data.Identity (Identity(..))
 import Data.Int (fromString)
 import Data.List (List, any, singleton)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Profunctor.Star (Star(..), hoistStar)
-import Data.Record (insert, set)
-import Data.StrMap (StrMap, empty, fromFoldable, lookup)
-import Data.Symbol (SProxy(..))
+import Data.Record (insert)
+import Data.StrMap (StrMap, lookup)
 import Data.Tuple (Tuple(Tuple))
-import Data.Validation.Polyform.Validation.Form (V(..), Validation(..), pureV)
+import Data.Validation.Polyform.Validation.Form (V(Valid, Invalid), Validation(Validation))
 import Data.Variant (Variant, inj)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
@@ -33,6 +30,9 @@ instance semigroupForm ∷ (Semigroup errors) ⇒ Semigroup (Form errors field) 
 
 instance monoidForm ∷ (Monoid errors) ⇒ Monoid (Form errors field) where
   mempty = Form mempty []
+
+formError ∷ ∀ a err field m. (Apply m) ⇒ m err → m (V (Form err field) a)
+formError err = Invalid <$> (Form <$> err <@> [])
 
 -- | HTTP query representation
 type FieldQuery = Array (Maybe String)
@@ -53,6 +53,15 @@ tag :: forall a b e m p r r'
 tag p v =
   wrap ((ExceptT <<< (lmap (inj p) <$> _) <<< runExceptT) <$> unwrap v)
 
+check ∷ ∀ a err field m. (Monad m) ⇒ (Monoid err) ⇒ m err → (a → m Boolean) → Validation m (Form err field) a a
+check err c =
+  Validation (\a → do
+    r ← c a
+    if r
+      then pure (pure a)
+      else formError err)
+
+
 catMaybesV :: forall a e m. (Monad m) ⇒ FieldValidation m e (Array (Maybe a)) (Array a)
 catMaybesV = Star $ ExceptT <<< pure <<< Right <<< catMaybes
 
@@ -69,7 +78,7 @@ scalar' = tag (SProxy ∷ SProxy "scalar") scalar
 
 type NonEmtpyScalarErr e = ScalarErr String (nonEmptyScalar ∷ Unit | e)
 
-nonEmptyScalar' ∷ ∀ e m v. (Monad m) ⇒ FieldValidation' m (NonEmtpyScalarErr e) String
+nonEmptyScalar' ∷ ∀ e m. (Monad m) ⇒ FieldValidation' m (NonEmtpyScalarErr e) String
 nonEmptyScalar' =
   catMaybesV >>> scalar' >>> (tag (SProxy ∷ SProxy "nonEmptyScalar") (Star $ ExceptT <<< pure <<< (\s →
     if s == mempty
@@ -147,7 +156,7 @@ optInputValidation name validation = Validation $ \query → do
   r ← runExceptT (unwrap validation raw)
   pure $ case e, r of
     Right _, _ → Valid (Form mempty [{name, value: Right Nothing}]) Nothing
-    _, Left e → Invalid (Form mempty [{name, value: Left e}])
+    _, Left e' → Invalid (Form mempty [{name, value: Left e'}])
     _, Right v → Valid (Form mempty [{name, value: Right (Just v)}]) (Just v)
 
 input ∷ ∀ e err m. Monad m ⇒ Monoid err ⇒ String → FormValidation' m err (Input (NonEmtpyScalarErr e) String) String
@@ -214,7 +223,7 @@ toOptionValue v = toOptionValueImpl (from v)
 options ∷ ∀ a aRep. (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → List (Tuple String a)
 options _ = map (to <$> _) (optionsImpl (Proxy ∷ Proxy aRep))
 
-optionsParser ∷ ∀ a aRep e m. (Monad m) ⇒ (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → FieldValidation m String String a
+optionsParser ∷ ∀ a aRep m. (Monad m) ⇒ (Generic a aRep) ⇒ (Options aRep) ⇒ Proxy a → FieldValidation m String String a
 optionsParser _ = hoistStar (withExceptT unwrap) $ to <$> (optionsParserImpl (Proxy ∷ Proxy aRep))
 
 class (Options c) ⇐ Choices c (c' ∷ # Type) | c → c' where
