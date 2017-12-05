@@ -24,9 +24,15 @@ import Data.Validation.Polyform.Validation.Form (V(..), Validation(..), pureV)
 import Data.Variant (Variant, inj)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
-data Form error field = Form error (Array field)
+data Form errors field = Form errors (Array field)
 derive instance genericForm ∷ Generic (Form err field) _
 derive instance functorForm ∷ Functor (Form err)
+
+instance semigroupForm ∷ (Semigroup errors) ⇒ Semigroup (Form errors field) where
+  append (Form e1 fs1) (Form e2 fs2) = Form (e1 <> e2) (fs1 <> fs2)
+
+instance monoidForm ∷ (Monoid errors) ⇒ Monoid (Form errors field) where
+  mempty = Form mempty []
 
 -- | HTTP query representation
 type FieldQuery = Array (Maybe String)
