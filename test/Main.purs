@@ -42,7 +42,7 @@ main = launchAff $ runTest $ do
       equal (runExceptT (runFieldValidation prs "Unkown")) (Identity $ Left ("Unkown"))
   suite "choicesParser" $ do
     suite "for coproduct type" $ do
-      let prs = choicesParser (Proxy ∷ Proxy Opts)
+      let prs = _.product <$> choicesParser (Proxy ∷ Proxy Opts)
       test "parses single value" $ do
         equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["X"])) (Identity $ Right true)
         equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["X"])) (Identity $ Right false)
@@ -60,7 +60,7 @@ main = launchAff $ runTest $ do
         equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
         equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["Y", "Y", "X"])) (Identity $ Right false)
     suite "for Symbol list" $ do
-      let prs = Option.choicesParser (Proxy ∷ Proxy ("X" :- "Y" :- "Z" :- Nil))
+      let prs = _.product <$> Option.choicesParser (Proxy ∷ Proxy ("X" :- "Y" :- "Z" :- Nil))
       test "parses single value" $ do
         equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["X"])) (Identity $ Right true)
         equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["X"])) (Identity $ Right false)

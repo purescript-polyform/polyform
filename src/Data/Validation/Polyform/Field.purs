@@ -68,15 +68,14 @@ type Choice e opt =
 -- |
 -- | You can expect something like this as a result of validation:
 -- |
--- |   { c1 ∷ Boolean
--- |   , c2 ∷ Boolean
--- |   , c3 ∷ Boolean
+-- |   { C1 ∷ Boolean
+-- |   , C2 ∷ Boolean
+-- |   , C3 ∷ Boolean
 -- |   }
 type MultiChoice e opt =
-  ∀ choice. (Choices opt choice) ⇒
   { name ∷ String
   , choices ∷ List (Tuple String opt)
-  , value ∷ Either e (Record choice)
+  , value ∷ Either e (opt → Boolean)
   }
 
 -- | This type class provides a way to transform simple sum type
@@ -117,9 +116,10 @@ instance asOptionsConstructor ∷ (IsSymbol name) ⇒ Options (Constructor name 
     validate \s →
       if s == value
         then
+          -- Right (Constructor name NoArguments) -
           Right ((Constructor NoArguments) ∷ Constructor name NoArguments)
         else
-           Left (Last s)
+          Left (Last s)
    where
     value = reflectSymbol (SProxy ∷ SProxy name)
 
@@ -133,7 +133,7 @@ optionsParser ∷ ∀ a aRep m. (Monad m) ⇒ (Generic a aRep) ⇒ (Options aRep
 optionsParser _ = withException unwrap $ to <$> (optionsParserImpl (Proxy ∷ Proxy aRep))
 
 class Choices c (c' ∷ # Type) | c → c' where
-  choicesParserImpl ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) (Record c')
+  choicesParserImpl ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) { product ∷ (Record c'), checkOpt ∷ c → Boolean }
 
 instance choicesConstructor ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ()) ⇒ Choices (Constructor name NoArguments) row where
   choicesParserImpl proxy =
@@ -143,22 +143,32 @@ instance choicesConstructor ∷ (IsSymbol name, RowCons name Boolean () row, Row
       let
         _name = (SProxy ∷ SProxy name)
         v = any (reflectSymbol _name == _)
-      in pureV $ \i → insert _name  (v i) {}
+        product i = insert _name  (v i) {}
+        checkOpt i _ = v i
+      in pureV $ \i → { product: product i, checkOpt: checkOpt i }
 
 instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br row, RowLacks name br) ⇒ Choices (Sum (Constructor name NoArguments) b) row where
   choicesParserImpl proxy =
     parser
    where
     parser = do
+      i ← ask
+      { product, checkOpt } ← choicesParserImpl (Proxy ∷ Proxy b)
       let
         _name = (SProxy ∷ SProxy name)
         v = any (reflectSymbol _name == _)
-      i ← ask
-      r ← choicesParserImpl (Proxy ∷ Proxy b)
-      pure $ insert _name  (v i) r
+        checkOpt' = case _ of
+          (Inl _) → v i
+          (Inr b) → checkOpt b
+      pure $ { product: insert _name  (v i) product, checkOpt: checkOpt' }
 
 choicesParser ∷ ∀ a aRep row m
   . (Monad m)
- ⇒ (Generic a aRep) ⇒ (Choices aRep row) ⇒ Proxy a → FieldValidation m String (Array String) (Record row)
-choicesParser _ = choicesParserImpl (Proxy ∷ Proxy aRep)
+  ⇒ (Generic a aRep)
+  ⇒ (Choices aRep row)
+  ⇒ Proxy a
+  → FieldValidation m String (Array String) { product ∷ Record row, checkOpt ∷ a → Boolean }
+choicesParser _ = do
+  { product, checkOpt } ← choicesParserImpl (Proxy ∷ Proxy aRep)
+  pure { product, checkOpt: checkOpt <<< from }
 
