@@ -14,9 +14,12 @@ import Data.Validation.Polyform.Validation.Form (V(..), Validation(..))
 import Data.Variant (Variant)
 import Type.Prelude (Proxy, SProxy(SProxy))
 
--- | This module defines only trivial form builders
--- | with single fields. `List` form representation
--- | seems to be sufficient in this context.
+-- | This module provides some helpers for building basic HTML forms.
+-- |
+-- | All builders operate on really trivial form type
+-- | `type Form field = List field`, because we want to
+-- | ease the transition between `FieldValidation` and `Validation`.
+
 type Form field = List field
 
 inputForm ∷ ∀ e i m v. (Monad m) ⇒ String  → FieldValidation m e i v → Validation m (Form (Input e v)) i v
@@ -25,6 +28,8 @@ inputForm name validation = Validation $ \query → do
   pure $ case r of
     Left e → Invalid (singleton {name, value: Left e})
     Right v → Valid (singleton {name, value: Right v}) v
+
+_invalidOption = SProxy ∷ SProxy "invalidOption"
 
 coproductChoiceForm ∷ ∀ a e i rep m
   . Monad m
@@ -36,15 +41,13 @@ coproductChoiceForm ∷ ∀ a e i rep m
   → Validation m (Form (Choice (Variant (invalidOption ∷ String | e)) a)) i a
 coproductChoiceForm name p validation = Validation $ \query → do
   let
-    optsValidation = tag (SProxy ∷ SProxy "invalidOption") $ optionsParser p
+    optsValidation = tag _invalidOption $ optionsParser p
     validation' = optsValidation <<< validation
     opts = options p
   r ← runExceptT (runFieldValidation validation' query)
   pure $ case r of
     Left e → Invalid (singleton {name, options: opts, value: Left e})
     Right v → Valid (singleton {name, options: opts, value: Right v}) v
-
-_invalidOption = SProxy ∷ SProxy "invalidOption"
 
 symbolChoiceForm ∷ ∀ a e i m
   . Monad m

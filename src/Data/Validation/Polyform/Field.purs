@@ -16,28 +16,12 @@ import Data.Validation.Polyform.Validation.Field (FieldValidation, Last(Last), p
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
 
-
--- | This module provides some helpers for building basic HTML fields.
--- | Don't look for single sum type or Variant which represents
--- | all these fields because it is not implemented here.
--- | There are only builders for basic types of form fields.
+-- | This module provides some very simple representations of HTML fields.
+-- | Don't look for single sum type or Variant which ties all of them.
+-- | They are not implemented here.
 -- |
 -- | Fields represantation is as minimal as possible, so only
--- | validation relevant pieces are provided here.
--- | All builders operate on really trivial form type
--- | `type Form field = List field`, because we are only
--- | interested in providing building blocks which
--- | handle transition from `FieldValidation` to `Validation`.
-
--- | This module provides some helpers for building basic HTML fields.
--- | Fields represantation is as minimal as possible, so only
--- | validation relevant pieces are provided here.
--- | It also operates on really trivial form type
--- | `type Form field = List field`, because we are only
--- | interested here to provide building blocks which
--- | handle transition from `FieldValidation` to `Validation`.
-
-type Form field = List field
+-- | validation relevant pieces are exposed as attrs.
 
 type Input e a =
   { name ∷ String
