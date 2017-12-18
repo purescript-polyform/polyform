@@ -3,16 +3,19 @@ module Data.Validation.Polyform.Field where
 import Prelude
 
 import Control.Alt ((<|>))
-import Control.Monad.Reader (ask)
+import Control.Monad.Reader.Class (ask)
 import Data.Either (Either(..))
 import Data.Foldable (any)
-import Data.Generic.Rep (Constructor(..), class Generic, NoArguments(..), Sum(..), from, to)
+import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
 import Data.List (List, singleton)
 import Data.Newtype (unwrap)
 import Data.Record (insert)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(Tuple))
+import Data.Validation.Polyform.Field (class Choices, class Options, choicesParserImpl, optionsImpl, optionsParserImpl, toOptionValueImpl)
 import Data.Validation.Polyform.Validation.Field (FieldValidation, Last(Last), pureV, validate, withException)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
+
+
 
 -- | This module provides some helpers for building basic HTML fields.
 -- | Don't look for single sum type or Variant which represents
@@ -157,5 +160,5 @@ instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br ro
 choicesParser ∷ ∀ a aRep row m
   . (Monad m)
  ⇒ (Generic a aRep) ⇒ (Choices aRep row) ⇒ Proxy a → FieldValidation m String (Array String) (Record row)
-choicesParser _ = (choicesParserImpl (Proxy ∷ Proxy aRep))
+choicesParser _ = choicesParserImpl (Proxy ∷ Proxy aRep)
 

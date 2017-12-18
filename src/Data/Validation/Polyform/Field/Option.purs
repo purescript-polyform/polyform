@@ -140,7 +140,7 @@ instance _a_choicesNil ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks
         v = any (reflectSymbol _name == _)
       in pureV $ \i → insert _name  (v i) {}
 
-instance _b_choicesRecurse ∷ (IsSymbol name, Options (Option tail), Choices (Option tail) br, RowCons name Boolean br row, RowLacks name br) ⇒ Choices (Option (name :- tail)) row where
+instance _b_choicesRecurse ∷ (IsSymbol name, Choices (Option tail) br, RowCons name Boolean br row, RowLacks name br) ⇒ Choices (Option (name :- tail)) row where
   choicesParserImpl proxy =
     parser
    where
@@ -151,3 +151,6 @@ instance _b_choicesRecurse ∷ (IsSymbol name, Options (Option tail), Choices (O
       i ← ask
       r ← choicesParserImpl (Proxy ∷ Proxy (Option tail))
       pure $ insert _name  (v i) r
+
+choicesParser ∷ ∀ m opt row. (Monad m) ⇒ Choices (Option opt) row ⇒ Proxy opt → FieldValidation m String (Array String) (Record row)
+choicesParser _ = choicesParserImpl (Proxy ∷ Proxy (Option opt))

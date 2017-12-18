@@ -9,9 +9,11 @@ import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.Identity (Identity(..))
 import Data.List (List(..), (:))
-import Data.Newtype (unwrap)
 import Data.Tuple.Nested ((/\))
-import Data.Validation.Polyform.Http (choicesParser, options, optionsParser)
+import Data.Validation.Polyform.Field (choicesParser, options, optionsParser)
+import Data.Validation.Polyform.Field.Option (type (:-), Nil)
+import Data.Validation.Polyform.Field.Option as Option
+import Data.Validation.Polyform.Validation.Field (runFieldValidation)
 import Test.Unit (suite, test)
 import Test.Unit.Assert (equal)
 import Test.Unit.Output.Fancy (runTest)
@@ -25,58 +27,53 @@ instance showOpts ∷ Show Opts where
 
 -- main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = launchAff $ runTest $ do
-  suite "Options type class" do
+  suite "Options type class for coproduct type" do
     test "all options are generated" $ do
       let opts = options (Proxy ∷ Proxy Opts)
       equal (("X" /\ X) : ("Y" /\ Y) : ("Z" /\ Z) : Nil) opts
     let prs = optionsParser (Proxy ∷ Proxy Opts)
     test "parser parses constructors" $ do
-      equal (runExceptT (unwrap prs "X")) (Identity $ Right X)
-      equal (runExceptT (unwrap prs "Y")) (Identity $ Right Y)
-      equal (runExceptT (unwrap prs "Z")) (Identity $ Right Z)
+      equal (runExceptT (runFieldValidation prs "X")) (Identity $ Right X)
+      equal (runExceptT (runFieldValidation prs "Y")) (Identity $ Right Y)
+      equal (runExceptT (runFieldValidation prs "Z")) (Identity $ Right Z)
     test "parser fails for constructor prefix" $ do
-      equal (runExceptT (unwrap prs "X'")) (Identity $ Left ("X'"))
+      equal (runExceptT (runFieldValidation prs "X'")) (Identity $ Left ("X'"))
     test "parser fails for wrong value" $ do
-      equal (runExceptT (unwrap prs "Unkown")) (Identity $ Left ("Unkown"))
+      equal (runExceptT (runFieldValidation prs "Unkown")) (Identity $ Left ("Unkown"))
   suite "choicesParser" $ do
-    let prs = choicesParser (Proxy ∷ Proxy Opts)
-    test "parses single value" $ do
-      equal (runExceptT (unwrap ((_."X") <$> prs) ["X"])) (Identity $ Right true)
-      equal (runExceptT (unwrap ((_."Y") <$> prs) ["X"])) (Identity $ Right false)
-      equal (runExceptT (unwrap ((_."Z") <$> prs) ["X"])) (Identity $ Right false)
-    test "parses multiple values" $ do
-      equal (runExceptT (unwrap ((_."X") <$> prs) ["X", "Z"])) (Identity $ Right true)
-      equal (runExceptT (unwrap ((_."Y") <$> prs) ["X", "Z"])) (Identity $ Right false)
-      equal (runExceptT (unwrap ((_."Z") <$> prs) ["X", "Z"])) (Identity $ Right true)
-    test "parses no values" $ do
-      equal (runExceptT (unwrap ((_."X") <$> prs) [])) (Identity $ Right false)
-      equal (runExceptT (unwrap ((_."Y") <$> prs) [])) (Identity $ Right false)
-      equal (runExceptT (unwrap ((_."Z") <$> prs) [])) (Identity $ Right false)
-    test "parses repeated value" $ do
-      equal (runExceptT (unwrap ((_."X") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
-      equal (runExceptT (unwrap ((_."Y") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
-      equal (runExceptT (unwrap ((_."Z") <$> prs) ["Y", "Y", "X"])) (Identity $ Right false)
-
-
-
--- type MyOptions = "foo" :- "bar" :- Nil
--- 
--- testOption = option (Proxy ∷ Proxy MyOptions) (SProxy ∷ SProxy "bar")
--- 
--- testOn :: (Option Nil -> String) -> Option MyOptions -> String
--- testOn f = on (SProxy ∷ SProxy "bar") "This is bar" (on (SProxy ∷ SProxy "foo") "This is foo" f)
--- 
--- testOptionToStr ∷ Option MyOptions → String
--- testOptionToStr = (case_
---   # on (SProxy ∷ SProxy "foo") "This is foo"
---   # on (SProxy ∷ SProxy "bar") "This is bar")
--- 
--- 
--- 
--- -- option ∷ ∀ opts opt. (SymbolOnList opts opt) ⇒ (IsSymbol opt) ⇒ SProxy opt → Option opts opt
--- -- option = Option
--- 
--- x ∷ ∀ n t'. (DropOpt n ("test" :- "fest" :- Nil) t') ⇒ (IsSymbol n) ⇒ SProxy n → Unit
--- x p = unit
--- 
--- t = x (SProxy :: SProxy "fest")
+    suite "for coproduct type" $ do
+      let prs = choicesParser (Proxy ∷ Proxy Opts)
+      test "parses single value" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["X"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["X"])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["X"])) (Identity $ Right false)
+      test "parses multiple values" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["X", "Z"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["X", "Z"])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["X", "Z"])) (Identity $ Right true)
+      test "parses no values" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) [])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) [])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) [])) (Identity $ Right false)
+      test "parses repeated value" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["Y", "Y", "X"])) (Identity $ Right false)
+    suite "for Symbol list" $ do
+      let prs = Option.choicesParser (Proxy ∷ Proxy ("X" :- "Y" :- "Z" :- Nil))
+      test "parses single value" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["X"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["X"])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["X"])) (Identity $ Right false)
+      test "parses multiple values" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["X", "Z"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["X", "Z"])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["X", "Z"])) (Identity $ Right true)
+      test "parses no values" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) [])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) [])) (Identity $ Right false)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) [])) (Identity $ Right false)
+      test "parses repeated value" $ do
+        equal (runExceptT (runFieldValidation ((_."X") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Y") <$> prs) ["Y", "Y", "X"])) (Identity $ Right true)
+        equal (runExceptT (runFieldValidation ((_."Z") <$> prs) ["Y", "Y", "X"])) (Identity $ Right false)
