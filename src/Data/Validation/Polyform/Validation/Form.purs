@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
-import Data.Bifunctor (class Bifunctor)
+import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 
@@ -45,9 +45,6 @@ newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _
 derive instance functorValidation ∷ (Functor m) ⇒ Functor (Validation m e a)
 
-pureV ∷ ∀ a b e m. (Monad m) ⇒ (Monoid e) ⇒ (a → b) →  Validation m e a b
-pureV f = Validation $ pure <<< pure <<< f
-
 instance applyValidation ∷ (Semigroup e, Monad m) ⇒ Apply (Validation m e a) where
   apply vf va = Validation $ \i → do
     vf' ← unwrap vf i
@@ -80,3 +77,25 @@ instance semigroupoidValidation ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Val
 
 instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e) where
   id = Validation $ pure <<< pure
+
+pureV ∷ ∀ a b e m. (Monad m) ⇒ (Monoid e) ⇒ (a → b) →  Validation m e a b
+pureV f = Validation $ pure <<< pure <<< f
+
+
+-- | This type provides easy access to validation results
+-- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
+newtype Result m a e b = Result (Validation m e a b)
+derive instance newtypeResult ∷ Newtype (Result m a e b) _
+
+instance bifunctorResult ∷ (Monad m) ⇒ Bifunctor (Result m a) where
+  bimap l r (Result (Validation f)) = Result $ Validation $ \a → do
+    v ← f a
+    pure $ bimap l r v
+
+bimapResult ∷ ∀ a b b' e e' m
+  . (Monad m)
+  ⇒ (e → e')
+  → (b → b')
+  → Validation m e a b
+  → Validation m e' a b'
+bimapResult l r = unwrap <<< bimap l r <<< Result

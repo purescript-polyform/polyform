@@ -2,28 +2,42 @@ module Data.Validation.Polyform.Validation.Field where
 
 import Prelude
 
-import Control.Alt ((<|>))
-import Control.Monad.Except (ExceptT(..), runExceptT, withExceptT)
-import Data.Array (catMaybes)
-import Data.Bifunctor (lmap)
+import Control.Alt (class Alt)
+import Control.Monad.Error.Class (class MonadThrow, throwError)
+import Control.Monad.Except (ExceptT(ExceptT), withExceptT)
+import Control.Monad.Reader (class MonadAsk, ask)
 import Data.Either (Either(..), note)
-import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
-import Data.Generic.Rep.Show (genericShow)
 import Data.Int (fromString)
-import Data.List (List, any, singleton)
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.Profunctor.Star (Star(..))
-import Data.Record (insert, set)
-import Data.StrMap (StrMap, empty, fromFoldable, lookup)
-import Data.Symbol (SProxy(..))
-import Data.Tuple (Tuple(Tuple))
+import Data.Newtype (class Newtype, unwrap)
+import Data.Profunctor.Star (Star(Star))
 import Data.Variant (Variant, inj)
-import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
+import Type.Prelude (class IsSymbol, SProxy(SProxy))
 
 
-type FieldValidation m e a b = Star (ExceptT e m) a b
+-- | This is Star over (ExceptT e m) with + MonadAsk and MonadThrow
+newtype FieldValidation m e a b = FieldValidation (Star (ExceptT e m) a b)
+derive instance newtypeFieldValidation ∷ Newtype (FieldValidation m e a b) _
+derive instance functorFieldValidation ∷ (Functor m) ⇒ Functor (FieldValidation m e a)
+derive newtype instance applyFieldValidation ∷ (Monad m) ⇒ Apply (FieldValidation m e a)
+derive newtype instance applicativeFieldValidation ∷ (Monad m) ⇒ Applicative (FieldValidation m e a)
+derive newtype instance bindValidation ∷ (Monad m) ⇒ Bind (FieldValidation m e a)
+derive newtype instance semigroupoidFieldValidation ∷ (Monad m) ⇒ Semigroupoid (FieldValidation m e)
+derive newtype instance categoryValidation ∷ (Monad m) ⇒ Category (FieldValidation m e)
+instance monadFieldValidation ∷ (Monad m) ⇒ Monad (FieldValidation m e a)
+derive newtype instance altFieldValidation ∷ (Monad m, Semigroup e) ⇒ Alt (FieldValidation m e a)
+
+instance monadAskFieldValidation ∷ (Monad m) ⇒ MonadAsk a (FieldValidation m e a) where
+  ask = FieldValidation $ Star (\i → pure i)
+
+instance monadThrowFieldValidation ∷ (Monad m) ⇒ MonadThrow e (FieldValidation m e a) where
+  throwError e = FieldValidation $ Star (\_ → throwError e)
+
+withException ∷ ∀ a b e e' m. (Functor m) ⇒ (e → e') → FieldValidation m e a b → FieldValidation m e' a b
+withException f v = FieldValidation <<< Star $ withExceptT f <<< (runFieldValidation v)
+
+runFieldValidation ∷ ∀ a b e m. FieldValidation m e a b → (a → ExceptT e m b)
+runFieldValidation = unwrap <<< unwrap
 
 tag :: forall a b e m p r r'
   . RowCons p e r r'
@@ -33,61 +47,93 @@ tag :: forall a b e m p r r'
   → FieldValidation m e a b
   → FieldValidation m (Variant r') a b
 tag p v =
-  wrap ((ExceptT <<< (lmap (inj p) <$> _) <<< runExceptT) <$> unwrap v)
+  withException (inj p) v
 
+pureV ∷ ∀ a b e m. (Monad m) ⇒ (a → b) → FieldValidation m e a b
+pureV f = do
+  a ← ask
+  pure $ f a
 
-catMaybesV :: forall a e m. (Monad m) ⇒ FieldValidation m e (Array (Maybe a)) (Array a)
-catMaybesV = Star $ ExceptT <<< pure <<< Right <<< catMaybes
+validate ∷ ∀ a e b m. (Monad m) ⇒ (a → Either e b) → FieldValidation m e a b
+validate f = do
+  i ← ask
+  case f i of
+    Left e → throwError e
+    Right r → pure r
+
+validateM ∷ ∀ a e b m. (Monad m) ⇒ (a → m (Either e b)) → FieldValidation m e a b
+validateM f =
+  FieldValidation $ Star $ \a → ExceptT $ f a
+
+check ∷ ∀ a m. (Monad m) ⇒ (a → Boolean) → FieldValidation m a a a
+check f = validate $ \i →
+  if f i
+    then Right i
+    else Left i
+
+checkM ∷ ∀ a m. (Monad m) ⇒ (a → m Boolean) → FieldValidation m a a a
+checkM f = validateM $ \a → do
+    r ← f a
+    pure $ if r
+      then Left a
+      else Right a
 
 scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (Array a) a
-scalar = Star $ \i → ExceptT <<< pure <<< s $ i
- where
-  s [a] = Right a
-  s arr = Left arr
+scalar = validate $ case _ of
+  [a] → Right a
+  arr → Left arr
 
-type ScalarErr a e = Variant (scalar ∷ Array a | e)
-
-scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (ScalarErr a e) (Array a) a
+scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
 scalar' = tag (SProxy ∷ SProxy "scalar") scalar
 
-type NonEmtpyScalarErr e = ScalarErr String (nonEmptyScalar ∷ Unit | e)
+nonEmpty ∷ ∀ a m. (Monad m) ⇒ (Monoid a) ⇒ (Eq a) ⇒ FieldValidation m a a a
+nonEmpty = check (_ /= mempty)
 
--- nonEmptyScalar' ∷ ∀ e m v. (Monad m) ⇒ FieldValidation' m (NonEmtpyScalarErr e) String
--- nonEmptyScalar' =
---   catMaybesV >>> scalar' >>> (tag (SProxy ∷ SProxy "nonEmptyScalar") (Star $ ExceptT <<< pure <<< (\s →
---     if s == mempty
---       then Left unit
---       else Right s)))
+nonEmpty' ∷ ∀ a e m
+  . (Monad m)
+  ⇒ (Monoid a)
+  ⇒ (Eq a)
+  ⇒ FieldValidation m (Variant (nonEmpty ∷ a | e)) a a
+nonEmpty' = tag (SProxy ∷ SProxy "nonEmpty") nonEmpty
 
-type IntErr e = Variant (int ∷ String | e)
+empty ∷ ∀ a m. (Monad m) ⇒ (Monoid a) ⇒ (Eq a) ⇒ FieldValidation m a a a
+empty  = check (_ == mempty)
+
+empty' ∷ ∀ a e m
+ . (Monad m)
+ ⇒ (Monoid a)
+ ⇒ (Eq a)
+ ⇒ FieldValidation m (Variant (empty ∷ a | e)) a a
+empty' = tag (SProxy ∷ SProxy "empty") empty
 
 int ∷ ∀ m. (Monad m) ⇒ FieldValidation m String String Int
-int = Star $ \s → ExceptT <<< pure $ note s (fromString s)
+int = validate $ note <*> fromString
 
-int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (IntErr e) String Int
+int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (Variant (int ∷ String | e)) String Int
 int' = tag (SProxy ∷ SProxy "int") int
 
-emptyScalar ∷ ∀ m s. (Monad m) ⇒ (Monoid s) ⇒ (Eq s) ⇒ FieldValidation m (Array (Maybe s)) (Array (Maybe s)) Unit
-emptyScalar =
-  Star $ ExceptT <<< pure <<< s
- where
-  s [v] | v == Nothing = Right unit
-        | v == Just mempty = Right unit
-  s i = Left i
-
 missing ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (Array a) Unit
-missing =
-  Star $ ExceptT <<< pure <<< s
- where
-  s [] = Right unit
-  s arr = Left arr
+missing = validate $ case _ of
+  [] → Right unit
+  arr → Left arr
 
-emptyOrMissing :: ∀ s m
-  . Monad m
-  ⇒ Monoid s
-  ⇒ Eq s
-  ⇒ FieldValidation m (Array (Maybe s)) (Array (Maybe s)) Unit
-emptyOrMissing = emptyScalar <|> missing
+missing' ∷ ∀ a e m
+ . (Monad m)
+ ⇒ FieldValidation m (Variant (missing ∷ Array a | e)) (Array a) Unit
+missing' = tag (SProxy ∷ SProxy "missing") missing
 
-emptyOrMissing' = tag (SProxy ∷ SProxy "emptyOrMissing") emptyOrMissing
+newtype Last a = Last a
+derive instance newtypeLast ∷ Newtype (Last a) _
+instance semigroupLast ∷ Semigroup (Last a) where
+  append _ l = l
+
+emptyOrMissing ∷ ∀ a m
+  . (Monad m)
+  ⇒ (Monoid a)
+  ⇒ (Eq a)
+  ⇒ FieldValidation m (Array a) (Array a) Unit
+emptyOrMissing = unit <$ (check (case _ of
+  [] → true
+  [a] → a == mempty
+  otherwise → false))
 
