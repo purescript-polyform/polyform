@@ -81,7 +81,6 @@ instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e
 pureV ∷ ∀ a b e m. (Monad m) ⇒ (Monoid e) ⇒ (a → b) →  Validation m e a b
 pureV f = Validation $ pure <<< pure <<< f
 
-
 -- | This type provides easy access to validation results
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
 newtype Result m a e b = Result (Validation m e a b)

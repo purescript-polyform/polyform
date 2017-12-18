@@ -6,6 +6,7 @@ import Control.Alt (class Alt)
 import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except (ExceptT(ExceptT), withExceptT)
 import Control.Monad.Reader (class MonadAsk, ask)
+import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.Either (Either(..), note)
 import Data.Int (fromString)
 import Data.Monoid (class Monoid, mempty)
@@ -33,8 +34,23 @@ instance monadAskFieldValidation ∷ (Monad m) ⇒ MonadAsk a (FieldValidation m
 instance monadThrowFieldValidation ∷ (Monad m) ⇒ MonadThrow e (FieldValidation m e a) where
   throwError e = FieldValidation $ Star (\_ → throwError e)
 
-withException ∷ ∀ a b e e' m. (Functor m) ⇒ (e → e') → FieldValidation m e a b → FieldValidation m e' a b
-withException f v = FieldValidation <<< Star $ withExceptT f <<< (runFieldValidation v)
+newtype Result m a e b = Result (FieldValidation m e a b)
+derive instance newtypeResult ∷ Newtype (Result m a e b) _
+
+instance bifunctorResult ∷ (Monad m) ⇒ Bifunctor (Result m a) where
+  bimap l r (Result v) =
+    Result $ FieldValidation <<< Star $ map r <<< withExceptT l <<< (runFieldValidation v)
+
+bimapResult ∷ ∀ a b b' e e' m
+  . (Monad m)
+  ⇒ (e → e')
+  → (b → b')
+  → FieldValidation m e a b
+  → FieldValidation m e' a b'
+bimapResult l r = unwrap <<< bimap l r <<< Result
+
+withException ∷ ∀ a b e e' m. (Monad m) ⇒ (e → e') → FieldValidation m e a b → FieldValidation m e' a b
+withException f = unwrap <<< lmap f <<< Result
 
 runFieldValidation ∷ ∀ a b e m. FieldValidation m e a b → (a → ExceptT e m b)
 runFieldValidation = unwrap <<< unwrap

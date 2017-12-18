@@ -58,3 +58,25 @@ main = launchAff $ runTest $ do
       equal (runExceptT (unwrap ((_."Z") <$> prs) ["Y", "Y", "X"])) (Identity $ Right false)
 
 
+
+-- type MyOptions = "foo" :- "bar" :- Nil
+-- 
+-- testOption = option (Proxy ∷ Proxy MyOptions) (SProxy ∷ SProxy "bar")
+-- 
+-- testOn :: (Option Nil -> String) -> Option MyOptions -> String
+-- testOn f = on (SProxy ∷ SProxy "bar") "This is bar" (on (SProxy ∷ SProxy "foo") "This is foo" f)
+-- 
+-- testOptionToStr ∷ Option MyOptions → String
+-- testOptionToStr = (case_
+--   # on (SProxy ∷ SProxy "foo") "This is foo"
+--   # on (SProxy ∷ SProxy "bar") "This is bar")
+-- 
+-- 
+-- 
+-- -- option ∷ ∀ opts opt. (SymbolOnList opts opt) ⇒ (IsSymbol opt) ⇒ SProxy opt → Option opts opt
+-- -- option = Option
+-- 
+-- x ∷ ∀ n t'. (DropOpt n ("test" :- "fest" :- Nil) t') ⇒ (IsSymbol n) ⇒ SProxy n → Unit
+-- x p = unit
+-- 
+-- t = x (SProxy :: SProxy "fest")
