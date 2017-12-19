@@ -6,7 +6,8 @@ import Control.Monad.Except (runExceptT)
 import Data.Either (Either(..))
 import Data.Generic.Rep (class Generic)
 import Data.List (List, singleton)
-import Data.Validation.Polyform.Field (class Choices, class Options, Choice, Input, MultiChoice, choicesParser, options, optionsParser)
+import Data.Maybe (Maybe(..))
+import Data.Validation.Polyform.Field (class Choices, class Options, Choice, MultiChoice, choicesParser, options, optionsParser)
 import Data.Validation.Polyform.Field.Option (Option)
 import Data.Validation.Polyform.Field.Option as SymbolOption
 import Data.Validation.Polyform.Validation.Field (FieldValidation, runFieldValidation, tag)
@@ -22,12 +23,22 @@ import Type.Prelude (Proxy, SProxy(SProxy))
 
 type Form field = List field
 
-inputForm ∷ ∀ e i m v. (Monad m) ⇒ String  → FieldValidation m e i v → Validation m (Form (Input e v)) i v
-inputForm name validation = Validation $ \query → do
-  r ← runExceptT (runFieldValidation validation query)
+inputForm
+  ∷ ∀ attrs e m q v
+  . Monad m
+  ⇒ Record (value ∷ Either e v | attrs)
+  → FieldValidation m e q v
+  → Validation m (Form (Record (value ∷ Either e v | attrs))) (Maybe q) v
+inputForm field validation = Validation $ \query → do
+  r ← case query of
+    Just query' → do
+      runExceptT (runFieldValidation validation query')
+    Nothing → do
+      pure field.value
   pure $ case r of
-    Left e → Invalid (singleton {name, value: Left e})
-    Right v → Valid (singleton {name, value: Right v}) v
+    Left e → Invalid (singleton $ field { value = Left e })
+    Right v → Valid (singleton $ field { value = Right v }) v
+
 
 _invalidOption = SProxy ∷ SProxy "invalidOption"
 
