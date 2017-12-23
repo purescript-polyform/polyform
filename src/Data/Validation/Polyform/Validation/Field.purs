@@ -11,6 +11,8 @@ import Data.Either (Either(..), note)
 import Data.Int (fromString)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
+import Data.Profunctor (class Profunctor)
+import Data.Profunctor.Choice (class Choice)
 import Data.Profunctor.Star (Star(Star))
 import Data.Variant (Variant, inj)
 import Type.Prelude (class IsSymbol, SProxy(SProxy))
@@ -27,6 +29,8 @@ derive newtype instance semigroupoidFieldValidation ∷ (Monad m) ⇒ Semigroupo
 derive newtype instance categoryValidation ∷ (Monad m) ⇒ Category (FieldValidation m e)
 instance monadFieldValidation ∷ (Monad m) ⇒ Monad (FieldValidation m e a)
 derive newtype instance altFieldValidation ∷ (Monad m, Semigroup e) ⇒ Alt (FieldValidation m e a)
+derive newtype instance profunctorFIeldValidation ∷ (Functor m) ⇒ Profunctor (FieldValidation m e)
+derive newtype instance choiceFieldValidation ∷ (Monad m) ⇒ Choice (FieldValidation m e)
 
 instance monadAskFieldValidation ∷ (Monad m) ⇒ MonadAsk a (FieldValidation m e a) where
   ask = FieldValidation $ Star (\i → pure i)

@@ -3,18 +3,16 @@ module Data.Validation.Polyform.Http where
 import Prelude
 
 import Control.Alt ((<|>))
-import Data.Array (catMaybes)
 import Data.Either (Either)
-import Data.Generic.Rep (class Generic)
-import Data.Maybe (Maybe, fromMaybe)
+import Data.Maybe (Maybe)
+import Data.Monoid (class Monoid)
 import Data.StrMap (StrMap, lookup)
-import Data.Validation.Polyform.Field (class Choices, class Options, Choice, MultiChoice)
-import Data.Validation.Polyform.Field.Option (Option)
 import Data.Validation.Polyform.Form as Form
 import Data.Validation.Polyform.Validation.Field as FieldValidation
+import Data.Validation.Polyform.Validation.Form (bimapResult)
 import Data.Validation.Polyform.Validation.Form as FormValidation
-import Data.Variant (Variant)
-import Type.Prelude (class RowLacks, Proxy)
+import Data.Variant (Variant, inj)
+import Type.Prelude (class IsSymbol, SProxy)
 
 type HttpFieldQuery = Array (Maybe String)
 type HttpQuery = StrMap HttpFieldQuery
@@ -27,28 +25,40 @@ inputForm
   . Monad m
   ⇒ Record (name ∷ String, value ∷ Either e v | attrs)
   → FieldValidation.FieldValidation m e HttpFieldQuery v
-  → HttpFormValidation m (Form.Form (Record (name ∷ String, value ∷ Either e v | attrs))) v
+  → HttpFormValidation m (Form.Form (Record (name ∷ String, value ∷ Either e v | attrs))) (Maybe v)
 inputForm field validation =
-  let
-    query q = do
-      q' ← q
-      lookup field.name q' <|> pure []
-  in
-    FormValidation.pureV query >>> Form.inputForm field validation
+  fieldQuery field.name >>> Form.inputForm field validation
+
+fieldQuery ∷ ∀ l m. Monad m ⇒ Monoid l ⇒ String → HttpFormValidation m l (Maybe HttpFieldQuery)
+fieldQuery name = FormValidation.pureV \q → do
+  q' ← q
+  lookup name q' <|> pure []
+
+inputForm'
+  ∷ ∀ attrs e m n o o' v
+  . Monad m
+  ⇒ RowCons n (Record (name ∷ String, value ∷ Either e v | attrs)) o' o
+  ⇒ IsSymbol n
+  ⇒ SProxy n
+  → Record (name ∷ String, value ∷ Either e v | attrs)
+  → FieldValidation.FieldValidation m e HttpFieldQuery v
+  → HttpFormValidation m (Form.Form (Variant o)) (Maybe v)
+inputForm' p field =
+  bimapResult (inj p <$> _) id <<< inputForm field
 
 -- coproductChoiceForm
 --   ∷ ∀ a e rep row m
 --   . Monad m
 --   ⇒ Generic a rep
 --   ⇒ Options rep
---   ⇒ String
---   → Proxy a
+--   ⇒ Record (name ∷ String, value ∷ Either
+--   → a
 --   → HttpFormValidation m (Form.Form (Choice (Variant (invalidOption ∷ String, scalar ∷ Array String | e)) a)) a
 -- coproductChoiceForm name p =
 --   let
 --     scalar = FieldValidation.pureV catMaybes >>> FieldValidation.scalar'
 --   in
---     FormValidation.pureV (\query → fromMaybe [] (lookup name query)) >>> Form.coproductChoiceForm name p scalar
+--     fieldQuery name >>> Form.coproductChoiceForm name p scalar
 -- 
 -- symbolChoiceForm ∷ ∀ a e rep row m
 --   . Monad m

@@ -4,6 +4,7 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
+import Control.Monad.Eff.Exception (throw)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
@@ -40,6 +41,7 @@ instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
 
 instance monoidV :: (Monoid e, Monoid a) => Monoid (V e a) where
   mempty = pure mempty
+
 
 newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _
@@ -78,9 +80,6 @@ instance semigroupoidValidation ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Val
 instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e) where
   id = Validation $ pure <<< pure
 
-pureV ∷ ∀ a b e m. (Monad m) ⇒ (Monoid e) ⇒ (a → b) →  Validation m e a b
-pureV f = Validation $ pure <<< pure <<< f
-
 -- | This type provides easy access to validation results
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
 newtype Result m a e b = Result (Validation m e a b)
@@ -98,3 +97,19 @@ bimapResult ∷ ∀ a b b' e e' m
   → Validation m e a b
   → Validation m e' a b'
 bimapResult l r = unwrap <<< bimap l r <<< Result
+
+pureV ∷ ∀ a b e m. (Monad m) ⇒ (Monoid e) ⇒ (a → b) →  Validation m e a b
+pureV f = Validation $ pure <<< pure <<< f
+
+check ∷ ∀ a e m. (Monad m) ⇒ (Monoid e) ⇒ (a → Boolean) → e → Validation m e a a
+check pred e = Validation $ \i →
+  pure if pred i
+    then (Valid mempty i)
+    else (Invalid e)
+
+checkM ∷ ∀ a e m. (Monad m) ⇒ (Monoid e) ⇒ (a → m Boolean) → e → Validation m e a a
+checkM pred e = Validation $ \i → do
+  r ← pred i
+  pure if r
+    then (Valid mempty i)
+    else (Invalid e)
