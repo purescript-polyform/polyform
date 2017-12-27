@@ -18,53 +18,53 @@ import Data.Validation.Polyform.Http (HttpFormValidation)
 import Data.Validation.Polyform.Http as Http
 import Data.Validation.Polyform.Validation.Field (FieldValidation(..), check, int', pureV, scalar', tag, validate)
 import Data.Validation.Polyform.Validation.Form (bimapResult)
-import Data.Validation.Polyform.Validation.Form as Form
 import Data.Variant (Variant, inj)
-import Text.Smolder.HTML.Attributes (maxlength)
 import Type.Prelude (SProxy(..))
 
--- | Range can be used to represent `type="range"`  `type="number"`
+
+-- | RangeInput can be used to represent `type="range"`  `type="number"`
 -- | for Integer values
-type RangeErr e = Variant (min ∷ Int, max ∷ Int | e)
-data RangeType = Range | Number
-derive instance genericRangeType ∷ Generic RangeType _
+type RangeInputErr e = Variant (min ∷ Int, max ∷ Int | e)
+data RangeInputType = RangeInput | NumberInput
+derive instance genericRangeInputType ∷ Generic RangeInputType _
 
-showRangeType ∷ RangeType → String
-showRangeType = toLower <<< genericShow
+showRangeInputType ∷ RangeInputType → String
+showRangeInputType RangeInput = "range"
+showRangeInputType NumberInput = "number"
 
-type Range err attrs =
+type RangeInput err attrs =
   { name ∷ String
   , min ∷ Maybe Int
   , max ∷ Maybe Int
   , step ∷ Int
-  , type ∷ RangeType
-  , value ∷ Either (RangeErr err) Int
+  , type ∷ RangeInputType
+  , value ∷ Either (RangeInputErr err) Int
   | attrs
   }
 
-range
+rangeInput
   ∷ ∀ attrs e m
   . (Monad m)
   ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
-  → FieldValidation m (RangeErr e) Int Int
-range r =
+  → FieldValidation m (RangeInputErr e) Int Int
+rangeInput r =
   minV <<< maxV
  where
-  maxV = tag (SProxy ∷ SProxy "max") (check (\i → maybe true (i > _) r.max))
-  minV = tag (SProxy ∷ SProxy "min") (check (\i → maybe true (i < _) r.min))
+  maxV = tag (SProxy ∷ SProxy "max") (check (\i → maybe true (i <= _) r.max))
+  minV = tag (SProxy ∷ SProxy "min") (check (\i → maybe true (i >= _) r.min))
 
-_range = (SProxy ∷ SProxy "range")
+_rangeInput = (SProxy ∷ SProxy "range")
 
 rangeForm
   ∷ ∀ attrs err m o
   . (Monad m)
-  ⇒ Range (int ∷ String, scalar ∷ Array String | err) attrs
-  → HttpFormValidation m (List (Variant (range ∷ Range (int ∷ String, scalar ∷ Array String | err) attrs | o ))) (Maybe Int)
+  ⇒ RangeInput (int ∷ String, scalar ∷ Array String | err) attrs
+  → HttpFormValidation m (List (Variant (range ∷ RangeInput (int ∷ String, scalar ∷ Array String | err) attrs | o ))) (Maybe Int)
 rangeForm field =
   let
-    validation = range field <<< int' <<< scalar' <<< pureV catMaybes
+    validation = rangeInput field <<< int' <<< scalar' <<< pureV catMaybes
   in
-    bimapResult (inj _range <$> _) id $ Http.inputForm field validation
+    bimapResult (inj _rangeInput <$> _) id $ Http.inputForm field validation
 
 
 -- | All these input types share same attributes... but email.
@@ -75,7 +75,11 @@ data TextInputType = SearchInput | TelInput | TextInput | UrlInput | EmailInput
 derive instance genericTextInputType ∷ Generic TextInputType _
 
 showInputType ∷ TextInputType → String
-showInputType = toLower <<< genericShow
+showInputType SearchInput = "search"
+showInputType TelInput = "tel"
+showInputType TextInput = "text"
+showInputType UrlInput = "url"
+showInputType EmailInput = "email"
 
 type TextInputErr err =
   Variant (maxlength ∷ String, minlength ∷ String | err)

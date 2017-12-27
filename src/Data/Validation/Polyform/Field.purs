@@ -23,22 +23,24 @@ import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), refl
 -- | Fields represantation is as minimal as possible, so only
 -- | validation relevant pieces are exposed as attrs.
 
-type Input e a =
+type InputField e a attrs =
   { name ∷ String
   , value ∷ Either e a
+  | attrs
   }
 
-type Choice e opt =
+type ChoiceField e opt attrs opts =
   { name ∷ String
-  , options ∷ List (Tuple String opt) -- Array { value ∷ String, option ∷ opt}
+  , options ∷ List (Tuple String opt)
   , value ∷ Either e opt
+  | attrs
   }
 
 -- | This field can be used to represent multiple checkboxes with the same
 -- | `name` or `select` with `multiple` - it's a product type with all elements
 -- | being booleans.
 -- |
--- | Result type for `MultiChoice` field is generated generically from
+-- | Result type for `MultiChoiceField` field is generated generically from
 -- | provided sum type `opt` or from "Symbol list" which is implemented in
 -- | Field.Option module.
 -- |
@@ -56,10 +58,11 @@ type Choice e opt =
 -- |   , C2 ∷ Boolean
 -- |   , C3 ∷ Boolean
 -- |   }
-type MultiChoice e opt =
+type MultiChoiceField e opt attrs =
   { name ∷ String
   , choices ∷ List (Tuple String opt)
   , value ∷ Either e (opt → Boolean)
+  | attrs
   }
 
 -- | This type class provides a way to transform simple sum type

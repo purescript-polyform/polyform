@@ -34,22 +34,25 @@ This representation allows us to get a form from every validation.
 Currently you can find this html field representation here:
 
   ```purescript
-  type Input e a =
+  type Input e a attrs =
     { name ∷ String
     , value ∷ Either e a
+    | attrs
     }
 
-  type Choice e opt =
+  type ChoiceField e opt attrs =
     { name ∷ String
     , options ∷ List (Tuple String opt)
     , value ∷ Either e opt
+    | attrs
     }
 
-  type MultiChoice e opt =
+  type MultiChoiceField e opt attrs =
     { name ∷ String
     , choices ∷ List (Tuple String opt)
     , value ∷ Either e (opt → Boolean)
+    | attrs
     }
   ```
 
-For `Choice` and `MultiChoice` there is "generic" implementation provided which allows you to define these type based on simple sum types or "lists of symbols"...
+For `ChoiceField` and `MultiChoiceField` there is "generic" implementation provided which allows you to define these type based on simple sum type or "lists of symbols"...

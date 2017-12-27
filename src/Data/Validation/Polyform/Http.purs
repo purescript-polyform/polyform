@@ -7,6 +7,7 @@ import Data.Either (Either)
 import Data.Maybe (Maybe)
 import Data.Monoid (class Monoid)
 import Data.StrMap (StrMap, lookup)
+import Data.Validation.Polyform.Field (InputField)
 import Data.Validation.Polyform.Form as Form
 import Data.Validation.Polyform.Validation.Field as FieldValidation
 import Data.Validation.Polyform.Validation.Form (bimapResult)
@@ -40,7 +41,7 @@ inputForm'
   ⇒ RowCons n (Record (name ∷ String, value ∷ Either e v | attrs)) o' o
   ⇒ IsSymbol n
   ⇒ SProxy n
-  → Record (name ∷ String, value ∷ Either e v | attrs)
+  → InputField e v attrs
   → FieldValidation.FieldValidation m e HttpFieldQuery v
   → HttpFormValidation m (Form.Form (Variant o)) (Maybe v)
 inputForm' p field =
@@ -51,15 +52,15 @@ inputForm' p field =
 --   . Monad m
 --   ⇒ Generic a rep
 --   ⇒ Options rep
---   ⇒ Record (name ∷ String, value ∷ Either
+--   ⇒ Record (name ∷ String, value ∷ Either e opt)
 --   → a
---   → HttpFormValidation m (Form.Form (Choice (Variant (invalidOption ∷ String, scalar ∷ Array String | e)) a)) a
+--   → HttpFormValidation m (Form.Form (ChoiceField (Variant (invalidOption ∷ String, scalar ∷ Array String | e)) a)) (Maybe a)
 -- coproductChoiceForm name p =
 --   let
 --     scalar = FieldValidation.pureV catMaybes >>> FieldValidation.scalar'
 --   in
 --     fieldQuery name >>> Form.coproductChoiceForm name p scalar
--- 
+
 -- symbolChoiceForm ∷ ∀ a e rep row m
 --   . Monad m
 --   ⇒ Options (Option a)
