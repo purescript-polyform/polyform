@@ -8,11 +8,11 @@ import Data.Either (Either(..))
 import Data.Foldable (any)
 import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
 import Data.List (List, singleton)
-import Data.Newtype (unwrap)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Record (insert)
 import Data.Tuple (Tuple(Tuple))
 import Data.Validation.Polyform.Field (class Choices, class Options, choicesParserImpl, optionsImpl, optionsParserImpl, toOptionValueImpl)
-import Data.Validation.Polyform.Validation.Field (FieldValidation, Last(Last), pureV, validate, withException)
+import Data.Validation.Polyform.Validation.Field (FieldValidation, pureV, validate, withException)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
 
@@ -64,6 +64,11 @@ type MultiChoiceField e opt attrs =
   , value ∷ Either e (opt → Boolean)
   | attrs
   }
+
+newtype Last a = Last a
+derive instance newtypeLast ∷ Newtype (Last a) _
+instance semigroupLast ∷ Semigroup (Last a) where
+  append _ l = l
 
 -- | This type class provides a way to transform simple sum type
 -- | (constructors without args are only allowed) into: `FieldValidation`,

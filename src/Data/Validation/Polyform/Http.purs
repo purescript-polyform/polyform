@@ -3,50 +3,66 @@ module Data.Validation.Polyform.Http where
 import Prelude
 
 import Control.Alt ((<|>))
-import Data.Either (Either)
-import Data.Maybe (Maybe)
+import Data.Either (Either(..), either, note)
+import Data.List (List, singleton)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid)
+import Data.Profunctor (dimap)
+import Data.Profunctor.Choice (left)
 import Data.StrMap (StrMap, lookup)
 import Data.Validation.Polyform.Field (InputField)
+import Data.Validation.Polyform.Form (fromValidation)
 import Data.Validation.Polyform.Form as Form
+import Data.Validation.Polyform.Validation.Field (mapResult, opt)
 import Data.Validation.Polyform.Validation.Field as FieldValidation
-import Data.Validation.Polyform.Validation.Form (bimapResult)
+import Data.Validation.Polyform.Validation.Form (V(..), Validation(..), bimapResult, pureV)
 import Data.Validation.Polyform.Validation.Form as FormValidation
-import Data.Variant (Variant, inj)
+import Data.Variant (SProxy(..), Variant, case_, default, inj, on)
 import Type.Prelude (class IsSymbol, SProxy)
 
 type HttpFieldQuery = Array (Maybe String)
 type HttpQuery = StrMap HttpFieldQuery
 
-type HttpFormValidation m e a = FormValidation.Validation m e (Maybe HttpQuery) a
-type HttpFieldValidation m e a = FieldValidation.FieldValidation m e (Maybe HttpFieldQuery) a
+type HttpForm m form a = Form.Form m form HttpQuery a
+type HttpFieldValidation m e a = FieldValidation.FieldValidation m e HttpFieldQuery a
 
 inputForm
-  ∷ ∀ attrs e m v
+  ∷ ∀ attrs e form m v
   . Monad m
-  ⇒ Record (name ∷ String, value ∷ Either e v | attrs)
+  ⇒ Monoid form
+  ⇒ (Record (name ∷ String, value ∷ Either e v | attrs) → form)
+  → Record (name ∷ String, value ∷ Either e v | attrs)
   → FieldValidation.FieldValidation m e HttpFieldQuery v
-  → HttpFormValidation m (Form.Form (Record (name ∷ String, value ∷ Either e v | attrs))) (Maybe v)
-inputForm field validation =
-  fieldQuery field.name >>> Form.inputForm field validation
+  → HttpForm m form v
+inputForm singleton field validation =
+  fieldQuery field.name >>> Form.inputForm singleton field validation
 
-fieldQuery ∷ ∀ l m. Monad m ⇒ Monoid l ⇒ String → HttpFormValidation m l (Maybe HttpFieldQuery)
-fieldQuery name = FormValidation.pureV \q → do
-  q' ← q
-  lookup name q' <|> pure []
-
-inputForm'
-  ∷ ∀ attrs e m n o o' v
+optInputForm
+  ∷ ∀ a attrs e form m v
   . Monad m
-  ⇒ RowCons n (Record (name ∷ String, value ∷ Either e v | attrs)) o' o
-  ⇒ IsSymbol n
-  ⇒ SProxy n
-  → InputField e v attrs
-  → FieldValidation.FieldValidation m e HttpFieldQuery v
-  → HttpFormValidation m (Form.Form (Variant o)) (Maybe v)
-inputForm' p field =
-  bimapResult (inj p <$> _) id <<< inputForm field
+  ⇒ Monoid form
+  ⇒ (Record (name ∷ String, value ∷ Either (Variant e) (Maybe v) | attrs) → form)
+  → Record (name ∷ String, value ∷ Either (Variant e) (Maybe v) | attrs)
+  → FieldValidation.FieldValidation m (Variant (required ∷ a | e)) HttpFieldQuery v
+  → HttpForm m form (Maybe v)
+optInputForm singleton field validation =
+  fieldQuery field.name >>> Form.inputForm singleton field (opt validation)
 
+fieldQuery ∷ ∀ e form m. Monoid form ⇒ Monad m ⇒ String → HttpForm m form HttpFieldQuery
+fieldQuery name = fromValidation $ pureV $ \q → fromMaybe [] (lookup name q)
+
+-- inputForm'
+--   ∷ ∀ attrs e m n o o' v
+--   . Monad m
+--   ⇒ RowCons n (Record (name ∷ String, value ∷ Either e v | attrs)) o' o
+--   ⇒ IsSymbol n
+--   ⇒ SProxy n
+--   → InputField e v attrs
+--   → FieldValidation.FieldValidation m e HttpFieldQuery v
+--   → HttpFormValidation m (Form.Form (Variant o)) (Maybe v)
+-- inputForm' p field =
+--   bimapResult (inj p <$> _) id <<< inputForm field
+-- 
 -- coproductChoiceForm
 --   ∷ ∀ a e rep row m
 --   . Monad m

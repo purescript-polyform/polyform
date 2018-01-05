@@ -4,21 +4,25 @@ import Prelude hiding (not)
 
 import Control.Alt (class Alt)
 import Control.Monad.Error.Class (class MonadThrow, throwError)
-import Control.Monad.Except (class MonadError, ExceptT(ExceptT), catchError, runExceptT, withExceptT)
+import Control.Monad.Except (class MonadError, ExceptT(ExceptT), catchError, runExceptT)
 import Control.Monad.Reader (class MonadAsk, ask)
-import Data.Bifunctor (class Bifunctor, bimap, lmap)
+import Data.Array (uncons, (:))
+import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either(..), note)
 import Data.Int (fromString)
+import Data.Maybe (Maybe(..))
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
+import Data.NonEmpty (NonEmpty(..))
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
 import Data.Profunctor.Star (Star(Star))
-import Data.Variant (Variant, inj)
+import Data.Variant (Variant, inj, on)
 import Type.Prelude (class IsSymbol, SProxy(SProxy))
 
 
 -- | This is Star over (ExceptT e m) with + MonadAsk and MonadThrow
+-- | maybe we should drop this completely
 newtype FieldValidation m e a b = FieldValidation (Star (ExceptT e m) a b)
 derive instance newtypeFieldValidation ∷ Newtype (FieldValidation m e a b) _
 derive instance functorFieldValidation ∷ (Functor m) ⇒ Functor (FieldValidation m e a)
@@ -42,23 +46,22 @@ instance monadCatchFieldValidation ∷ (Monad m) ⇒ MonadError e (FieldValidati
   catchError (FieldValidation (Star fm)) h = FieldValidation $ Star \i →
     catchError (fm i) (\e → let FieldValidation (Star fa) = h e in fa i)
 
-newtype Result m a e b = Result (FieldValidation m e a b)
-derive instance newtypeResult ∷ Newtype (Result m a e b) _
-
-instance bifunctorResult ∷ (Monad m) ⇒ Bifunctor (Result m a) where
-  bimap l r (Result v) =
-    Result $ FieldValidation <<< Star $ map r <<< withExceptT l <<< (runFieldValidation v)
-
 bimapResult ∷ ∀ a b b' e e' m
   . (Monad m)
   ⇒ (e → e')
   → (b → b')
   → FieldValidation m e a b
   → FieldValidation m e' a b'
-bimapResult l r = unwrap <<< bimap l r <<< Result
+bimapResult l r = mapResult (bimap l r)
+
+mapResult ∷ ∀ a b b' e e' m. (Monad m) ⇒ (Either e b → Either e' b') → FieldValidation m e a b → FieldValidation m e' a b'
+mapResult f (FieldValidation (Star v)) =
+  FieldValidation $ Star $ \i → ExceptT $ do
+    r ← runExceptT (v i)
+    pure (f r)
 
 withException ∷ ∀ a b e e' m. (Monad m) ⇒ (e → e') → FieldValidation m e a b → FieldValidation m e' a b
-withException f = unwrap <<< lmap f <<< Result
+withException f = mapResult (lmap f)
 
 runFieldValidation ∷ ∀ a b e m. FieldValidation m e a b → (a → ExceptT e m b)
 runFieldValidation = unwrap <<< unwrap
@@ -102,13 +105,48 @@ checkM f = validateM $ \a → do
       then Left a
       else Right a
 
-scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (Array a) a
-scalar = validate $ case _ of
-  [a] → Right a
-  arr → Left arr
+_required = SProxy ∷ SProxy "required"
 
-scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
-scalar' = tag (SProxy ∷ SProxy "scalar") scalar
+required ∷ ∀ a m. (Monad m) ⇒ FieldValidation m Unit (Array a) (NonEmpty Array a)
+required = validate $ case _ of
+  [] → Left unit
+  arr → case uncons arr of
+    Nothing → Left unit
+    Just { head, tail } → Right (NonEmpty head tail)
+
+required' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (required ∷ Unit | e)) (Array a) (NonEmpty Array a)
+required' = tag _required required
+
+opt
+  ∷  ∀ i e err m o
+  . Monad m
+  ⇒ FieldValidation m (Variant ( required ∷ e | err )) i o
+  → FieldValidation m (Variant err) i (Maybe o)
+opt v =
+  mapResult dropMissing v
+ where
+  dropMissing (Left e) = on _required (const (Right Nothing)) Left e
+  dropMissing (Right r) = Right (Just r)
+
+_scalar = (SProxy ∷ SProxy "scalar")
+
+scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (NonEmpty Array a) a
+scalar = validate $ case _ of
+  NonEmpty a [] → Right a
+  NonEmpty a arr → Left (a : arr)
+
+scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (NonEmpty Array a) a
+scalar' = tag _scalar scalar
+
+
+
+int ∷ ∀ m. (Monad m) ⇒ FieldValidation m String String Int
+int = validate $ note <*> fromString
+
+int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (Variant (int ∷ String | e)) String Int
+int' = tag (SProxy ∷ SProxy "int") int
+
+
 
 nonEmpty' ∷ ∀ a e m
   . (Monad m)
@@ -127,18 +165,13 @@ empty' ∷ ∀ a e m
  ⇒ FieldValidation m (Variant (empty ∷ a | e)) a a
 empty' = tag (SProxy ∷ SProxy "empty") empty
 
-int ∷ ∀ m. (Monad m) ⇒ FieldValidation m String String Int
-int = validate $ note <*> fromString
-
-int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (Variant (int ∷ String | e)) String Int
-int' = tag (SProxy ∷ SProxy "int") int
-
 not ∷ ∀ a e i m. (Monad m) ⇒ FieldValidation m e i a → FieldValidation m a i e
 not (FieldValidation (Star f))  = FieldValidation $ Star \i → ExceptT $ do
   r ← runExceptT (f i)
   pure $ case r of
     Right v → Left v
     Left e → Right e
+
 
 missing ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (Array a) Unit
 missing = validate $ case _ of
@@ -150,16 +183,6 @@ missing' ∷ ∀ a e m
  ⇒ FieldValidation m (Variant (missing ∷ Array a | e)) (Array a) Unit
 missing' = tag (SProxy ∷ SProxy "missing") missing
 
-required ∷ ∀ a m. (Monad m) ⇒ FieldValidation m Unit (Array a) (Array a)
-required = not missing
-
-required' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (required ∷ Unit | e)) (Array a) (Array a)
-required' = tag (SProxy ∷ SProxy "required") required
-
-newtype Last a = Last a
-derive instance newtypeLast ∷ Newtype (Last a) _
-instance semigroupLast ∷ Semigroup (Last a) where
-  append _ l = l
 
 emptyOrMissing ∷ ∀ a m
   . (Monad m)

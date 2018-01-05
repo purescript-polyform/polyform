@@ -4,11 +4,11 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
-import Control.Monad.Eff.Exception (throw)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 
+-- Nearly (Tuple e (Maybe a)) but without monad instance
 data V e a = Invalid e | Valid e a
 derive instance functorV ∷ Functor (V e)
 
@@ -32,9 +32,11 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
 
-instance altV ∷ Alt (V e) where
-  alt (Invalid _) v = v
-  alt v _ = v
+instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
+  alt (Invalid e1) (Invalid e2) = Invalid (e1 <> e2)
+  alt (Valid e1 r) (Valid e2 _) = Valid (e1 <> e2) r
+  alt (Invalid e1) (Valid e2 r) = Valid (e1 <> e2) r
+  alt (Valid e1 r) (Invalid e2) = Valid (e1 <> e2) r
 
 instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
   append = lift2 append
