@@ -20,8 +20,8 @@ import Data.Validation.Polyform.Validation.Form as FormValidation
 import Data.Variant (SProxy(..), Variant, case_, default, inj, on)
 import Type.Prelude (class IsSymbol, SProxy)
 
-type HttpFieldQuery = Array (Maybe String)
 type HttpQuery = StrMap HttpFieldQuery
+type HttpFieldQuery = Array (Maybe String)
 
 type HttpForm m form a = Form.Form m form HttpQuery a
 type HttpFieldValidation m e a = FieldValidation.FieldValidation m e HttpFieldQuery a

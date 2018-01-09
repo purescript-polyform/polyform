@@ -36,6 +36,7 @@ newtype Form m e q v =
 derive instance newtypeForm ∷ Newtype (Form m e a b) _
 derive instance functorForm ∷ (Functor m) ⇒ Functor (Form m e a)
 
+
 instance applyForm ∷ (Semigroup e, Monad m) ⇒ Apply (Form m e a) where
   apply (Form rf) (Form ra) =
     Form
@@ -83,6 +84,8 @@ inputForm singleton field validation = Form $
         Right v → Valid (singleton $ field { value = Right v }) v
   , default: singleton field
   }
+
+-- newtype Component m e q q' v = Component ((q → q') → Validation m e q' v)
 
 -- inputForm'
 --   ∷ ∀ attrs e n m o o' q v

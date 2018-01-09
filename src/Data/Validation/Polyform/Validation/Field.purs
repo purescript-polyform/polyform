@@ -6,7 +6,7 @@ import Control.Alt (class Alt)
 import Control.Monad.Error.Class (class MonadThrow, throwError)
 import Control.Monad.Except (class MonadError, ExceptT(ExceptT), catchError, runExceptT)
 import Control.Monad.Reader (class MonadAsk, ask)
-import Data.Array (uncons, (:))
+import Data.Array (uncons)
 import Data.Bifunctor (bimap, lmap)
 import Data.Either (Either(..), note)
 import Data.Int (fromString)
@@ -22,7 +22,7 @@ import Type.Prelude (class IsSymbol, SProxy(SProxy))
 
 
 -- | This is Star over (ExceptT e m) with + MonadAsk and MonadThrow
--- | maybe we should drop this completely
+-- | maybe we should drop this and use just (Star (ExceptT e m) a b)
 newtype FieldValidation m e a b = FieldValidation (Star (ExceptT e m) a b)
 derive instance newtypeFieldValidation ∷ Newtype (FieldValidation m e a b) _
 derive instance functorFieldValidation ∷ (Functor m) ⇒ Functor (FieldValidation m e a)
@@ -130,21 +130,24 @@ opt v =
 
 _scalar = (SProxy ∷ SProxy "scalar")
 
-scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (Array a) (NonEmpty Array a) a
+scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation m (NonEmpty Array a) (NonEmpty Array a) a
 scalar = validate $ case _ of
   NonEmpty a [] → Right a
-  NonEmpty a arr → Left (a : arr)
+  arr → Left arr
 
-scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ Array a | e)) (NonEmpty Array a) a
+scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation m (Variant (scalar ∷ NonEmpty Array a | e)) (NonEmpty Array a) a
 scalar' = tag _scalar scalar
 
 
+-- XXX: What kind of validators do we want to keep here...
+
+_int = SProxy ∷ SProxy "int"
 
 int ∷ ∀ m. (Monad m) ⇒ FieldValidation m String String Int
 int = validate $ note <*> fromString
 
 int' ∷ ∀ m e. (Monad m) ⇒ FieldValidation m (Variant (int ∷ String | e)) String Int
-int' = tag (SProxy ∷ SProxy "int") int
+int' = tag _int int
 
 
 
