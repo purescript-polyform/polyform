@@ -16,13 +16,13 @@ import Data.NonEmpty (NonEmpty(..))
 import Data.Profunctor.Choice (left, right)
 import Data.String (length, null, toLower)
 import Data.Traversable (and, sequence, traverse)
+import Data.Validation.Polyform.Form (IntF(..), OptIntF(..), StringF(..))
 import Data.Validation.Polyform.Form as Form
-import Data.Validation.Polyform.Http (HttpForm)
-import Data.Validation.Polyform.Http as Http
 import Data.Validation.Polyform.Validation.Field (FieldValidation(..), check, int', opt, pureV, required', scalar', tag, validate)
 import Data.Variant (Variant, inj)
+import Run (FProxy(..), Run(..))
 import Text.Smolder.HTML.Attributes (maxlength)
-import Type.Prelude (SProxy(..))
+import Type.Prelude (class IsSymbol, SProxy(..))
 
 
 -- | RangeInput can be used to represent `type="range"`  `type="number"`
@@ -38,8 +38,8 @@ showRangeInputType NumberInput = "number"
 _min = SProxy ∷ SProxy "min"
 _max = SProxy ∷ SProxy "max"
 
-type RangeInputBase err attrs value =
-  { name ∷ String
+type RangeInputBase err attrs name value =
+  { name ∷ name
   , min ∷ Maybe Int
   , max ∷ Maybe Int
   , step ∷ Int
@@ -48,55 +48,51 @@ type RangeInputBase err attrs value =
   | attrs
   }
 
-type RangeInput err attrs = RangeInputBase err attrs Int
-type OptRangeInput err attrs = RangeInputBase err attrs (Maybe Int)
-
-rangeInput
-  ∷ ∀ attrs e m
-  . (Monad m)
-  ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
-  → FieldValidation m (RangeInputErr e) Int Int
-rangeInput r =
-  minV <<< maxV
- where
-  maxV = tag _max (check (\i → maybe true (i <= _) r.max))
-  minV = tag _min (check (\i → maybe true (i >= _) r.min))
+type RangeInput err attrs name = RangeInputBase err attrs (SProxy name) Int
+type OptRangeInput err attrs name = RangeInputBase err attrs (SProxy name) (Maybe Int)
 
 _rangeInput = (SProxy ∷ SProxy "rangeInput")
 
 rangeForm
-  ∷ ∀ attrs err form m o
-  . Monad m
-  ⇒ Monoid form
-  ⇒ (Variant (rangeInput ∷ RangeInput (int ∷ String, scalar ∷ NonEmpty Array String, required ∷ Unit | err) attrs | o) → form)
-  → RangeInput (int ∷ String, scalar ∷ NonEmpty Array String, required ∷ Unit | err) attrs
-  → HttpForm m form Int
+  ∷ ∀ attrs eff err form name o q
+  . Monoid form
+  ⇒ (IsSymbol name)
+  ⇒ ((Variant (rangeInput ∷ RangeInput err attrs name | o)) → form)
+  → RangeInput err attrs name
+  → Form.Form (Run (int ∷ FProxy (IntF name q (Variant (min ∷ Int, max ∷ Int | err))) | eff)) form q Int
 rangeForm singleton field =
-  let
-    validation = rangeInput field <<< int' <<< scalar' <<< required' <<< pureV catMaybes
-  in
-    Http.inputForm
-      (\field → singleton (inj _rangeInput field))
-      field
-      validation
+  Form.intForm
+    (\field' → singleton (inj _rangeInput field'))
+    field
+    validation
+ where
+  validation =
+    minV <<< maxV
+   where
+    maxV = tag _max (check (\i → maybe true (i <= _) field.max))
+    minV = tag _min (check (\i → maybe true (i >= _) field.min))
 
 _optRangeInput = (SProxy ∷ SProxy "optRangeInput")
 
 optRangeForm
-  ∷ ∀ attrs err form m o
-  . Monad m
-  ⇒ Monoid form
-  ⇒ (Variant (optRangeInput ∷ OptRangeInput (int ∷ String, scalar ∷ NonEmpty Array String | err) attrs | o) → form)
-  → OptRangeInput (int ∷ String, scalar ∷ NonEmpty Array String | err) attrs
-  → HttpForm m form (Maybe Int)
+  ∷ ∀ attrs eff err form name o q
+  . Monoid form
+  ⇒ IsSymbol name
+  ⇒ (OptRangeInput err attrs name → form)
+  → OptRangeInput err attrs name
+  → Form.Form (Run (optInt ∷ FProxy (OptIntF name q (Variant (min ∷ Int, max ∷ Int | err))) | eff)) form q (Maybe Int)
 optRangeForm singleton field =
-  let
-    validation = rangeInput field <<< int' <<< scalar' <<< required' <<< pureV catMaybes
-  in
-    Http.optInputForm
-      (\field → singleton (inj _optRangeInput field))
-      field
-      validation
+  Form.optIntForm
+    (\field' → singleton field')
+    field
+    validation
+ where
+  validation =
+    minV <<< maxV
+   where
+    maxV = tag _max (check (\i → maybe true (i <= _) field.max))
+    minV = tag _min (check (\i → maybe true (i >= _) field.min))
+
 
 -- | All these input types share same attributes... but email.
 -- | Email has additional "multiple" attribute
@@ -115,26 +111,26 @@ showInputType EmailInput = "email"
 type TextInputErr err =
   Variant (maxlength ∷ String, minlength ∷ String | err)
 
-type TextInputBase err attrs v =
-  { name ∷ String
+type TextInputBase err attrs name value =
+  { name ∷ name
   , maxlength ∷ Maybe Int
   , minlength ∷ Maybe Int
-  , value ∷ Either (TextInputErr err) v
+  , value ∷ Either (TextInputErr err) value
   , type ∷ TextInputType
   | attrs
   }
-type TextInput err attrs = TextInputBase err attrs String
-type OptTextInput err attrs = TextInputBase err attrs (Maybe String)
+type TextInput err attrs name = TextInputBase err attrs (SProxy name) String
+type OptTextInput err attrs name = TextInputBase err attrs (SProxy name) (Maybe String)
 
 _maxlength = SProxy ∷ SProxy "maxlength"
 _minlength = SProxy ∷ SProxy "minlength"
 
-textInput
+textInputValidation
   ∷ ∀ attrs err m
   . Monad m
   ⇒ { maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs }
   → FieldValidation m (TextInputErr err) String String
-textInput r =
+textInputValidation r =
   maxV >>> minV
  where
   maxV = tag _maxlength (check (\i → maybe true (length i > _) r.maxlength))
@@ -143,20 +139,17 @@ textInput r =
 _textInput = SProxy ∷ SProxy "textInput"
 
 textInputForm
-  ∷ ∀ attrs err form m o
-  . Monad m
-  ⇒ Monoid form
-  ⇒ (Variant (textInput ∷ TextInput (scalar ∷ NonEmpty Array String, required ∷ Unit | err) attrs | o) → form)
-  → TextInput (scalar ∷ NonEmpty Array String, required ∷ Unit | err) attrs
-  → HttpForm m form String
+  ∷ ∀ attrs eff err form m name q
+  . Monoid form
+  ⇒ IsSymbol name
+  ⇒ (TextInput err attrs name → form)
+  → TextInput err attrs name
+  → Form.Form (Run (string ∷ FProxy (StringF name q (Variant (minlength ∷ String, maxlength ∷ String | err))) | eff)) form q String
 textInputForm singleton field =
-  let
-    validation = textInput field <<< scalar' <<< required' <<< pureV catMaybes
-  in
-    Http.inputForm
-      (\field → singleton (inj _textInput field))
-      field
-      validation
+  Form.stringForm
+    (\field → singleton field)
+    field
+    (textInputValidation field)
 
 type PasswordInput err attrs =
   { name ∷ String
@@ -170,17 +163,15 @@ type PasswordInput err attrs =
 _passwordInput = SProxy ∷ SProxy "passwordInput"
 
 passwordInputForm
-  ∷ ∀ attrs err form m o
+  ∷ ∀ attrs eff err form m name o q
   . Monad m
   ⇒ Monoid form
-  ⇒ (Variant (passwordInput ∷ PasswordInput (scalar ∷ NonEmpty Array String, required ∷ Unit | err) attrs | o) → form)
-  → PasswordInput (required ∷ Unit, scalar ∷ NonEmpty Array String | err) attrs
-  → HttpForm m form String
+  ⇒ IsSymbol name
+  ⇒ (Variant (passwordInput ∷ TextInput err attrs name | o) → form)
+  → TextInput err attrs name
+  → Form.Form (Run (string ∷ FProxy (StringF name q (Variant (minlength ∷ String, maxlength ∷ String | err))) | eff)) form q String
 passwordInputForm singleton field =
-  let
-    validation = textInput field <<< scalar' <<< required' <<< pureV catMaybes
-  in
-    Http.inputForm
-      (\field → singleton (inj _passwordInput field))
-      field
-      validation
+  Form.stringForm
+    (\field → singleton (inj _passwordInput field))
+    field
+    (textInputValidation field)

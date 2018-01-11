@@ -3,22 +3,27 @@ module Data.Validation.Polyform.Form where
 import Prelude
 
 import Control.Alt (class Alt, (<|>))
-import Control.Monad.Except (runExceptT)
-import Data.Either (Either(..))
+import Control.Monad.Except (ExceptT(..), runExceptT)
+import Data.Either (Either(..), either, note)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), singleton)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
+import Data.Profunctor (dimap)
+import Data.Profunctor.Choice (right)
+import Data.Profunctor.Star (Star(..))
 import Data.Record (insert, set)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Polyform.Field (class Choices, class Options, ChoiceField, MultiChoiceField, choicesParser, options, optionsParser)
 import Data.Validation.Polyform.Field.Option (Option)
 import Data.Validation.Polyform.Field.Option as SymbolOption
-import Data.Validation.Polyform.Validation.Field (FieldValidation, runFieldValidation, tag)
+import Data.Validation.Polyform.Validation.Field (FieldValidation(..), opt, runFieldValidation, tag)
 import Data.Validation.Polyform.Validation.Form (V(..), Validation(..), bimapResult)
 import Data.Validation.Polyform.Validation.Form as FV
 import Data.Variant (Variant, inj)
+import Run (FProxy(..), Run(..))
+import Run (lift) as Run
 import Type.Prelude (class IsSymbol, Proxy(..), SProxy(SProxy))
 
 -- | This module provides some helpers for building basic HTML forms.
@@ -27,15 +32,20 @@ import Type.Prelude (class IsSymbol, Proxy(..), SProxy(SProxy))
 -- | `type Form field = List field`, because we want to
 -- | ease the transition between `FieldValidation` and `Validation`.
 
-newtype Form m e q v =
+newtype Form m form i o =
   Form
-    { validation ∷ Validation m e q v
-    , default ∷ e
+    { validation ∷ Validation m form i o
+    , default ∷ form
     }
-
 derive instance newtypeForm ∷ Newtype (Form m e a b) _
 derive instance functorForm ∷ (Functor m) ⇒ Functor (Form m e a)
 
+validate ∷ ∀ form i o m. Form m form i o → (i → m (V form o))
+validate = unwrap <<< _.validation <<< unwrap
+
+-- | Trivial helper which simplifies `m` type inference
+defaultM :: ∀ form i o m. Applicative m ⇒ Form m form i o -> m form
+defaultM (Form r) = pure (r.default)
 
 instance applyForm ∷ (Semigroup e, Monad m) ⇒ Apply (Form m e a) where
   apply (Form rf) (Form ra) =
@@ -69,14 +79,14 @@ bimap f g (Form r) = Form
   , default: f r.default
   }
 
-inputForm
+fromField
   ∷ ∀ attrs e form m q v
   . Monad m
   ⇒ (Record (value ∷ Either e v | attrs) → form)
   → Record (value ∷ Either e v | attrs)
   → FieldValidation m e q v
   → Form m form q v
-inputForm singleton field validation = Form $
+fromField singleton field validation = Form $
   { validation: Validation $ \query → do
       r ← runExceptT (runFieldValidation validation query)
       pure $ case r of
@@ -84,6 +94,125 @@ inputForm singleton field validation = Form $
         Right v → Valid (singleton $ field { value = Right v }) v
   , default: singleton field
   }
+
+
+data StringF n q e a = StringF (SProxy n) q (Either e String → a)
+derive instance functorStringF ∷ Functor (StringF n q e)
+
+type STRING n q e a = FProxy (StringF n q e)
+
+_string = SProxy :: SProxy "string"
+
+string :: forall a e eff n q. SProxy n → FieldValidation (Run (string ∷ STRING n q e a | eff)) e q String
+string name = FieldValidation $ Star \q → ExceptT (Run.lift _string (StringF name q id))
+
+stringForm ∷ forall attrs e eff form q n v n
+  . ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
+  → { value :: Either e v , name :: SProxy n | attrs }
+  → FieldValidation
+      (Run ( string ∷ FProxy (StringF n q e) | eff))
+      e
+      String
+      v
+  → Form
+      (Run ( string ∷ FProxy (StringF n q e) | eff))
+      form
+      q
+      v
+stringForm singleton field validation =
+  fromField singleton field $ string field.name >>> validation
+
+
+data OptStringF n q e a = OptStringF (SProxy n) q (Either e (Maybe String) → a)
+derive instance functorOptStringF ∷ Functor (OptStringF n q e)
+
+type OPTSTRING n q e a = FProxy (OptStringF n q e)
+
+_optString = SProxy :: SProxy "optString"
+
+optString :: forall a e eff n q. SProxy n → FieldValidation (Run (optString ∷ OPTSTRING n q e a | eff)) e q (Maybe String)
+optString name = FieldValidation $ Star \q → ExceptT (Run.lift _optString (OptStringF name q id))
+
+optStringForm ∷ forall a attrs e eff form q n v n
+  . ({ value ∷ Either e (Maybe v), name ∷ SProxy n | attrs } -> form)
+  → { value :: Either e (Maybe v), name :: SProxy n | attrs }
+  → FieldValidation
+      (Run ( optString ∷ FProxy (OptStringF n q e) | eff))
+      e
+      String
+      v
+  → Form
+      (Run ( optString ∷ FProxy (OptStringF n q e) | eff))
+      form
+      q
+      (Maybe v)
+optStringForm singleton field validation =
+  fromField singleton field $ optString field.name >>> dimap (note Nothing) (either id Just) (right validation)
+
+
+data IntF n q e a = IntF (SProxy n) q (Either e Int → a)
+derive instance functorIntF ∷ Functor (IntF n q e)
+
+type INT n q e a = FProxy (IntF n q e)
+
+_int = SProxy :: SProxy "int"
+
+int :: forall a e eff n q. SProxy n → FieldValidation (Run (int ∷ INT n q e a | eff)) e q Int
+int name = FieldValidation $ Star \q → ExceptT (Run.lift _int (IntF name q id))
+
+intForm ∷ forall attrs e eff form q n v n
+  . ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
+  → { value :: Either e v , name :: SProxy n | attrs }
+  → FieldValidation
+      (Run ( int ∷ FProxy (IntF n q e) | eff))
+      e
+      Int
+      v
+  → Form
+      (Run ( int ∷ FProxy (IntF n q e) | eff))
+      form
+      q
+      v
+intForm singleton field validation =
+  fromField singleton field $ int field.name >>> validation
+
+
+data OptIntF n q e a = OptIntF (SProxy n) q (Either e (Maybe Int) → a)
+derive instance functorOptIntF ∷ Functor (OptIntF n q e)
+
+type OPTINT n q e a = FProxy (OptIntF n q e)
+
+_optInt = SProxy :: SProxy "optInt"
+
+optInt :: forall a e eff n q. SProxy n → FieldValidation (Run (optInt ∷ OPTINT n q e a | eff)) e q (Maybe Int)
+optInt name = FieldValidation $ Star \q → ExceptT (Run.lift _optInt (OptIntF name q id))
+
+optIntForm ∷ forall a attrs e eff form q n v n
+  . ({ value ∷ Either e (Maybe v), name ∷ SProxy n | attrs } -> form)
+  → { value :: Either e (Maybe v), name :: SProxy n | attrs }
+  → FieldValidation
+      (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
+      e
+      Int
+      v
+  → Form
+      (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
+      form
+      q
+      (Maybe v)
+optIntForm singleton field validation =
+  fromField singleton field $ optInt field.name >>> dimap (note Nothing) (either id Just) (right validation)
+
+-- inputForm'
+--   ∷ ∀ attrs e form m n v
+--   . Monad m
+--   ⇒ Monoid form
+--   ⇒ (Record (name ∷ SProxy n, value ∷ Either e v | attrs) → form)
+--   → Record (name ∷ Sproxy n, value ∷ Either e v | attrs)
+--   → FieldValidation.FieldValidation m e HttpFieldQuery v
+--   → HttpForm m form v
+-- inputForm' singleton field validation =
+--   fieldQuery field.name >>> Form.inputForm singleton field validation
 
 -- newtype Component m e q q' v = Component ((q → q') → Validation m e q' v)
 

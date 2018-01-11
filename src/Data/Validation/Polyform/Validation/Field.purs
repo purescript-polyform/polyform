@@ -46,6 +46,9 @@ instance monadCatchFieldValidation ∷ (Monad m) ⇒ MonadError e (FieldValidati
   catchError (FieldValidation (Star fm)) h = FieldValidation $ Star \i →
     catchError (fm i) (\e → let FieldValidation (Star fa) = h e in fa i)
 
+query :: forall a e m. Monad m ⇒ FieldValidation m e a a
+query = FieldValidation $ Star (\i → pure i)
+
 bimapResult ∷ ∀ a b b' e e' m
   . (Monad m)
   ⇒ (e → e')
@@ -81,6 +84,7 @@ pureV f = do
   a ← ask
   pure $ f a
 
+-- maybe rename to validation?
 validate ∷ ∀ a e b m. (Monad m) ⇒ (a → Either e b) → FieldValidation m e a b
 validate f = do
   i ← ask
