@@ -1,16 +1,18 @@
 # purescript-polyform
 
-Pre α-stage.
+An attempt to build simple, composable (and opinionated of course) html form validation/representation API...  Pre α-stage.
 
-## Goals
+## Objectives
 
-An attempt to build simple, composable (and opinionated of course) html form validation/representation API...
+  * Form should be easly renderable, so you can write really generic renderer and pass it form value (validated or not) and get desired HTML
 
-  * Form should be easly renderable, so you can write really generic renderer and pass it form value (validated or not) and get desired html
+  * Be completely render backend agnostic (so form can be rendered as HTML but also as for example... HTTP query)
 
-  * Validation should return well typed result value __and form__ value or form filled with errors, so you can always generate html for it
+  * Validation should be abstracted over data source so we can reuse is on the backend, frontend or validating concrete data
 
-  * Provide only minimal representation of html form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
+  * Validation should return well typed result value __and form__ value or form filled with errors, so you can always generate HTML for it
+
+  * Provide only minimal representation of form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
 
 
 Caution!
