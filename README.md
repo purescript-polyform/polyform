@@ -4,16 +4,15 @@ An attempt to build simple, composable (and opinionated of course) html form val
 
 ## Objectives
 
-  * Form should be easly renderable, so you can write really generic renderer and pass it form value (validated or not) and get desired HTML
-
   * Be completely render backend agnostic (so form can be rendered as HTML but also as for example... HTTP query)
 
-  * Validation should be abstracted over data source so we can reuse is on the backend, frontend or validating concrete data
+  * Validation should abstract over data source so we can reuse it on backend or frontend or during typed input validation
 
   * Validation should return well typed result value __and form__ value or form filled with errors, so you can always generate HTML for it
 
   * Provide only minimal representation of form fields, which is relevant to validation process and allow users to extend it easily so they can create own fields or extends existing one with additional attributes etc.
 
+  * Form should be easly renderable, so you can write really generic renderer and pass it form value
 
 Caution!
 
@@ -31,7 +30,7 @@ This lib extends applicative validation idea a bit further (I mean `purescript-v
 This representation allows us to get a form from every validation.
 
 
-## Fields
+## Basic fields
 
 Currently you can find this html field representation here:
 
@@ -58,3 +57,7 @@ Currently you can find this html field representation here:
   ```
 
 For `ChoiceField` and `MultiChoiceField` there is "generic" implementation provided which allows you to define these type based on simple sum type or "lists of symbols"...
+
+## Html5
+
+I'm also providing richer set of fields in Html5 module... More docs soon...
