@@ -13,12 +13,22 @@ import Data.Profunctor (dimap)
 import Data.Profunctor.Choice (right)
 import Data.StrMap (StrMap, lookup)
 import Data.Symbol (reflectSymbol)
-import Data.Validation.Polyform.Form (IntF(..), OptIntF(..), OptStringF(..), StringF(..), _int, _optInt, _optString, _string)
+import Data.Validation.Polyform.Form (IntF(..))
 import Data.Validation.Polyform.Form as F
 import Data.Validation.Polyform.Validation.Field (_required, int', missing, missing', opt, pureV, required', runFieldValidation, tag, validate)
 import Data.Validation.Polyform.Validation.Field as FieldValidation
 import Data.Variant (Variant, case_, inj, on)
+import Data.Variant.Internal (VariantRep(..))
 import Type.Prelude (class IsSymbol, SProxy(..))
+import Unsafe.Coerce (unsafeCoerce)
+
+variantTag ∷ ∀ v. Variant v → String
+variantTag v =
+  let VariantRep r = coerceV v
+  in r.type
+ where
+  coerceV ∷ Variant v → VariantRep Unit
+  coerceV = unsafeCoerce
 
 -- http query representation
 type FieldQuery = Array (Maybe String)
@@ -37,56 +47,54 @@ scalar = validate $ case _ of
 scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation.FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
 scalar' = tag _scalar scalar
 
-handleString
-  ∷ forall e n m
-  . IsSymbol n
-  ⇒ Monad m
-  ⇒ StringF n Query (Variant ( scalar ∷ Array String | e)) ~> m
-handleString (StringF n query k) =
-  (runExceptT $ runFieldValidation (pureV catMaybes >>> scalar') fieldQuery) >>= (k >>> pure)
- where
-  fieldQuery = fromMaybe [] (lookup (reflectSymbol n) query)
-
-handleOptString
-  ∷ ∀ e n m
-  . IsSymbol n
-  ⇒ Monad m
-  ⇒ Applicative m
-  ⇒ OptStringF n Query (Variant ( scalar ∷ Array (Maybe String) | e)) ~> m
-handleOptString (OptStringF n query k) =
-  (runExceptT $ runFieldValidation scalar' fieldQuery) >>= (k >>> pure)
- where
-  fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
+-- handleString
+--   ∷ forall e n m
+--   . IsSymbol n
+--   ⇒ Monad m
+--   ⇒ StringF n Query (Variant ( scalar ∷ Array String | e)) ~> m
+-- handleString (StringF n query k) =
+--   (runExceptT $ runFieldValidation (pureV catMaybes >>> scalar') fieldQuery) >>= (k >>> pure)
+--  where
+--   fieldQuery = fromMaybe [] (lookup (reflectSymbol n) query)
+-- 
+-- handleOptString
+--   ∷ ∀ e n m
+--   . IsSymbol n
+--   ⇒ Monad m
+--   ⇒ Applicative m
+--   ⇒ OptStringF n Query (Variant ( scalar ∷ Array (Maybe String) | e)) ~> m
+-- handleOptString (OptStringF n query k) =
+--   (runExceptT $ runFieldValidation scalar' fieldQuery) >>= (k >>> pure)
+--  where
+--   fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
 
 handleInt
   ∷ forall e n m
-  . IsSymbol n
-  ⇒ Monad m
-  ⇒ IntF n Query (Variant ( scalar ∷ Array String, int ∷ String | e)) ~> m
+  . Monad m
+  ⇒ IntF (Variant n) (Variant ( scalar ∷ Array String, int ∷ String | e)) Query ~> m
 handleInt (IntF n query k) =
   runExceptT (runFieldValidation (pureV catMaybes >>> scalar' >>> int') fieldQuery) >>= (k >>> pure)
  where
-  fieldQuery = fromMaybe [] (lookup (reflectSymbol n) query)
+  fieldQuery = fromMaybe [] (lookup (variantTag n) query)
 
-handleOptInt
-  ∷ ∀ e n m
-  . IsSymbol n
-  ⇒ Monad m
-  ⇒ Applicative m
-  ⇒ OptIntF n Query (Variant ( scalar ∷ Array (Maybe String), int ∷ String | e)) ~> m
-handleOptInt (OptIntF n query k) =
-  (runExceptT $ runFieldValidation (scalar' >>> int) fieldQuery) >>= (k >>> pure)
- where
-  fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
-  int = dimap (note Nothing) (either id Just) (right int')
-
-
-handle =
-  case_
-    # on _string handleString
-    # on _optString  handleOptString
-    # on _int handleInt
-    # on _optInt handleOptInt
+-- handleOptInt
+--   ∷ ∀ e n m
+--   . IsSymbol n
+--   ⇒ Monad m
+--   ⇒ Applicative m
+--   ⇒ OptIntF n Query (Variant ( scalar ∷ Array (Maybe String), int ∷ String | e)) ~> m
+-- handleOptInt (OptIntF n query k) =
+--   (runExceptT $ runFieldValidation (scalar' >>> int) fieldQuery) >>= (k >>> pure)
+--  where
+--   fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
+--   int = dimap (note Nothing) (either id Just) (right int')
+-- 
+-- handle =
+--   case_
+--     # on _string handleString
+--     # on _optString  handleOptString
+--     # on _int handleInt
+--     # on _optInt handleOptInt
 
 
 

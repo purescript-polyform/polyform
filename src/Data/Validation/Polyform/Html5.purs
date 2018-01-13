@@ -16,7 +16,7 @@ import Data.NonEmpty (NonEmpty(..))
 import Data.Profunctor.Choice (left, right)
 import Data.String (length, null, toLower)
 import Data.Traversable (and, sequence, traverse)
-import Data.Validation.Polyform.Form (IntF(..), OptIntF(..), StringF(..))
+import Data.Validation.Polyform.Form (INT, IntF(..), StringF(..), STRING)
 import Data.Validation.Polyform.Form as Form
 import Data.Validation.Polyform.Validation.Field (FieldValidation(..), check, int', opt, pureV, required', scalar', tag, validate)
 import Data.Variant (Variant, inj)
@@ -51,18 +51,17 @@ type RangeInputBase err attrs name value =
 type RangeInput err attrs name = RangeInputBase err attrs (SProxy name) Int
 type OptRangeInput err attrs name = RangeInputBase err attrs (SProxy name) (Maybe Int)
 
-_rangeInput = (SProxy ∷ SProxy "rangeInput")
-
 rangeForm
-  ∷ ∀ attrs eff err form name o q
+  ∷ ∀ attrs eff err form name names names' o q
   . Monoid form
+  ⇒ RowCons name Unit names names'
   ⇒ (IsSymbol name)
-  ⇒ ((Variant (rangeInput ∷ RangeInput err attrs name | o)) → form)
+  ⇒ (RangeInput err attrs name → form)
   → RangeInput err attrs name
-  → Form.Form (Run (int ∷ FProxy (IntF name q (Variant (min ∷ Int, max ∷ Int | err))) | eff)) form q Int
+  → Form.Form (Run (int ∷ (INT names' (Variant (min ∷ Int, max ∷ Int | err)) q) | eff)) form q Int
 rangeForm singleton field =
   Form.intForm
-    (\field' → singleton (inj _rangeInput field'))
+    singleton
     field
     validation
  where
@@ -74,26 +73,26 @@ rangeForm singleton field =
 
 _optRangeInput = (SProxy ∷ SProxy "optRangeInput")
 
-optRangeForm
-  ∷ ∀ attrs eff err form name o q
-  . Monoid form
-  ⇒ IsSymbol name
-  ⇒ (OptRangeInput err attrs name → form)
-  → OptRangeInput err attrs name
-  → Form.Form (Run (optInt ∷ FProxy (OptIntF name q (Variant (min ∷ Int, max ∷ Int | err))) | eff)) form q (Maybe Int)
-optRangeForm singleton field =
-  Form.optIntForm
-    (\field' → singleton field')
-    field
-    validation
- where
-  validation =
-    minV <<< maxV
-   where
-    maxV = tag _max (check (\i → maybe true (i <= _) field.max))
-    minV = tag _min (check (\i → maybe true (i >= _) field.min))
-
-
+-- optRangeForm
+--   ∷ ∀ attrs eff err form name o q
+--   . Monoid form
+--   ⇒ IsSymbol name
+--   ⇒ (OptRangeInput err attrs name → form)
+--   → OptRangeInput err attrs name
+--   → Form.Form (Run (optInt ∷ FProxy (OptIntF name q (Variant (min ∷ Int, max ∷ Int | err))) | eff)) form q (Maybe Int)
+-- optRangeForm singleton field =
+--   Form.optIntForm
+--     (\field' → singleton field')
+--     field
+--     validation
+--  where
+--   validation =
+--     minV <<< maxV
+--    where
+--     maxV = tag _max (check (\i → maybe true (i <= _) field.max))
+--     minV = tag _min (check (\i → maybe true (i >= _) field.min))
+-- 
+-- 
 -- | All these input types share same attributes... but email.
 -- | Email has additional "multiple" attribute
 -- | but this will be handled by separate field for handling list of
@@ -136,42 +135,41 @@ textInputValidation r =
   maxV = tag _maxlength (check (\i → maybe true (length i > _) r.maxlength))
   minV = tag _minlength (check (\i → maybe true (length i < _) r.minlength))
 
-_textInput = SProxy ∷ SProxy "textInput"
-
 textInputForm
-  ∷ ∀ attrs eff err form m name q
+  ∷ ∀ attrs eff err form m name names names' q
   . Monoid form
+  ⇒ RowCons name Unit names names'
   ⇒ IsSymbol name
   ⇒ (TextInput err attrs name → form)
   → TextInput err attrs name
-  → Form.Form (Run (string ∷ FProxy (StringF name q (Variant (minlength ∷ String, maxlength ∷ String | err))) | eff)) form q String
+  → Form.Form (Run (string ∷ (STRING names' (Variant (minlength ∷ String, maxlength ∷ String | err)) q) | eff)) form q String
 textInputForm singleton field =
   Form.stringForm
-    (\field → singleton field)
+    singleton
     field
     (textInputValidation field)
 
-type PasswordInput err attrs =
-  { name ∷ String
-  -- , inputmode ∷ XXX
-  , maxlength ∷ Maybe Int
-  , minlength ∷ Maybe Int
-  , value ∷ Either (TextInputErr err) String
-  | attrs
-  }
-
-_passwordInput = SProxy ∷ SProxy "passwordInput"
-
-passwordInputForm
-  ∷ ∀ attrs eff err form m name o q
-  . Monad m
-  ⇒ Monoid form
-  ⇒ IsSymbol name
-  ⇒ (Variant (passwordInput ∷ TextInput err attrs name | o) → form)
-  → TextInput err attrs name
-  → Form.Form (Run (string ∷ FProxy (StringF name q (Variant (minlength ∷ String, maxlength ∷ String | err))) | eff)) form q String
-passwordInputForm singleton field =
-  Form.stringForm
-    (\field → singleton (inj _passwordInput field))
-    field
-    (textInputValidation field)
+-- type PasswordInput err attrs =
+--   { name ∷ String
+--   -- , inputmode ∷ XXX
+--   , maxlength ∷ Maybe Int
+--   , minlength ∷ Maybe Int
+--   , value ∷ Either (TextInputErr err) String
+--   | attrs
+--   }
+-- 
+-- _passwordInput = SProxy ∷ SProxy "passwordInput"
+-- 
+-- passwordInputForm
+--   ∷ ∀ attrs eff err form m name o q
+--   . Monad m
+--   ⇒ Monoid form
+--   ⇒ IsSymbol name
+--   ⇒ (Variant (passwordInput ∷ TextInput err attrs name | o) → form)
+--   → TextInput err attrs name
+--   → Form.Form (Run (string ∷ FProxy (StringF name q (Variant (minlength ∷ String, maxlength ∷ String | err))) | eff)) form q String
+-- passwordInputForm singleton field =
+--   Form.stringForm
+--     (\field → singleton (inj _passwordInput field))
+--     field
+--     (textInputValidation field)

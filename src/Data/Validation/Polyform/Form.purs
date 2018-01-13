@@ -96,31 +96,56 @@ fromField singleton field validation = Form $
   }
 
 
-data StringF n q e a = StringF (SProxy n) q (Either e String → a)
+data StringF n e q a = StringF n q (Either e String → a)
 derive instance functorStringF ∷ Functor (StringF n q e)
 
-type STRING n q e a = FProxy (StringF n q e)
+type STRING n e q = FProxy (StringF (Variant n) e q)
 
 _string = SProxy :: SProxy "string"
 
-string :: forall a e eff n q. SProxy n → FieldValidation (Run (string ∷ STRING n q e a | eff)) e q String
-string name = FieldValidation $ Star \q → ExceptT (Run.lift _string (StringF name q id))
+-- string :: forall a e eff n q. SProxy n → FieldValidation (Run (string ∷ STRING n q e a | eff)) e q String
+string ∷ ∀ e q eff name names names'
+  . RowCons name Unit names names'
+  ⇒ IsSymbol name
+  ⇒ SProxy name
+  → FieldValidation
+    (Run ( string :: (STRING names' e q) | eff)) e q String
+string name = FieldValidation $ Star \q → ExceptT (Run.lift _string (StringF (inj name unit) q id))
 
-stringForm ∷ forall attrs e eff form q n v n
-  . ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
+stringForm ∷ forall attrs e eff form q n ns ns' v n
+  . RowCons n Unit ns ns'
+  ⇒ IsSymbol n
+  ⇒ ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
   → { value :: Either e v , name :: SProxy n | attrs }
   → FieldValidation
-      (Run ( string ∷ FProxy (StringF n q e) | eff))
+      (Run ( string ∷ (STRING ns' e q) | eff))
       e
       String
       v
   → Form
-      (Run ( string ∷ FProxy (StringF n q e) | eff))
+      (Run ( string ∷ (STRING ns' e q) | eff))
       form
       q
       v
 stringForm singleton field validation =
   fromField singleton field $ string field.name >>> validation
+
+
+-- stringForm ∷ forall attrs e eff form q n v n
+--   . ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
+--   → { value :: Either e v , name :: SProxy n | attrs }
+--   → FieldValidation
+--       (Run ( string ∷ FProxy (StringF n q e) | eff))
+--       e
+--       String
+--       v
+--   → Form
+--       (Run ( string ∷ FProxy (StringF n q e) | eff))
+--       form
+--       q
+--       v
+-- stringForm singleton field validation =
+--   fromField singleton field $ string field.name >>> validation
 
 
 data OptStringF n q e a = OptStringF (SProxy n) q (Either e (Maybe String) → a)
@@ -150,26 +175,34 @@ optStringForm singleton field validation =
   fromField singleton field $ optString field.name >>> dimap (note Nothing) (either id Just) (right validation)
 
 
-data IntF n q e a = IntF (SProxy n) q (Either e Int → a)
-derive instance functorIntF ∷ Functor (IntF n q e)
+data IntF n e q a = IntF n q (Either e Int → a)
+derive instance functorIntF ∷ Functor (IntF n e q)
 
-type INT n q e a = FProxy (IntF n q e)
+type INT names e q = FProxy (IntF (Variant names) e q)
 
 _int = SProxy :: SProxy "int"
 
-int :: forall a e eff n q. SProxy n → FieldValidation (Run (int ∷ INT n q e a | eff)) e q Int
-int name = FieldValidation $ Star \q → ExceptT (Run.lift _int (IntF name q id))
+-- int :: forall a e eff n q. SProxy n → FieldValidation (Run (int ∷ INT n q e a | eff)) e q Int
+int ∷ ∀ e q eff name names names'
+  . RowCons name Unit names names'
+  ⇒ IsSymbol name
+  ⇒ SProxy name
+  → FieldValidation
+    (Run ( int :: (INT names' e q) | eff)) e q Int
+int name = FieldValidation $ Star \q → ExceptT (Run.lift _int (IntF (inj name unit) q id))
 
-intForm ∷ forall attrs e eff form q n v n
-  . ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
+intForm ∷ forall attrs e eff form q n ns ns' v n
+  . RowCons n Unit ns ns'
+  ⇒ IsSymbol n
+  ⇒ ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
   → { value :: Either e v , name :: SProxy n | attrs }
   → FieldValidation
-      (Run ( int ∷ FProxy (IntF n q e) | eff))
+      (Run ( int ∷ (INT ns' e q) | eff))
       e
       Int
       v
   → Form
-      (Run ( int ∷ FProxy (IntF n q e) | eff))
+      (Run ( int ∷ (INT ns' e q) | eff))
       form
       q
       v
@@ -177,140 +210,140 @@ intForm singleton field validation =
   fromField singleton field $ int field.name >>> validation
 
 
-data OptIntF n q e a = OptIntF (SProxy n) q (Either e (Maybe Int) → a)
-derive instance functorOptIntF ∷ Functor (OptIntF n q e)
-
-type OPTINT n q e a = FProxy (OptIntF n q e)
-
-_optInt = SProxy :: SProxy "optInt"
-
-optInt :: forall a e eff n q. SProxy n → FieldValidation (Run (optInt ∷ OPTINT n q e a | eff)) e q (Maybe Int)
-optInt name = FieldValidation $ Star \q → ExceptT (Run.lift _optInt (OptIntF name q id))
-
-optIntForm ∷ forall a attrs e eff form q n v n
-  . ({ value ∷ Either e (Maybe v), name ∷ SProxy n | attrs } -> form)
-  → { value :: Either e (Maybe v), name :: SProxy n | attrs }
-  → FieldValidation
-      (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
-      e
-      Int
-      v
-  → Form
-      (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
-      form
-      q
-      (Maybe v)
-optIntForm singleton field validation =
-  fromField singleton field $ optInt field.name >>> dimap (note Nothing) (either id Just) (right validation)
-
--- inputForm'
---   ∷ ∀ attrs e form m n v
---   . Monad m
---   ⇒ Monoid form
---   ⇒ (Record (name ∷ SProxy n, value ∷ Either e v | attrs) → form)
---   → Record (name ∷ Sproxy n, value ∷ Either e v | attrs)
---   → FieldValidation.FieldValidation m e HttpFieldQuery v
---   → HttpForm m form v
--- inputForm' singleton field validation =
---   fieldQuery field.name >>> Form.inputForm singleton field validation
-
--- newtype Component m e q q' v = Component ((q → q') → Validation m e q' v)
-
--- inputForm'
---   ∷ ∀ attrs e n m o o' q v
---   . Monad m
---   ⇒ RowCons n (Record (value ∷ Either e v | attrs)) o o'
---   ⇒ IsSymbol n
---   ⇒ SProxy n
---   → Record (value ∷ Either e v | attrs)
---   → FieldValidation m e q v
---   → Validation m (Form (Variant o')) (Maybe q) (Maybe v)
--- inputForm' p r =
---   bimapResult (inj p <$> _) id <<< inputForm r
+-- data OptIntF n q e a = OptIntF (SProxy n) q (Either e (Maybe Int) → a)
+-- derive instance functorOptIntF ∷ Functor (OptIntF n q e)
 -- 
--- _invalidOption = SProxy ∷ SProxy "invalidOption"
+-- type OPTINT n q e a = FProxy (OptIntF n q e)
 -- 
--- -- coproductChoiceForm ∷ ∀ a attrs e q rep m
--- --   . Monad m
--- --   ⇒ Generic a rep
--- --   ⇒ ChoiceField e opt attrs
--- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) q String
--- --   → Validation m (List (ChoiceField (Variant (invalidOption ∷ String | e)) a attrs)) (Maybe q) (Maybe a)
--- -- coproductChoiceForm field validation = Validation
--- --   let
--- --     _p = Proxy ∷ Proxy a
--- --     opts = fromMaybe (options _p) field.options
--- --     field' = set (SProxy ∷ SProxy "options") opts field
--- --   in
--- --     case _ of
--- --       Nothing → pure $ Valid (singleton field') Nothing
--- --       Just query → do
--- --         let
--- --           optsValidation = tag _invalidOption $ optionsParser _p
--- --           validation' = optsValidation <<< validation
--- --         r ← runExceptT (runFieldValidation validation' query)
--- --         pure $ case r of
--- --           Left e → Invalid (singleton (field' { value = Left e }))
--- --           Right v → Valid (singleton (field' { value = Right v })) (Just v)
--- -- 
--- -- symbolChoiceForm ∷ ∀ a e i m
--- --   . Monad m
--- --   ⇒ Options (Option a)
--- --   ⇒ ChoiceField (Variant (invalidOption ∷ String | e)) (Option a)
--- --   → Proxy a
--- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) i String
--- --   → Validation m (Form (ChoiceField (Variant (invalidOption ∷ String | e)) (Option a))) (Maybe i) (Maybe (Option a))
--- -- symbolChoiceForm field validation = Validation
--- --   let
--- --     p = Proxy ∷ Proxy a
--- --     field' =
--- --       case field.options of
--- --         Nil → field { options = options p }
--- --         otherwise → field
--- --   in
--- --     case _ of
--- --       Nothing → pure $ Valid (singleton field') Nothing
--- --       Just query → do
--- --         let
--- --           optsValidation = tag _invalidOption $ SymbolOption.optionsParser p
--- --           validation' = optsValidation <<< validation
--- --         r ← runExceptT (runFieldValidation validation' query)
--- --         pure $ case r of
--- --           Left e → Invalid (singleton (field' { value = Left e }))
--- --           Right v → Valid (singleton (field' { value = Right v })) (Just v)
+-- _optInt = SProxy :: SProxy "optInt"
 -- 
--- -- coproductMultiChoiceForm ∷ ∀ a e i rep row m
+-- optInt :: forall a e eff n q. SProxy n → FieldValidation (Run (optInt ∷ OPTINT n q e a | eff)) e q (Maybe Int)
+-- optInt name = FieldValidation $ Star \q → ExceptT (Run.lift _optInt (OptIntF name q id))
+-- 
+-- optIntForm ∷ forall a attrs e eff form q n v n
+--   . ({ value ∷ Either e (Maybe v), name ∷ SProxy n | attrs } -> form)
+--   → { value :: Either e (Maybe v), name :: SProxy n | attrs }
+--   → FieldValidation
+--       (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
+--       e
+--       Int
+--       v
+--   → Form
+--       (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
+--       form
+--       q
+--       (Maybe v)
+-- optIntForm singleton field validation =
+--   fromField singleton field $ optInt field.name >>> dimap (note Nothing) (either id Just) (right validation)
+-- 
+-- -- inputForm'
+-- --   ∷ ∀ attrs e form m n v
 -- --   . Monad m
--- --   ⇒ Generic a rep
--- --   ⇒ Choices rep row
--- --   ⇒ Options rep
--- --   ⇒ String
--- --   → Proxy a
--- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) i (Array String)
--- --   → Validation m (Form (MultiChoice (Variant (invalidOption ∷ String | e)) a)) i (Record row)
--- -- coproductMultiChoiceForm name p validation = Validation $ \query → do
--- --   let
--- --     validation' = validation >>> (tag _invalidOption $ choicesParser p)
--- --     opts = options p
--- --   r ← runExceptT (runFieldValidation validation' query)
--- --   pure $ case r of
--- --     Left e → Invalid (singleton {name, choices: opts, value: Left e})
--- --     Right { product, checkOpt } → Valid (singleton {name, choices: opts, value: Right checkOpt}) product
--- -- 
--- -- symbolMultiChoiceForm ∷ ∀ a e i row m
+-- --   ⇒ Monoid form
+-- --   ⇒ (Record (name ∷ SProxy n, value ∷ Either e v | attrs) → form)
+-- --   → Record (name ∷ Sproxy n, value ∷ Either e v | attrs)
+-- --   → FieldValidation.FieldValidation m e HttpFieldQuery v
+-- --   → HttpForm m form v
+-- -- inputForm' singleton field validation =
+-- --   fieldQuery field.name >>> Form.inputForm singleton field validation
+-- 
+-- -- newtype Component m e q q' v = Component ((q → q') → Validation m e q' v)
+-- 
+-- -- inputForm'
+-- --   ∷ ∀ attrs e n m o o' q v
 -- --   . Monad m
--- --   ⇒ Choices (Option a) row
--- --   ⇒ Options (Option a)
--- --   ⇒ String
--- --   → Proxy a
--- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) i (Array String)
--- --   → Validation m (Form (MultiChoice (Variant (invalidOption ∷ String | e)) (Option a))) i (Record row)
--- -- symbolMultiChoiceForm name p validation = Validation $ \query → do
--- --   let
--- --     validation' = validation >>> (tag _invalidOption $ SymbolOption.choicesParser p)
--- --     opts = SymbolOption.options p
--- --   r ← runExceptT (runFieldValidation validation' query)
--- --   pure $ case r of
--- --     Left e → Invalid (singleton { name, choices: opts, value: Left e })
--- --     Right { product, checkOpt } → Valid (singleton { name, choices: opts, value: Right checkOpt }) product
+-- --   ⇒ RowCons n (Record (value ∷ Either e v | attrs)) o o'
+-- --   ⇒ IsSymbol n
+-- --   ⇒ SProxy n
+-- --   → Record (value ∷ Either e v | attrs)
+-- --   → FieldValidation m e q v
+-- --   → Validation m (Form (Variant o')) (Maybe q) (Maybe v)
+-- -- inputForm' p r =
+-- --   bimapResult (inj p <$> _) id <<< inputForm r
 -- -- 
+-- -- _invalidOption = SProxy ∷ SProxy "invalidOption"
+-- -- 
+-- -- -- coproductChoiceForm ∷ ∀ a attrs e q rep m
+-- -- --   . Monad m
+-- -- --   ⇒ Generic a rep
+-- -- --   ⇒ ChoiceField e opt attrs
+-- -- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) q String
+-- -- --   → Validation m (List (ChoiceField (Variant (invalidOption ∷ String | e)) a attrs)) (Maybe q) (Maybe a)
+-- -- -- coproductChoiceForm field validation = Validation
+-- -- --   let
+-- -- --     _p = Proxy ∷ Proxy a
+-- -- --     opts = fromMaybe (options _p) field.options
+-- -- --     field' = set (SProxy ∷ SProxy "options") opts field
+-- -- --   in
+-- -- --     case _ of
+-- -- --       Nothing → pure $ Valid (singleton field') Nothing
+-- -- --       Just query → do
+-- -- --         let
+-- -- --           optsValidation = tag _invalidOption $ optionsParser _p
+-- -- --           validation' = optsValidation <<< validation
+-- -- --         r ← runExceptT (runFieldValidation validation' query)
+-- -- --         pure $ case r of
+-- -- --           Left e → Invalid (singleton (field' { value = Left e }))
+-- -- --           Right v → Valid (singleton (field' { value = Right v })) (Just v)
+-- -- -- 
+-- -- -- symbolChoiceForm ∷ ∀ a e i m
+-- -- --   . Monad m
+-- -- --   ⇒ Options (Option a)
+-- -- --   ⇒ ChoiceField (Variant (invalidOption ∷ String | e)) (Option a)
+-- -- --   → Proxy a
+-- -- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) i String
+-- -- --   → Validation m (Form (ChoiceField (Variant (invalidOption ∷ String | e)) (Option a))) (Maybe i) (Maybe (Option a))
+-- -- -- symbolChoiceForm field validation = Validation
+-- -- --   let
+-- -- --     p = Proxy ∷ Proxy a
+-- -- --     field' =
+-- -- --       case field.options of
+-- -- --         Nil → field { options = options p }
+-- -- --         otherwise → field
+-- -- --   in
+-- -- --     case _ of
+-- -- --       Nothing → pure $ Valid (singleton field') Nothing
+-- -- --       Just query → do
+-- -- --         let
+-- -- --           optsValidation = tag _invalidOption $ SymbolOption.optionsParser p
+-- -- --           validation' = optsValidation <<< validation
+-- -- --         r ← runExceptT (runFieldValidation validation' query)
+-- -- --         pure $ case r of
+-- -- --           Left e → Invalid (singleton (field' { value = Left e }))
+-- -- --           Right v → Valid (singleton (field' { value = Right v })) (Just v)
+-- -- 
+-- -- -- coproductMultiChoiceForm ∷ ∀ a e i rep row m
+-- -- --   . Monad m
+-- -- --   ⇒ Generic a rep
+-- -- --   ⇒ Choices rep row
+-- -- --   ⇒ Options rep
+-- -- --   ⇒ String
+-- -- --   → Proxy a
+-- -- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) i (Array String)
+-- -- --   → Validation m (Form (MultiChoice (Variant (invalidOption ∷ String | e)) a)) i (Record row)
+-- -- -- coproductMultiChoiceForm name p validation = Validation $ \query → do
+-- -- --   let
+-- -- --     validation' = validation >>> (tag _invalidOption $ choicesParser p)
+-- -- --     opts = options p
+-- -- --   r ← runExceptT (runFieldValidation validation' query)
+-- -- --   pure $ case r of
+-- -- --     Left e → Invalid (singleton {name, choices: opts, value: Left e})
+-- -- --     Right { product, checkOpt } → Valid (singleton {name, choices: opts, value: Right checkOpt}) product
+-- -- -- 
+-- -- -- symbolMultiChoiceForm ∷ ∀ a e i row m
+-- -- --   . Monad m
+-- -- --   ⇒ Choices (Option a) row
+-- -- --   ⇒ Options (Option a)
+-- -- --   ⇒ String
+-- -- --   → Proxy a
+-- -- --   → FieldValidation m (Variant (invalidOption ∷ String | e)) i (Array String)
+-- -- --   → Validation m (Form (MultiChoice (Variant (invalidOption ∷ String | e)) (Option a))) i (Record row)
+-- -- -- symbolMultiChoiceForm name p validation = Validation $ \query → do
+-- -- --   let
+-- -- --     validation' = validation >>> (tag _invalidOption $ SymbolOption.choicesParser p)
+-- -- --     opts = SymbolOption.options p
+-- -- --   r ← runExceptT (runFieldValidation validation' query)
+-- -- --   pure $ case r of
+-- -- --     Left e → Invalid (singleton { name, choices: opts, value: Left e })
+-- -- --     Right { product, checkOpt } → Valid (singleton { name, choices: opts, value: Right checkOpt }) product
+-- -- -- 
