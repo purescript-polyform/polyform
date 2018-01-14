@@ -1,4 +1,4 @@
-module Data.Validation.Polyform.Form.Http where
+module Data.Validation.Polyform.Form.Record where
 
 import Prelude
 
@@ -14,16 +14,16 @@ import Run as Run
 import Type.Row (class RowToList, Cons, Nil, kind RowList)
 import Unsafe.Coerce (unsafeCoerce)
 
-class VariantMatchCases (rl ∷ RowList) (vo ∷ # Type) a | rl a → vo
+class VariantFieldsType (rl ∷ RowList) (vo ∷ # Type) a | rl a → vo
 
-instance a_variantMatchConsSame ∷ (VariantMatchCases rl vo' a, RowCons sym Unit vo' vo) ⇒ VariantMatchCases (Cons sym a rl) vo a
-instance b_variantMatchConsDiff ∷ (VariantMatchCases rl vo a) ⇒ VariantMatchCases (Cons sym b rl) vo a
-instance c_variantMatchNil ∷ VariantMatchCases Nil () a
+instance a_variantFieldsTypeSame ∷ (VariantFieldsType rl vo' a, RowCons sym Unit vo' vo) ⇒ VariantFieldsType (Cons sym a rl) vo a
+instance b_variantFieldsTypeDiff ∷ (VariantFieldsType rl vo a) ⇒ VariantFieldsType (Cons sym b rl) vo a
+instance c_variantFieldsTypeNil ∷ VariantFieldsType Nil () a
 
 onMatch
   ∷ ∀ a rl r v
   . RowToList r rl
-  ⇒ VariantMatchCases rl v a
+  ⇒ VariantFieldsType rl v a
   ⇒ Record r
   → Variant v
   → a
@@ -38,7 +38,7 @@ handleInt
   ∷ forall e n m q ql
   . Monad m
   ⇒ RowToList q ql
-  ⇒ VariantMatchCases ql n Int
+  ⇒ VariantFieldsType ql n Int
   ⇒ IntF (Variant n) (Variant e) (Record q) ~> m
 handleInt (IntF n query k) =
   pure $ k value
@@ -50,7 +50,7 @@ handleString
   ∷ forall e n m q ql
   . Monad m
   ⇒ RowToList q ql
-  ⇒ VariantMatchCases ql n String
+  ⇒ VariantFieldsType ql n String
   ⇒ StringF (Variant n) (Variant e) (Record q) ~> m
 handleString (StringF n query k) =
   pure $ k value
@@ -62,8 +62,8 @@ handle
   ∷ forall e n n' m q ql
   . Monad m
   ⇒ RowToList q ql
-  ⇒ VariantMatchCases ql n String
-  ⇒ VariantMatchCases ql n' Int
+  ⇒ VariantFieldsType ql n String
+  ⇒ VariantFieldsType ql n' Int
   ⇒ VariantF
       ( string ∷ FProxy (StringF (Variant n) (Variant e) (Record q))
       , int ∷ FProxy (IntF (Variant n') (Variant e) (Record q))
@@ -81,8 +81,8 @@ interpret
   ∷ forall a e n n' m q ql
   . Monad m
   ⇒ RowToList q ql
-  ⇒ VariantMatchCases ql n String
-  ⇒ VariantMatchCases ql n' Int
+  ⇒ VariantFieldsType ql n String
+  ⇒ VariantFieldsType ql n' Int
   ⇒ Run
       ( string ∷ FProxy (StringF (Variant n) (Variant e) (Record q))
       , int ∷ FProxy (IntF (Variant n') (Variant e) (Record q))

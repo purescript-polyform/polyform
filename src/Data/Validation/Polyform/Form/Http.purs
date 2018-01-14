@@ -13,12 +13,14 @@ import Data.Profunctor (dimap)
 import Data.Profunctor.Choice (right)
 import Data.StrMap (StrMap, lookup)
 import Data.Symbol (reflectSymbol)
-import Data.Validation.Polyform.Form (IntF(..))
+import Data.Validation.Polyform.Form (IntF(..), StringF(..), _int, _string)
 import Data.Validation.Polyform.Form as F
-import Data.Validation.Polyform.Validation.Field (_required, int', missing, missing', opt, pureV, required', runFieldValidation, tag, validate)
+import Data.Validation.Polyform.Validation.Field (_required, int', missing, missing', opt, pureV, required', runFieldValidation, scalar', tag, validate)
 import Data.Validation.Polyform.Validation.Field as FieldValidation
-import Data.Variant (Variant, case_, inj, on)
+import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
+import Run (FProxy(..), VariantF, case_, on, Run)
+import Run as Run
 import Type.Prelude (class IsSymbol, SProxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -37,26 +39,26 @@ type Query = StrMap FieldQuery
 type Form m form a = F.Form m form Query a
 type FieldValidation m e a = FieldValidation.FieldValidation m e FieldQuery a
 
-_scalar = (SProxy ∷ SProxy "scalar")
-
-scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation.FieldValidation m (Array a) (Array a) a
-scalar = validate $ case _ of
-  [a] → Right a
-  arr → Left arr
-
-scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation.FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
-scalar' = tag _scalar scalar
-
--- handleString
---   ∷ forall e n m
---   . IsSymbol n
---   ⇒ Monad m
---   ⇒ StringF n Query (Variant ( scalar ∷ Array String | e)) ~> m
--- handleString (StringF n query k) =
---   (runExceptT $ runFieldValidation (pureV catMaybes >>> scalar') fieldQuery) >>= (k >>> pure)
---  where
---   fieldQuery = fromMaybe [] (lookup (reflectSymbol n) query)
+-- _scalar = (SProxy ∷ SProxy "scalar")
 -- 
+-- scalar ∷ ∀ a m. (Monad m) ⇒ FieldValidation.FieldValidation m (Array a) (Array a) a
+-- scalar = validate $ case _ of
+--   [a] → Right a
+--   arr → Left arr
+-- 
+-- scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation.FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
+-- scalar' = tag _scalar scalar
+
+type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ String | e)
+handleString
+  ∷ forall e n m
+  . Monad m
+ ⇒ StringF (Variant n) (Variant (StringErr e)) Query ~> m
+handleString (StringF n query k) =
+  (runExceptT $ runFieldValidation (pureV catMaybes >>> required' >>> scalar') fieldQuery) >>= (k >>> pure)
+ where
+  fieldQuery = fromMaybe [] (lookup (variantTag n) query)
+
 -- handleOptString
 --   ∷ ∀ e n m
 --   . IsSymbol n
@@ -68,12 +70,14 @@ scalar' = tag _scalar scalar
 --  where
 --   fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
 
+type IntErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ String | e)
+
 handleInt
   ∷ forall e n m
   . Monad m
-  ⇒ IntF (Variant n) (Variant ( scalar ∷ Array String, int ∷ String | e)) Query ~> m
+  ⇒ IntF (Variant n) (Variant (IntErr e)) Query ~> m
 handleInt (IntF n query k) =
-  runExceptT (runFieldValidation (pureV catMaybes >>> scalar' >>> int') fieldQuery) >>= (k >>> pure)
+  runExceptT (runFieldValidation (pureV catMaybes >>> required' >>> scalar' >>> int') fieldQuery) >>= (k >>> pure)
  where
   fieldQuery = fromMaybe [] (lookup (variantTag n) query)
 
@@ -89,12 +93,24 @@ handleInt (IntF n query k) =
 --   fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
 --   int = dimap (note Nothing) (either id Just) (right int')
 -- 
--- handle =
---   case_
---     # on _string handleString
+handle =
+  case_
+    # on _int handleInt
+    # on _string handleString
 --     # on _optString  handleOptString
---     # on _int handleInt
 --     # on _optInt handleOptInt
+
+interpret
+  ∷ forall a e n n' m q ql
+  . Monad m
+  ⇒ Run
+      ( string ∷ FProxy (StringF (Variant n) (Variant (StringErr e)) Query)
+      , int ∷ FProxy (IntF (Variant n') (Variant (IntErr e)) Query)
+      )
+      a
+  → m a
+interpret = Run.interpret handle
+
 
 
 

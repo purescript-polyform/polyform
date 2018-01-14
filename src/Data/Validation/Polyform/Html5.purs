@@ -97,7 +97,7 @@ _optRangeInput = (SProxy ∷ SProxy "optRangeInput")
 -- | Email has additional "multiple" attribute
 -- | but this will be handled by separate field for handling list of
 -- | emails.
-data TextInputType = SearchInput | TelInput | TextInput | UrlInput | EmailInput
+data TextInputType = SearchInput | TelInput | TextInput | UrlInput | EmailInput | PasswordInput
 derive instance genericTextInputType ∷ Generic TextInputType _
 
 showInputType ∷ TextInputType → String
@@ -106,15 +106,15 @@ showInputType TelInput = "tel"
 showInputType TextInput = "text"
 showInputType UrlInput = "url"
 showInputType EmailInput = "email"
+showInputType PasswordInput = "password"
 
-type TextInputErr err =
-  Variant (maxlength ∷ String, minlength ∷ String | err)
+type TextInputErr err = (maxlength ∷ String, minlength ∷ String | err)
 
 type TextInputBase err attrs name value =
   { name ∷ name
   , maxlength ∷ Maybe Int
   , minlength ∷ Maybe Int
-  , value ∷ Either (TextInputErr err) value
+  , value ∷ Either (Variant (TextInputErr err)) value
   , type ∷ TextInputType
   | attrs
   }
@@ -128,7 +128,7 @@ textInputValidation
   ∷ ∀ attrs err m
   . Monad m
   ⇒ { maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs }
-  → FieldValidation m (TextInputErr err) String String
+  → FieldValidation m (Variant (TextInputErr err)) String String
 textInputValidation r =
   maxV >>> minV
  where
@@ -142,34 +142,9 @@ textInputForm
   ⇒ IsSymbol name
   ⇒ (TextInput err attrs name → form)
   → TextInput err attrs name
-  → Form.Form (Run (string ∷ (STRING names' (Variant (minlength ∷ String, maxlength ∷ String | err)) q) | eff)) form q String
+  → Form.Form (Run (string ∷ (STRING names' (Variant (TextInputErr err)) q) | eff)) form q String
 textInputForm singleton field =
   Form.stringForm
     singleton
     field
     (textInputValidation field)
-
--- type PasswordInput err attrs =
---   { name ∷ String
---   -- , inputmode ∷ XXX
---   , maxlength ∷ Maybe Int
---   , minlength ∷ Maybe Int
---   , value ∷ Either (TextInputErr err) String
---   | attrs
---   }
--- 
--- _passwordInput = SProxy ∷ SProxy "passwordInput"
--- 
--- passwordInputForm
---   ∷ ∀ attrs eff err form m name o q
---   . Monad m
---   ⇒ Monoid form
---   ⇒ IsSymbol name
---   ⇒ (Variant (passwordInput ∷ TextInput err attrs name | o) → form)
---   → TextInput err attrs name
---   → Form.Form (Run (string ∷ FProxy (StringF name q (Variant (minlength ∷ String, maxlength ∷ String | err))) | eff)) form q String
--- passwordInputForm singleton field =
---   Form.stringForm
---     (\field → singleton (inj _passwordInput field))
---     field
---     (textInputValidation field)
