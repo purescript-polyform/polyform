@@ -49,7 +49,7 @@ type FieldValidation m e a = FieldValidation.FieldValidation m e FieldQuery a
 -- scalar' ∷ ∀ a e m. (Monad m) ⇒ FieldValidation.FieldValidation m (Variant (scalar ∷ Array a | e)) (Array a) a
 -- scalar' = tag _scalar scalar
 
-type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ String | e)
+type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
 handleString
   ∷ forall e n m
   . Monad m
@@ -93,6 +93,8 @@ handleInt (IntF n query k) =
 --   fieldQuery = fromMaybe [Nothing] (lookup (reflectSymbol n) query)
 --   int = dimap (note Nothing) (either id Just) (right int')
 -- 
+onField = on _int handleInt >>> on _string handleString
+
 handle =
   case_
     # on _int handleInt
@@ -101,11 +103,11 @@ handle =
 --     # on _optInt handleOptInt
 
 interpret
-  ∷ forall a e n n' m q ql
+  ∷ forall a ei es n n' m q ql
   . Monad m
   ⇒ Run
-      ( string ∷ FProxy (StringF (Variant n) (Variant (StringErr e)) Query)
-      , int ∷ FProxy (IntF (Variant n') (Variant (IntErr e)) Query)
+      ( string ∷ FProxy (StringF (Variant n) (Variant (StringErr es)) Query)
+      , int ∷ FProxy (IntF (Variant n') (Variant (IntErr ei)) Query)
       )
       a
   → m a

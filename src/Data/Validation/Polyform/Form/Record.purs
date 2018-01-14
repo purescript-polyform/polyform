@@ -59,14 +59,14 @@ handleString (StringF n query k) =
 
 
 handle
-  ∷ forall e n n' m q ql
+  ∷ forall ei es n n' m q ql
   . Monad m
   ⇒ RowToList q ql
   ⇒ VariantFieldsType ql n String
   ⇒ VariantFieldsType ql n' Int
   ⇒ VariantF
-      ( string ∷ FProxy (StringF (Variant n) (Variant e) (Record q))
-      , int ∷ FProxy (IntF (Variant n') (Variant e) (Record q))
+      ( string ∷ FProxy (StringF (Variant n) (Variant es) (Record q))
+      , int ∷ FProxy (IntF (Variant n') (Variant ei) (Record q))
       )
   ~> m
 handle =
