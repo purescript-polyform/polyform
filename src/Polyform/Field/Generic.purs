@@ -16,90 +16,112 @@ import Data.Record (insert)
 import Data.Tuple (Tuple(Tuple))
 import Polyform.Field as Field
 import Polyform.Validation (V(..), liftV)
+import Polyform.Validation as Validation
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
 -- | This type class provides basic way to transform simple sum type
 -- | (constructors without args are only allowed) into: `Validation` and
--- | `options` array which can be used in `Choice` record.
+-- | `choices` array which can be used in `Choice` record.
 -- |
-class Option opt where
-  optionImpl ∷ opt → String
-  optionsImpl ∷ Proxy opt → List (Tuple String opt)
+class Choice choice where
+  choiceImpl ∷ choice → String
+  choicesImpl ∷ Proxy choice → List (Tuple String choice)
 
-instance asOptionSum ∷ (Option a, Option b) ⇒ Option (Sum a b) where
-  optionImpl (Inl v) = optionImpl v
-  optionImpl (Inr v) = optionImpl v
+instance asChoiceSum ∷ (Choice a, Choice b) ⇒ Choice (Sum a b) where
+  choiceImpl (Inl v) = choiceImpl v
+  choiceImpl (Inr v) = choiceImpl v
 
-  optionsImpl _
-    = map (Inl <$> _) (optionsImpl (Proxy ∷ Proxy a))
-    <> map (Inr <$> _) (optionsImpl (Proxy ∷ Proxy b))
+  choicesImpl _
+    = map (Inl <$> _) (choicesImpl (Proxy ∷ Proxy a))
+    <> map (Inr <$> _) (choicesImpl (Proxy ∷ Proxy b))
 
-instance asOptionConstructor ∷ (IsSymbol name) ⇒ Option (Constructor name NoArguments) where
-  optionImpl _ = reflectSymbol (SProxy ∷ SProxy name)
+instance asChoiceConstructor ∷ (IsSymbol name) ⇒ Choice (Constructor name NoArguments) where
+  choiceImpl _ = reflectSymbol (SProxy ∷ SProxy name)
 
-  optionsImpl p =
-    singleton (Tuple value option)
+  choicesImpl p =
+    singleton (Tuple value choice)
    where
-    option = ((Constructor NoArguments) ∷ Constructor name NoArguments)
+    choice = ((Constructor NoArguments) ∷ Constructor name NoArguments)
     value = reflectSymbol (SProxy ∷ SProxy name)
 
 
-option ∷ ∀ opt optRep. (Generic opt optRep) ⇒ (Option optRep) ⇒ opt → String
-option v = optionImpl (from v)
+choice
+  ∷ ∀ choice choiceRep
+  . (Generic choice choiceRep)
+  ⇒ (Choice choiceRep)
+  ⇒ choice
+  → String
+choice v = choiceImpl (from v)
 
-options ∷ ∀ a aRep. (Generic a aRep) ⇒ (Option aRep) ⇒ Proxy a → List (Tuple String a)
-options _ = map (to <$> _) (optionsImpl (Proxy ∷ Proxy aRep))
+choices
+  ∷ ∀ choice choiceRep
+  . Generic choice choiceRep
+  ⇒ Choice choiceRep
+  ⇒ Proxy choice
+  → List (Tuple String choice)
+choices _ = map (to <$> _) (choicesImpl (Proxy ∷ Proxy choiceRep))
 
-optionsParser
-  ∷ ∀ a aRep m
-  . (Monad m)
-  ⇒ (Generic a aRep)
-  ⇒ (Option aRep)
+choicesParser
+  ∷ ∀ a choiceRep m
+  . Monad m
+  ⇒ Generic a choiceRep
+  ⇒ Choice choiceRep
   ⇒ Proxy a
   → Field.Validation m String String a
-optionsParser p =
-  liftV \s → case lookup s (fromFoldable $ options p) of
+choicesParser p =
+  liftV \s → case lookup s (fromFoldable $ choices p) of
     Just o → pure o
     Nothing → Invalid (s : Nil)
 
--- 
--- class Choices c (c' ∷ # Type) | c → c' where
---   choicesParserImpl ∷ ∀ m. (Monad m) ⇒ (Proxy c) → FieldValidation m String (Array String) { product ∷ (Record c'), checkOpt ∷ c → Boolean }
--- 
--- instance choicesConstructor ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ()) ⇒ Choices (Constructor name NoArguments) row where
---   choicesParserImpl proxy =
---     parser
---    where
---     parser =
---       let
---         _name = (SProxy ∷ SProxy name)
---         v = any (reflectSymbol _name == _)
---         product i = insert _name  (v i) {}
---         checkOpt i _ = v i
---       in pureV $ \i → { product: product i, checkOpt: checkOpt i }
--- 
--- instance choicesSum ∷ (IsSymbol name, Choices b br, RowCons name Boolean br row, RowLacks name br) ⇒ Choices (Sum (Constructor name NoArguments) b) row where
---   choicesParserImpl proxy =
---     parser
---    where
---     parser = do
---       i ← ask
---       { product, checkOpt } ← choicesParserImpl (Proxy ∷ Proxy b)
---       let
---         _name = (SProxy ∷ SProxy name)
---         v = any (reflectSymbol _name == _)
---         checkOpt' = case _ of
---           (Inl _) → v i
---           (Inr b) → checkOpt b
---       pure $ { product: insert _name  (v i) product, checkOpt: checkOpt' }
--- 
--- choicesParser ∷ ∀ a aRep row m
---   . (Monad m)
---   ⇒ (Generic a aRep)
---   ⇒ (Choices aRep row)
---   ⇒ Proxy a
---   → FieldValidation m String (Array String) { product ∷ Record row, checkOpt ∷ a → Boolean }
--- choicesParser _ = do
---   { product, checkOpt } ← choicesParserImpl (Proxy ∷ Proxy aRep)
---   pure { product, checkOpt: checkOpt <<< from }
--- 
+class MultiChoice c (c' ∷ # Type) | c → c' where
+  multiChoiceParserImpl
+    ∷ ∀ m
+    . Monad m
+    ⇒ Proxy c
+    → Field.Validation m String (Array String) { product ∷ (Record c') , checkChoice ∷ c → Boolean }
+
+instance multiChoiceConstructor
+  ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ())
+  ⇒ MultiChoice (Constructor name NoArguments) row where
+
+  multiChoiceParserImpl proxy =
+    parser
+   where
+    parser =
+      let
+        _name = (SProxy ∷ SProxy name)
+        validate = any (reflectSymbol _name == _)
+        product i = insert _name  (validate i) {}
+        checkChoice i _ = validate i
+      in liftV $ \i → pure { product: product i, checkChoice: checkChoice i }
+
+instance multiChoiceSum
+  ∷ (IsSymbol name, MultiChoice tail tailRow, RowCons name Boolean tailRow row, RowLacks name tailRow)
+  ⇒ MultiChoice (Sum (Constructor name NoArguments) tail) row where
+
+  multiChoiceParserImpl proxy =
+    parser <$> Validation.ask <*> multiChoiceParserImpl (Proxy ∷ Proxy tail)
+   where
+    parser i { product, checkChoice } =
+      let
+        _name = (SProxy ∷ SProxy name)
+        r = any (reflectSymbol _name == _) i
+        checkChoice' = case _ of
+          (Inl _) → r
+          (Inr b) → checkChoice b
+      in
+        { product: insert _name r (product ∷ Record tailRow)
+        , checkChoice: checkChoice'
+        }
+
+multiChoiceParser
+  ∷ ∀ a choiceRep row m
+  . (Monad m)
+  ⇒ (Generic a choiceRep)
+  ⇒ (MultiChoice choiceRep row)
+  ⇒ Proxy a
+  → Field.Validation m String (Array String) { product ∷ Record row, checkChoice ∷ a → Boolean }
+multiChoiceParser _ =
+  multiChoiceParserImpl (Proxy ∷ Proxy choiceRep) <#> \{ product, checkChoice } →
+    { product, checkChoice: checkChoice <<< from }
+
