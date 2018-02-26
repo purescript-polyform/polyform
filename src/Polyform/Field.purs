@@ -1,13 +1,15 @@
-module Polyform.Field where
+module Polyform.Field
+  ( InputField
+  , ChoiceField
+  , MultiChoiceField
+  , module Validation
+  ) where
 
 import Data.Either (Either)
 import Data.List (List)
 import Data.Tuple (Tuple)
-import Polyform.Validation as Validation
+import Polyform.Field.Validation as Validation
 
-
--- | Field validation just aggregates errors in list
-type Validation m e a b = Validation.ValidationM m (List e) a b
 
 -- | This module provides some very simple representations of HTML fields.
 -- | Don't look for single sum type or Variant which ties all of them.
@@ -29,7 +31,7 @@ type ChoiceField e opt attrs =
   }
 
 -- | This field can be used to represent for example multiple checkboxes with the same
--- | `name` or `select` with `multiple` - it's final value is record with all elements
+-- | `name` or `select multiple` - it's final value is record with all elements
 -- | being Booleans.
 -- |
 -- | Result type for `MultiChoiceField` field can be statically and generically generated

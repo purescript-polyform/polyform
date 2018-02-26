@@ -1,4 +1,4 @@
-module Polyform.Field.Interpret where
+module Polyform.Field.Validation.Interpret where
 
 import Prelude
 
@@ -9,7 +9,6 @@ import Data.Profunctor.Star (Star(..))
 import Data.Variant (Variant, inj)
 import Polyform.Field.Validation (Validation(..))
 import Run (FProxy, Run)
-import Run (FProxy(..), VariantF, case_, on, Run)
 import Run as Run
 import Type.Prelude (class IsSymbol, SProxy(..))
 
