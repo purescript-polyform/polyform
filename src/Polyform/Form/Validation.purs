@@ -1,10 +1,10 @@
-module Polyform.Validation where
+module Polyform.Form.Validation where
 
 import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
-import Data.Bifunctor (class Bifunctor)
+import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 
@@ -88,33 +88,21 @@ liftV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → V e b) → Validation m e
 liftV f = ask >>> (Validation $ f >>> pure)
 
 
--- | `ValidationT` lifts `Validation` into monad by loosing
--- | accumulative nature of Applicative.
--- | It is really isomorphic to (Star (ExceptT e m) a b) or.
-newtype ValidationT m e a b = ValidationT (Validation m e a b)
-derive instance newtypeVaildationT ∷ Newtype (ValidationT m e a b) _
-derive instance functorValidationT ∷ (Functor m) ⇒ Functor (ValidationT m e a)
-derive newtype instance semigroupoidValidationT ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (ValidationT m e)
-derive newtype instance categoryValidationT ∷ (Monad m, Monoid e) ⇒ Category (ValidationT m e)
+-- | Provides access to validation result
+-- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
+newtype BifunctorValidation m a e b = BifunctorValidation (Validation m e a b)
+derive instance newtypeBifunctorValidation ∷ Newtype (BifunctorValidation m a e b) _
 
-instance applyValidationT ∷ (Monad m) ⇒ Apply (ValidationT m e a) where
-  apply vf va = ValidationT $ Validation $ \i → do
-    vf' ← unwrap (unwrap vf) i
-    va' ← unwrap (unwrap va) i
-    pure $ case vf' of
-      Valid e f → f <$> va'
-      Invalid e → Invalid e
+instance bifunctorBifunctorValidation ∷ (Monad m) ⇒ Bifunctor (BifunctorValidation m a) where
+  bimap l r (BifunctorValidation (Validation f)) = BifunctorValidation $ Validation $ \a → do
+    v ← f a
+    pure $ bimap l r v
 
-instance applicativeValidationT ∷ (Monoid e, Monad m) ⇒ Applicative (ValidationT m e a) where
-  pure = ValidationT <<< pure
+bimapValidation ∷ ∀ a b b' e e' m
+  . (Monad m)
+  ⇒ (e → e')
+  → (b → b')
+  → Validation m e a b
+  → Validation m e' a b'
+bimapValidation l r = unwrap <<< bimap l r <<< BifunctorValidation
 
-instance bindValidationT ∷ (Monoid e, Monad m) ⇒ Bind (ValidationT m e a) where
-  bind (ValidationT (Validation ma)) f = ValidationT $ Validation $ \i → do
-    va ← ma i
-    case va of
-      Invalid e → pure $ Invalid e
-      Valid e a → do
-        let (ValidationT (Validation vb)) = f a
-        vb i
-
-instance monadValidationT ∷ (Monoid e, Monad m) ⇒ Monad (ValidationT m e a)
