@@ -142,7 +142,7 @@ choices _ =
   choicesImpl (Proxy ∷ Proxy (Option opt))
 
 choicesParser
-  ∷ ∀ choiceRep m opt
+  ∷ ∀ m opt
   . Monad m
   ⇒ SingleChoice (Option opt)
   ⇒ Proxy opt
