@@ -36,7 +36,7 @@ instance altComponent ∷ (Semigroup e, Alt m) ⇒ Alt (Component m e a) where
 
 instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Component m e) where
   compose (Component r2) (Component r1) =
-    Component { default: r1.default <> r2.default, validation: compose r2.validation r1.validation }
+    Component { default: r1.default <> r2.default, validation: r2.validation <<< r1.validation }
 
 instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) where
   id = Component { validation: id, default: mempty }
@@ -53,9 +53,9 @@ fromValidation validation = Component { validation, default: mempty }
 --   , default: f r.default
 --   }
 --
--- | Simple helper which basic combines pieces into `Component`:
--- |  - form constructor (could be `Applicative.pure` but it seems a bit to heavy ;-))
--- |  - field value
+-- | Simple helper which combines basic pieces into `Component`:
+-- |  - form constructor (I could use `Applicative.pure` but it seems a bit to heavy constraint ;-))
+-- |  - default field value
 -- |  - validation
 fromField
   ∷ ∀ attrs e form m q v
