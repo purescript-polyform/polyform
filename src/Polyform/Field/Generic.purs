@@ -56,14 +56,14 @@ choices
   → List (Tuple String choice)
 choices _ = map (to <$> _) (choicesImpl (Proxy ∷ Proxy choiceRep))
 
-choicesParser
+choiceParser
   ∷ ∀ a choiceRep m
   . Monad m
   ⇒ Generic a choiceRep
   ⇒ SingleChoice choiceRep
   ⇒ Proxy a
   → Field.Validation m String String a
-choicesParser p =
+choiceParser p =
   liftEither \s → case lookup s (fromFoldable $ choices p) of
     Just o → pure o
     Nothing → Left s

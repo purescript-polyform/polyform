@@ -141,13 +141,13 @@ choices
 choices _ =
   choicesImpl (Proxy ∷ Proxy (Option opt))
 
-choicesParser
+choiceParser
   ∷ ∀ m opt
   . Monad m
   ⇒ SingleChoice (Option opt)
   ⇒ Proxy opt
   → Validation m String String (Option opt)
-choicesParser p =
+choiceParser p =
   liftEither \s → case lookup s (fromFoldable $ choices p) of
     Just o → pure o
     Nothing → Left s
@@ -184,10 +184,10 @@ instance _b_choicesRecurse
         checkChoice' = on _name (v i) checkChoice
       pure $ { product: product', checkChoice: checkChoice' }
 
-multiChoicesParser
+multiChoiceParser
   ∷ ∀ m opt row. (Monad m)
   ⇒ MultiChoice (Option opt) row
   ⇒ Proxy opt
   → Validation m String (Array String) { checkChoice ∷ Option opt → Boolean, product ∷ Record row }
-multiChoicesParser _ = multiChoiceParserImpl (Proxy ∷ Proxy (Option opt))
+multiChoiceParser _ = multiChoiceParserImpl (Proxy ∷ Proxy (Option opt))
 
