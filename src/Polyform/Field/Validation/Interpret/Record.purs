@@ -5,7 +5,7 @@ import Prelude
 import Data.Either (Either(..))
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(VariantRep), unsafeGet)
-import Polyform.Field.Interpret (IntF(..), StringF(..), _int, _string)
+import Polyform.Field.Validation.Interpret (IntF(..), StringF(..), _int, _string)
 import Run (FProxy, Run, VariantF, case_, on)
 import Run as Run
 import Type.Row (class RowToList, Cons, Nil, kind RowList)

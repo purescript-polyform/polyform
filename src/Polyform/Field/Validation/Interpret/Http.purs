@@ -1,4 +1,4 @@
-module Polyform.Field.Interpret.Http where
+module Polyform.Field.Validation.Interpret.Http where
 
 import Prelude
 
@@ -10,7 +10,7 @@ import Data.NonEmpty (NonEmpty)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
-import Polyform.Field.Interpret (IntF(..), StringF(..), _int, _string)
+import Polyform.Field.Validation.Interpret (IntF(..), StringF(..), _int, _string)
 import Polyform.Field.Validation (Validation, liftPure, required, runValidation, scalar)
 import Polyform.Field.Validation.Combinators (int)
 import Run (FProxy, Run, case_, on)
