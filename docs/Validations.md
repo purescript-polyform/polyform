@@ -4,7 +4,7 @@ This library provides two types of validation.
 
 ### Form Validation
 
-  In `Polyform.Form.Validation` you can find `Validation` type which is a function which produces either a result and a monoidal "form" value in case of success. What is important is that eventual validation error is also represented by the same "form" type. In essence our validation result is:
+  In `Polyform.Form.Validation` you can find `Validation` type which is a function which in case of success produces a result and a monoidal "form" value. What is really important is that eventual validation error is also represented by the same "form" type. In essence our validation result is:
 
     data V e a = Invalid e | Valid e a
 

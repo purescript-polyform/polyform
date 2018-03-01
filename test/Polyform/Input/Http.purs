@@ -2,6 +2,7 @@ module Test.Polyform.Input.Http where
 
 import Prelude
 
+import Control.Monad.Aff.Console (log)
 import Control.Monad.Except (runExceptT, throwError)
 import Data.Array (all)
 import Data.Either (Either(..))
@@ -17,6 +18,7 @@ import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
 import Data.Variant (class VariantEqs, Variant, inj)
 import Data.Variant.Internal (class VariantTags)
+import Debug.Trace (traceAnyA)
 import Polyform.Field.Generic (choiceParser, choices, multiChoiceParser)
 import Polyform.Field.Generic.Option (type (:-), Nil)
 import Polyform.Field.Generic.Option as Option
@@ -33,26 +35,21 @@ import Test.Unit.Assert (assert, assertFalse, equal)
 import Type.Prelude (Proxy(Proxy), SProxy(..), reflectSymbol)
 import Type.Row (class RowToList)
 
--- | Polyform provides attributes only related to validation
--- | so we are going to extend them.
+-- | Polyform provides only attributes of fields related to validation
+-- | (all fields are records with at least `name`, `value`).
+-- | but we can easily extend them. Let's assume that we want these
+-- | additional properties:
 type ExtraAttrs =
   ( label ∷ String
   , classes ∷ Array String
   , helpText ∷ Maybe String
   )
 
--- | We are going to build only login form, so we need two types of fields.
--- |
--- | We want also to restrict ourselfs to server side validation
--- | so possible basic field validation errors are limited to this context
--- | by using `Polyform.Field.Validation.Interpret.Http.StringErr`.
--- |
--- | Later we will reuse this form on the frontend and then we
--- | make errors polymorphic and context dependent.
+-- | We are going to build login form, so we need two types of fields.
+-- | They can of course be used in different forms too.
 data Field
   = EmailInput (Http.EmailInput ExtraAttrs ())
   | PasswordInput (Http.PasswordInput ExtraAttrs ())
-
 
 -- | It is time to define our form type and we have chosen... just a `Tuple` :-)
 -- | We are going to use `Array` of `Strings` for form level error representation.
@@ -60,12 +57,20 @@ data Field
 -- | seems sufficient for our simple example.
 type Form = Tuple (Array String) (Array Field)
 
+-- | Thses two are simple helpers which facilitates form usage
 errorForm err =
   Tuple [err] []
 
 fieldForm constructor record =
   Tuple [] [constructor record]
 
+-- | And now it is time to define our fields defaults
+-- | which can be used in forms.
+-- | During validation process ONLY `value` FIELD
+-- | would be updated and changed according to the
+-- | validation result.
+-- | It's type for these "text fields" is
+-- | (Either (Variant errors) String).
 passwordField =
   { classes: []
   , helpText: Nothing
@@ -75,13 +80,6 @@ passwordField =
   , name: "password"
   , value: Right ""
   }
-
-passwordForm =
-  Http.fromField
-    (fieldForm PasswordInput)
-    passwordField
-    (Http.textInputValidation passwordField)
-
 emailField =
   { classes: []
   , helpText: Nothing
@@ -92,24 +90,42 @@ emailField =
   , value: Right ""
   }
 
+-- | By using simple helper (in this case from `Polyform.Input.Http`)
+-- | we are building single field forms.
+-- | This helper takes:
+-- |  * "form constructor" which builds form from field record
+-- |  * field record
+-- |  * field validation
+-- | We are using basic text field validation here, but we are going
+-- | to extend it later.
+passwordForm =
+  Http.fromField
+    (fieldForm PasswordInput)
+    passwordField
+    (Http.textInputValidation passwordField)
 emailForm =
   Http.fromField
     (fieldForm EmailInput)
     emailField
     (Http.textInputValidation emailField)
 
--- | This db lookup can also be performed in monadic context
--- | the only difference would be `liftMV` usage.
+-- | Now we are ready to build our form validation component.
+-- | When using `Applicative`/`Category` instances to combine/process
+-- | we are essentially combining our form values using monoidal
+-- | append, so for example the last step provides a way to
+-- | "inject" form level errors into our structure.
 loginForm =
-  ({email: _, password: _} <$> emailForm <*> passwordForm) >>> liftV \{ email, password } →
-    if email `lookup` db == Just password
-      then
-        pure email
-      else
-        Invalid $ errorForm ("Invalid credentials")
+  ({email: _, password: _} <$> emailForm <*> passwordForm) >>> liftV authenticate
   where
+    -- | This db lookup can also be performed in monadic context
+    -- | the only difference would be `liftMV` usage.
     db = fromFoldable [Tuple "user@example.com" "pass", Tuple "user2@example.com" "pass"]
-
+    authenticate { email, password } =
+      if email `lookup` db == Just password
+        then
+          pure email
+        else
+          Invalid $ errorForm ("Invalid credentials")
 
 value ∷ Field → _
 value (EmailInput r) = r.value
