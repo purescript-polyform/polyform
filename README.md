@@ -29,7 +29,7 @@ An attempt to build simple, composable form validation toolkit.
 and validation is just a function with additional `Applicative` context `m`:
 
   ```purescript
-    data Validtion m e q a = Valiation (q -> m (V e a))
+    data Validation m e q a = Validation (q -> m (V e a))
   ```
   We can think of `q` as an input data/query, `m` as a computational context, `e` could be our "form" and `a` is a result type of successful validation.
 
@@ -37,7 +37,7 @@ and validation is just a function with additional `Applicative` context `m`:
 
 ### Field Validation
 
-  Field validation is build upon `Either` so it short circuit on the first error. It is defined using `Star`, `ExceptT` but it is just a function from input into `Either e a` in monadic context:
+  Field validation is built upon `Either` so it short circuits on the first error. It is defined using `Star`, `ExceptT` but instead is a function from input into `Either e a` in monadic context:
 
   ```purescript
     newtype Validation m e a b = Validation (Star (ExceptT e m) a b)
@@ -45,9 +45,9 @@ and validation is just a function with additional `Applicative` context `m`:
 
 ## Usage
 
-This scenario is just starting point for full length guide which is under developement.
+This scenario is a starting point for full length guide which is under development.
 
-We are going to build login form which will be tested against HTTP input (full code is in `test/Polyform/Input/Http.purs`). We will use helpers from `Polyform.Input.Http` to simplify our work.
+We are going to build a login form which will be tested against HTTP input (full code is in `test/Polyform/Input/Http.purs`). We will use helpers from `Polyform.Input.Http` to simplify our work.
 
   ```purescript
   -- | Polyform provides only attributes of fields related to validation
@@ -72,7 +72,7 @@ We are going to build login form which will be tested against HTTP input (full c
   -- | seems sufficient for our simple example.
   type Form = Tuple (Array String) (Array Field)
 
-  -- | Thses two are simple helpers which facilitates form usage
+  -- | 2 helpers which facilitates form usage
   errorForm err =
     Tuple [err] []
 
@@ -155,7 +155,7 @@ We are getting this debug representation on the console for correct data:
             value: Right { value0: 'pass' } } } ] }
   ```
 
-and this in case of failure for this data `query = fromFoldable [Tuple "password" []]`:
+and in case of failure for this data `query = fromFoldable [Tuple "password" []]`:
 
   ```purescript
   Tuple {
@@ -169,7 +169,7 @@ and this in case of failure for this data `query = fromFoldable [Tuple "password
             value: Left { value0: { type: 'required', value: {} } } } } ] }
   ```
 
-and  for this incorrect credentials:
+and for incorrect credentials:
 
   ```purescript
   query = fromFoldable [Tuple "email" [Just "user@example.com"], Tuple "password" [Just "wrong"]]
