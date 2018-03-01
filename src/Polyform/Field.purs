@@ -1,7 +1,7 @@
 module Polyform.Field
-  ( InputField
-  , ChoiceField
-  , MultiChoiceField
+  ( Input
+  , SingleChoice
+  , MultiChoice
   , module Validation
   ) where
 
@@ -17,14 +17,14 @@ import Polyform.Field.Validation as Validation
 -- | Fields represantation is as minimal as possible, so only
 -- | validation relevant pieces are exposed as attrs.
 
-type InputField e a attrs =
-  { name ∷ String
-  , value ∷ Either e a
+type Input attrs name err value =
+  { name ∷ name
+  , value ∷ Either err value
   | attrs
   }
 
-type ChoiceField e opt attrs =
-  { name ∷ String
+type SingleChoice e opt attrs name =
+  { name ∷ name
   , options ∷ List (Tuple String opt)
   , value ∷ Either e opt
   | attrs
@@ -34,7 +34,7 @@ type ChoiceField e opt attrs =
 -- | `name` or `select multiple` - it's final value is record with all elements
 -- | being Booleans.
 -- |
--- | Result type for `MultiChoiceField` field can be statically and generically generated
+-- | Result type for `MultiChoice` field can be statically and generically generated
 -- | by helpers from `Field.Generic`, so you can use sum type or "Symbol list" which
 -- | (`Variant` stripped down to just a label) is implemented in `Field.Generic.Option` module.
 -- |
@@ -57,8 +57,8 @@ type ChoiceField e opt attrs =
 -- | Of course you can provide your own representation for choices like simple list of `Strings`
 -- | which is generated at runtime etc.
 -- |
-type MultiChoiceField e opt attrs =
-  { name ∷ String
+type MultiChoice e opt attrs name =
+  { name ∷ name
   , choices ∷ List (Tuple String opt)
   , value ∷ Either e (opt → Boolean)
   | attrs

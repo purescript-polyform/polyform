@@ -50,7 +50,8 @@ type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
 handleString
   ∷ forall e m n
   . Monad m
-  ⇒ StringF (Variant n) (Variant (StringErr e)) Query ~> m
+  ⇒ StringF (Variant n) (Variant (StringErr e)) Query
+  ~> m
 handleString (StringF n query k) =
   _handleValue n query k (liftPure catMaybes >>> required >>> scalar)
 
@@ -60,7 +61,8 @@ type IntErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ St
 handleInt
   ∷ forall e n m
   . Monad m
-  ⇒ IntF (Variant n) (Variant (IntErr e)) Query ~> m
+  ⇒ IntF (Variant n) (Variant (IntErr e)) Query
+  ~> m
 handleInt (IntF n query k) =
   _handleValue n query k (liftPure catMaybes >>> required >>> scalar >>> int)
 
@@ -80,6 +82,5 @@ interpret
       ( string ∷ FProxy (StringF (Variant n) (Variant (StringErr es)) Query)
       , int ∷ FProxy (IntF (Variant n') (Variant (IntErr ei)) Query)
       )
-      a
-  → m a
+  ~> m
 interpret = Run.interpret handle

@@ -9,6 +9,7 @@ import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 import Polyform.Field as Field
 import Polyform.Form.Validation (V(..), Validation(..))
+import Polyform.Form.Validation as Form.Validation
 
 newtype Component m form i o =
   Component
@@ -47,12 +48,14 @@ validate = unwrap <<< _.validation <<< unwrap
 fromValidation :: forall a b e m. Monoid e => Validation m e a b -> Component m e a b
 fromValidation validation = Component { validation, default: mempty }
 
--- bimap ∷ ∀ e e' i i' m o o'. (Monad m) ⇒ (e → e') → (o → o') → Component m e i o → Component m e' i o'
--- bimap f g (Component r) = Component
---   { validation: bimapResult f g r.validation
---   , default: f r.default
---   }
---
+liftV
+  ∷ ∀ a b e m
+  . Monoid e
+  ⇒ Monad m
+  ⇒ (a → V e b)
+  → Component m e a b
+liftV = fromValidation <<< Form.Validation.liftV
+
 -- | Simple helper which combines basic pieces into `Component`:
 -- |  - form constructor (I could use `Applicative.pure` but it seems a bit to heavy constraint ;-))
 -- |  - default field value

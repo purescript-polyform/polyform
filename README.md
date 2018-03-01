@@ -11,3 +11,5 @@ Module documentation is [published on Pursuit](http://pursuit.purescript.org/pac
 - Provide multiple `Alt` implementations for `Field.Validation`.
 
 - Add all missing `Html5` fields.
+
+- Test how this design would work with indexed applicative and non monoidal forms.

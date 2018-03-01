@@ -7,6 +7,7 @@ import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, maybe)
 import Data.String (length)
 import Data.Variant (Variant)
+import Polyform.Field (Input)
 import Polyform.Field.Validation (checkPure, tag, Validation)
 import Type.Prelude (SProxy(..))
 
@@ -52,34 +53,36 @@ rangeInputValidation field =
   maxV = tag _max (checkPure (\i → maybe true (i <= _) field.max))
   minV = tag _min (checkPure (\i → maybe true (i >= _) field.min))
 
+type TextInputErr err = (maxlength ∷ String, minlength ∷ String | err)
+
+type TextInputBase (type_ ∷ Symbol) attrs name err value =
+  Input
+    (maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs)
+    name
+    (Variant (TextInputErr err))
+    value
 
 -- | All these input types share same attributes... but email.
 -- | Email has additional "multiple" attribute
 -- | but this will be handled by separate field for handling list of
 -- | emails.
-data TextInputType = SearchInput | TelInput | TextInput | UrlInput | EmailInput | PasswordInput
-derive instance genericTextInputType ∷ Generic TextInputType _
+type EmailInput attrs name err = TextInputBase "email" attrs name err String
+type OptEmailInput attrs name err = TextInputBase "email" attrs name err (Maybe String)
 
-showInputType ∷ TextInputType → String
-showInputType SearchInput = "search"
-showInputType TelInput = "tel"
-showInputType TextInput = "text"
-showInputType UrlInput = "url"
-showInputType EmailInput = "email"
-showInputType PasswordInput = "password"
+type PasswordInput attrs name err = TextInputBase "password" attrs name err String
+type OptPasswordInput attrs name err = TextInputBase "password" attrs name err (Maybe String)
 
-type TextInputErr err = (maxlength ∷ String, minlength ∷ String | err)
+type SearchInput attrs name err = TextInputBase "search" attrs name err String
+type OptSearchInput attrs name err = TextInputBase "search" attrs name err (Maybe String)
 
-type TextInputBase err attrs name value =
-  { name ∷ name
-  , maxlength ∷ Maybe Int
-  , minlength ∷ Maybe Int
-  , value ∷ Either (Variant (TextInputErr err)) value
-  , type ∷ TextInputType
-  | attrs
-  }
-type TextInput err attrs name = TextInputBase err attrs (SProxy name) String
-type OptTextInput err attrs name = TextInputBase err attrs (SProxy name) (Maybe String)
+type TelInput attrs name err = TextInputBase "tel" attrs name err String
+type OptTelInput attrs name err = TextInputBase "tel" attrs name err (Maybe String)
+
+type TextInput attrs name err = TextInputBase "text"  attrs name err String
+type OptTextInput attrs name err = TextInputBase "text" attrs name err (Maybe String)
+
+type UrlInput attrs name err = TextInputBase "url" attrs name err String
+type OptUrlInput attrs name err = TextInputBase "url" attrs name err (Maybe String)
 
 _maxlength = SProxy ∷ SProxy "maxlength"
 _minlength = SProxy ∷ SProxy "minlength"
