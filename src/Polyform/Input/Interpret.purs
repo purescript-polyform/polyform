@@ -7,7 +7,7 @@ import Data.Maybe (Maybe(..))
 import Data.Profunctor (dimap)
 import Data.Profunctor.Choice (right)
 import Polyform.Field as Field
-import Polyform.Field.Validation.Interpret (INT, OptIntF, OptStringF, STRING, int, optInt, optString, string)
+import Polyform.Input.Interpret.Validation (INT, OptIntF, OptStringF, STRING, int, optInt, optString, string)
 import Polyform.Form.Component (Component, fromField)
 import Run (FProxy, Run)
 import Type.Prelude (class IsSymbol, SProxy)
