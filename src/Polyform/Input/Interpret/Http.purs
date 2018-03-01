@@ -10,7 +10,7 @@ import Data.NonEmpty (NonEmpty)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
-import Polyform.Field.Validation.Interpret (IntF(..), StringF(..), _int, _string)
+import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
 import Polyform.Field.Validation (Validation, liftPure, required, runValidation, scalar)
 import Polyform.Field.Validation.Combinators (int)
 import Run (FProxy, Run, case_, on)
@@ -76,7 +76,7 @@ handle =
 --     # on _optInt handleOptInt
 
 interpret
-  ∷ forall a ei es n n' m
+  ∷ forall ei es n n' m
   . Monad m
   ⇒ Run
       ( string ∷ FProxy (StringF (Variant n) (Variant (StringErr es)) Query)
