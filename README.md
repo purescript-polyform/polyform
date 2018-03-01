@@ -177,7 +177,7 @@ and  for this incorrect credentials:
 
 we are getting this:
 
-    ```purescript
+  ```purescript
       Tuple {
         value0: [ 'Invalid credentials' ],
         value1:
@@ -189,8 +189,7 @@ we are getting this:
              value0:
                 ...
                 value: Right { value0: 'wrong' } } } ] }
-    ```
-
+  ```
 
 
 ## API Documentation
