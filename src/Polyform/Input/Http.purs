@@ -1,4 +1,4 @@
-module Polyform.Http where
+module Polyform.Input.Http where
 
 import Prelude
 
