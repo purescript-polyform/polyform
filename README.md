@@ -22,12 +22,15 @@ An attempt to build simple, composable form validation toolkit.
 
   In `Polyform.Form.Validation` you can find `Validation` type which is a function which in case of success produces a result and a monoidal "form" value. What is really important in case of validation error it also produces "form" value as a failure representation (this allows us to for example always render a form). In essence our validation result is this type:
 
+  ```purescript
     data V e a = Invalid e | Valid e a
+  ```
 
 and validation is just a function with additional `Applicative` context `m`:
 
+  ```purescript
     data Validtion m e q a = Valiation (q -> m (V e a))
-
+  ```
   We can think of `q` as an input data/query, `m` as a computational context, `e` could be our "form" and `a` is a result type of successful validation.
 
   Having this structure of validation we can combine (using `Applicative` or `Category` instances) multiple validation functions to produce larger and larger forms even when some of these functions fail. All combined validation functions operate on the same input data in similar way as `Applicative` instance is implemented for `Function` type.
@@ -36,9 +39,9 @@ and validation is just a function with additional `Applicative` context `m`:
 
   Field validation is build upon `Either` so it short circuit on the first error. It is defined using `Star`, `ExceptT` but it is just a function from input into `Either e a` in monadic context:
 
-    ```purescript
+  ```purescript
     newtype Validation m e a b = Validation (Star (ExceptT e m) a b)
-    ```
+  ```
 
 ## Usage
 
