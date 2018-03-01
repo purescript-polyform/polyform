@@ -35,8 +35,8 @@ instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
 instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
   alt (Invalid e1) (Invalid e2) = Invalid (e1 <> e2)
   alt (Valid e1 r) (Valid e2 _) = Valid (e1 <> e2) r
-  alt (Invalid e1) (Valid e2 r) = Valid (e1 <> e2) r
-  alt (Valid e1 r) (Invalid e2) = Valid (e1 <> e2) r
+  alt (Invalid e1) v = v
+  alt (Valid e1 r) _ = Valid e1 r
 
 instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
   append = lift2 append
