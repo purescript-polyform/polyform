@@ -2,7 +2,7 @@ module Polyform.Form.Validation where
 
 import Prelude
 
-import Control.Alt (class Alt, (<|>))
+-- import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Monoid (class Monoid, mempty)
@@ -32,11 +32,10 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
 
-instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
-  alt (Invalid e1) (Invalid e2) = Invalid (e1 <> e2)
-  alt (Valid e1 r) (Valid e2 _) = Valid (e1 <> e2) r
-  alt (Invalid e1) v = v
-  alt (Valid e1 r) _ = Valid e1 r
+-- XXX: I need to rethink if I should provide single Alt instance
+-- instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
+--   alt (Invalid e1) v = v
+--   alt (Valid e1 r) _ = Valid e1 r
 
 instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
   append = lift2 append
@@ -61,8 +60,8 @@ instance applyValidation ∷ (Semigroup e, Monad m) ⇒ Apply (Validation m e a)
 instance applicativeValidation ∷ (Monoid e, Monad m) ⇒ Applicative (Validation m e a) where
   pure = Validation <<< const <<< pure <<< pure
 
-instance altValidation ∷ (Alt m) ⇒ Alt (Validation m e a) where
-  alt (Validation v1) (Validation v2) = Validation (\a → v1 a <|> v2 a)
+-- instance altValidation ∷ (Alt m) ⇒ Alt (Validation m e a) where
+--   alt (Validation v1) (Validation v2) = Validation (\a → v1 a <|> v2 a)
 
 instance semigroupValidation ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validation m e a b) where
   append (Validation v1) (Validation v2) = Validation (\a → v1 a <> v2 a)

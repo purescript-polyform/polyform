@@ -2,7 +2,7 @@ module Polyform.Form.Component where
 
 import Prelude
 
-import Control.Alt (class Alt, (<|>))
+-- import Control.Alt (class Alt, (<|>))
 import Control.Monad.Except (runExceptT)
 import Data.Either (Either(..))
 import Data.Monoid (class Monoid, mempty)
@@ -29,11 +29,11 @@ instance applyComponent ∷ (Semigroup e, Monad m) ⇒ Apply (Component m e a) w
 instance applicativeComponent ∷ (Monoid e, Monad m) ⇒ Applicative (Component m e a) where
   pure a = Component { validation: pure a, default: mempty }
 
-instance altComponent ∷ (Semigroup e, Alt m) ⇒ Alt (Component m e a) where
-  alt (Component r1) (Component r2) = Component
-    { validation: r1.validation <|> r2.validation
-    , default: r1.default <> r2.default
-    }
+-- instance altComponent ∷ (Semigroup e, Alt m) ⇒ Alt (Component m e a) where
+--   alt (Component r1) (Component r2) = Component
+--     { validation: r1.validation <|> r2.validation
+--     , default: r1.default <> r2.default
+--     }
 
 instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Component m e) where
   compose (Component r2) (Component r1) =
