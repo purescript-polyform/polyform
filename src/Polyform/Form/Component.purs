@@ -42,8 +42,8 @@ instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Comp
 instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) where
   id = Component { validation: id, default: mempty }
 
-validate ∷ ∀ form i o m. Component m form i o → (i → m (V form o))
-validate = unwrap <<< _.validation <<< unwrap
+runValidation ∷ ∀ form i o m. Component m form i o → (i → m (V form o))
+runValidation = unwrap <<< _.validation <<< unwrap
 
 fromValidation :: forall a b e m. Monoid e => Validation m e a b -> Component m e a b
 fromValidation validation = Component { validation, default: mempty }

@@ -1,7 +1,8 @@
 module Test.Main where
 
 import Prelude
-import Test.Polyform.Field.Generic as Test.Polyform.Field.Generic
+import Test.Polyform.Field.Generic as Generic
+import Test.Polyform.Input.Http as Http
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Timer (TIMER)
@@ -15,4 +16,5 @@ main :: forall eff. Eff ( timer :: TIMER
                         , console :: CONSOLE
                         , testOutput :: TESTOUTPUT | eff ) Unit
 main = runTest $ do
-  suite "Polyform.Field.Generic" Test.Polyform.Field.Generic.suite
+  suite "Polyform.Field.Generic" Generic.suite
+  suite "Polyform.Input.Http" Http.suite

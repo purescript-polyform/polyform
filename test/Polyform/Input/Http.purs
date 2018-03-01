@@ -117,12 +117,22 @@ value (PasswordInput r) = r.value
 
 suite = do
   Test.Unit.suite "Validation" do
-    test "of required fields" $ do
-      v ← runValidation loginForm mempty
-      assertFalse "fails on empty query" (isValid v)
-      case v of
-        Valid _ _ → failure "should fail on empty input"
-        Invalid (Tuple err fields) → do
-          assert
-            "should fail with \"required\""
-            (all (_ == Left (inj (SProxy ∷ SProxy "required") unit)) <<< map value $ fields)
+    Test.Unit.suite "of required fields" $ do
+      test "fails on empty query" $ do
+        v ← runValidation loginForm mempty
+        case v of
+          Valid _ _ → failure "valid!"
+          Invalid (Tuple err fields) → do
+            assert
+              "with type \"required\""
+              (all (_ == Left (inj (SProxy ∷ SProxy "required") unit)) <<< map value $ fields)
+    Test.Unit.suite "on the form level" $ do
+      test "succeeds when form condition is fulfilled" $ do
+        let query = fromFoldable [Tuple "email" [Just "user@example.com"], Tuple "password" [Just "pass"]]
+        v ← runValidation loginForm query
+        assert "login successful" (isValid v)
+      test "fails otherwise" $ do
+        let query = fromFoldable [Tuple "email" [Just "user@example.com"], Tuple "password" [Just "wrong"]]
+        v ← runValidation loginForm query
+        assertFalse "login fails" (isValid v)
+

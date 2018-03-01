@@ -44,6 +44,10 @@ instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
 instance monoidV :: (Monoid e, Monoid a) => Monoid (V e a) where
   mempty = pure mempty
 
+isValid ∷ ∀ a e. V e a → Boolean
+isValid (Valid _ _) = true
+isValid _ = false
+
 newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _
 derive instance functorValidation ∷ (Functor m) ⇒ Functor (Validation m e a)

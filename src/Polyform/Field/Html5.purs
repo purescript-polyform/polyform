@@ -9,7 +9,7 @@ import Data.String (length)
 import Data.Variant (Variant)
 import Polyform.Field (Input)
 import Polyform.Field.Validation (checkPure, tag, Validation)
-import Type.Prelude (SProxy(..))
+import Type.Prelude (class IsSymbol, SProxy(..), reflectSymbol)
 
 -- | RangeInput can be used to represent
 -- | `type="range"` and `type="number"`
@@ -66,6 +66,8 @@ type TextInputBase (type_ ∷ Symbol) attrs name err value =
 -- | Email has additional "multiple" attribute
 -- | but this will be handled by separate field for handling list of
 -- | emails.
+
+-- | XXX: Provide email validation
 type EmailInput attrs name err = TextInputBase "email" attrs name err String
 type OptEmailInput attrs name err = TextInputBase "email" attrs name err (Maybe String)
 
@@ -81,8 +83,16 @@ type OptTelInput attrs name err = TextInputBase "tel" attrs name err (Maybe Stri
 type TextInput attrs name err = TextInputBase "text"  attrs name err String
 type OptTextInput attrs name err = TextInputBase "text" attrs name err (Maybe String)
 
+-- | XXX: Provide url validation
 type UrlInput attrs name err = TextInputBase "url" attrs name err String
 type OptUrlInput attrs name err = TextInputBase "url" attrs name err (Maybe String)
+
+textInputType
+  ∷ ∀ attrs err name type_ value
+  . IsSymbol type_
+  ⇒ TextInputBase type_ attrs name err value
+  → String
+textInputType _ = reflectSymbol (SProxy ∷ SProxy type_)
 
 _maxlength = SProxy ∷ SProxy "maxlength"
 _minlength = SProxy ∷ SProxy "minlength"
