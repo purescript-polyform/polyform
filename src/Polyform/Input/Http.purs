@@ -11,7 +11,7 @@ import Data.Variant (Variant)
 import Polyform.Field as Field
 import Polyform.Field.Html5 as Html5
 import Polyform.Field.Validation (liftPure, required, scalar)
-import Polyform.Field.Validation.Interpret.Http (StringErr)
+import Polyform.Input.Interpret.Http (StringErr)
 import Polyform.Form.Component as Form.Component
 
 -- | This representation should cover all
