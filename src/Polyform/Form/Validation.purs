@@ -90,6 +90,8 @@ ask = Validation (\a → pure (Valid mempty a))
 liftV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → V e b) → Validation m e a b
 liftV f = ask >>> (Validation $ f >>> pure)
 
+liftMV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → m (V e b)) → Validation m e a b
+liftMV f = ask >>> (Validation f)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.

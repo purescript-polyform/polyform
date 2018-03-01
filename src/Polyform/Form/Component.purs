@@ -56,6 +56,14 @@ liftV
   → Component m e a b
 liftV = fromValidation <<< Form.Validation.liftV
 
+liftMV
+  ∷ ∀ a b e m
+  . Monoid e
+  ⇒ Monad m
+  ⇒ (a → m (V e b))
+  → Component m e a b
+liftMV = fromValidation <<< Form.Validation.liftMV
+
 -- | Simple helper which combines basic pieces into `Component`:
 -- |  - form constructor (I could use `Applicative.pure` but it seems a bit to heavy constraint ;-))
 -- |  - default field value
