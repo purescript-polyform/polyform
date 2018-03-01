@@ -1,4 +1,4 @@
-module Polyform.Field.Validation.Interpret where
+module Polyform.Input.Interpret.Validation where
 
 import Prelude
 

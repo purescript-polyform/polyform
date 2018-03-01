@@ -14,9 +14,10 @@ import Polyform.Field.Validation (liftPure, required, scalar)
 import Polyform.Field.Validation.Interpret.Http (StringErr)
 import Polyform.Form.Component as Form.Component
 
--- | This representation should cover
+-- | This representation should cover all
 -- | possible http query values:
--- | `?field`, `?field=`, `?field=value`,
+-- | `?field`, `?field=`,
+-- | `?field=value`,
 -- | `?field=value1&field=value2`
 type Value = Array (Maybe String)
 type Query = StrMap Value

@@ -1,4 +1,4 @@
-module Polyform.Form.Component.Interpret where
+module Polyform.Input.Interpret where
 
 import Prelude
 
