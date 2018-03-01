@@ -1,5 +1,4 @@
 {
-  "name": "purescript-polyform",
   "ignore": [
     "**/.*",
     "node_modules",
