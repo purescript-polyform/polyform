@@ -114,15 +114,16 @@ emailForm =
     (Http.textInputValidation emailField)
 
 -- | Now we are ready to build our form validation component.
--- | When using `Applicative`/`Category` instances to combine/process
--- | we are essentially combining our form values using monoidal
--- | append, so for example the last step provides a way to
--- | "inject" form level errors into our structure.
-
+-- | When using `Applicative`/`Category` instances to validate
+-- | inputs we are essentially combining our form values using monoidal
+-- | append. For example the last step provides a way to
+-- | "inject" form level errors into our structure, but also
+-- | allows us to change result type:
+-- | `{ password1, password2, email } → { password, email }`
 signupForm
   ∷ ∀ m
   . Monad m
-  ⇒ Component m Form Http.Query { password :: String, email :: String }
+  ⇒ Component m Form Http.Query { password ∷ String, email ∷ String }
 signupForm
   = ({email: _, password1: _, password2: _}
   <$> emailForm
