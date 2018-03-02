@@ -20,24 +20,24 @@ An attempt to build simple, composable form validation toolkit.
 
 ### Form Validation
 
-  In `Polyform.Form.Validation` you can find `Validation` type which is a function which in case of success produces a result and a monoidal "form" value. What is really important in case of validation error it also produces "form" value as a failure representation (this allows us to for example always render a form). In essence our validation result is this type:
+  In `Polyform.Form.Validation` you can find `Validation` type - a function which in case of success produces final result and a monoidal "form" value. In case of validation error it also produces "form" value as a failure representation (this allows us for example to always render our form). Our validation result has type:
 
   ```purescript
     data V e a = Invalid e | Valid e a
   ```
 
-and validation is just a function with additional `Applicative` context `m`:
+and `Validation` is just a function with additional `Applicative` context `m`:
 
   ```purescript
     data Validation m e q a = Validation (q -> m (V e a))
   ```
   We can think of `q` as an input data/query, `m` as a computational context, `e` could be our "form" and `a` is a result type of successful validation.
 
-  Having this structure of validation we can combine (using `Applicative` or `Category` instances) multiple validation functions to produce larger and larger forms even when some of these functions fail. All combined validation functions operate on the same input data in similar way as `Applicative` instance is implemented for `Function` type.
+  Having this structure of validation we can combine (using `Applicative` or `Category` instances) multiple validation functions to produce larger and larger forms even when some of these functions fail. All combined (using `Applicative`) validation functions operate on the same input data in similar way as `Applicative` instance is implemented for `Function` type.
 
 ### Field Validation
 
-  Field validation is built upon `Either` so it short circuits on the first error. It is defined using `Star`, `ExceptT` but instead is a function from input into `Either e a` in monadic context:
+  Field validation is built upon `Either` so it short circuits on the first error. Altough it can look scarry (it is defined using `Star` and `ExceptT`) there is nothing special about it. This is just a function from input into `Either e a` in monadic context:
 
   ```purescript
     newtype Validation m e a b = Validation (Star (ExceptT e m) a b)

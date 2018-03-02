@@ -25,7 +25,7 @@ type Input attrs name err value =
 
 type SingleChoice e opt attrs name =
   { name ∷ name
-  , options ∷ List (Tuple String opt)
+  , choices ∷ List (Tuple String opt)
   , value ∷ Either e opt
   | attrs
   }
@@ -46,7 +46,8 @@ type SingleChoice e opt attrs name =
 -- |
 -- |  type Choices = "C1" :- "C2" :- Nil
 -- |
--- | You can expect something like this as a result of validation:
+-- | You can expect something like this as a result of validation
+-- | (derived from `Field.Generic.multiChoiceParser`):
 -- |
 -- |   { C1 ∷ Boolean
 -- |   , C2 ∷ Boolean
@@ -54,8 +55,7 @@ type SingleChoice e opt attrs name =
 -- |   }
 -- |
 -- |
--- | Of course you can provide your own representation for choices like simple list of `Strings`
--- | which is generated at runtime etc.
+-- | Of course you can provide your own representation for choices like list of `Strings` etc.
 -- |
 type MultiChoice e opt attrs name =
   { name ∷ name
