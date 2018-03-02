@@ -12,7 +12,7 @@ An attempt to build simple, composable form validation toolkit.
 
   * Validation should produce well typed result value __and form__ structure or form filled with errors, so you can always render it.
 
-  * Exact structure of form and fields are up to the user. The only constraint is that form should be a `Monoid`.
+  * Exact structure of form and fields are up to the user. The main constraint is that form should be a `Monoid` (it may sound limiting at first but there are also monoids like... `Join (->) a` ;-)).
 
   * Provide only minimal representation of form fields with attributes which are relevant to validation.
 
