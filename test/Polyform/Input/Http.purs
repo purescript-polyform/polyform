@@ -24,11 +24,11 @@ import Polyform.Field.Generic.Option (type (:-), Nil)
 import Polyform.Field.Generic.Option as Option
 import Polyform.Field.Html5 (textInputValidation)
 import Polyform.Field.Html5 as Html5
-import Polyform.Input.Interpret.Http (StringErr)
-import Polyform.Form.Component (liftV, liftMV, runValidation)
-import Polyform.Input.Interpret (stringForm)
+import Polyform.Form.Component (Component(..), liftMV, liftV, runValidation)
 import Polyform.Form.Validation (V(..), isValid)
 import Polyform.Input.Http as Http
+import Polyform.Input.Interpret (stringForm)
+import Polyform.Input.Interpret.Http (StringErr)
 import Test.Unit (failure, test)
 import Test.Unit as Test.Unit
 import Test.Unit.Assert (assert, assertFalse, equal)
@@ -118,6 +118,11 @@ emailForm =
 -- | we are essentially combining our form values using monoidal
 -- | append, so for example the last step provides a way to
 -- | "inject" form level errors into our structure.
+
+signupForm
+  ∷ ∀ m
+  . Monad m
+  ⇒ Component m Form Http.Query { password :: String, email :: String }
 signupForm
   = ({email: _, password1: _, password2: _}
   <$> emailForm
@@ -127,17 +132,16 @@ signupForm
  where
   checkPasswords r@{email, password1, password2 } =
     if password1 == password2
-      then pure email
+      then pure { password: password1, email }
       else Invalid (errorForm "Passwords don't match")
 
-  checkEmail ∷ ∀ m. Monad m ⇒ _ → m _
   checkEmail r@{ email } = do
     -- | Do some effectful stuff like ajax, db query etc.
     pure $ if email `elem` ["user1@example.com", "user2@example.com"]
       then
         Invalid (errorForm "Email already in use")
       else
-        pure email
+        pure r
 
 -- | ... and here is another form component.
 loginForm =
