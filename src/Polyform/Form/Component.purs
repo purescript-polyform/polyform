@@ -75,12 +75,24 @@ fromField
   → Record (value ∷ Either e v | attrs)
   → Field.Validation m e q v
   → Component m form q v
-fromField singleton field validation = Component $
+fromField = fromFieldCoerce id
+
+-- | Longer version of previous one which
+-- | allows coersion of field level value
+-- | into form level value.
+fromFieldCoerce
+  ∷ ∀ attrs e form m q v v'
+  . Monad m
+  ⇒ (v → v')
+  → (Record (value ∷ Either e v | attrs) → form)
+  → Record (value ∷ Either e v | attrs)
+  → Field.Validation m e q v
+  → Component m form q v'
+fromFieldCoerce coerce singleton field validation = Component $
   { validation: Validation $ \query → do
       r ← runExceptT (Field.runValidation validation query)
       pure $ case r of
         Left e → Invalid (singleton $ field { value = Left e })
-        Right v → Valid (singleton $ field { value = Right v }) v
+        Right v → Valid (singleton $ field { value = Right v }) (coerce v)
   , default: singleton field
   }
-

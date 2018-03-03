@@ -5,13 +5,13 @@ import Prelude
 import Data.Array (catMaybes)
 import Data.Either (Either)
 import Data.Maybe (Maybe, fromMaybe)
+import Data.NonEmpty (NonEmpty)
 import Data.Profunctor (lmap)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Polyform.Field as Field
 import Polyform.Field.Html5 as Html5
 import Polyform.Field.Validation (liftPure, required, scalar)
-import Polyform.Input.Interpret.Http (StringErr)
 import Polyform.Form.Component as Form.Component
 
 -- | This representation should cover all
@@ -21,6 +21,8 @@ import Polyform.Form.Component as Form.Component
 -- | `?field=value1&field=value2`
 type Value = Array (Maybe String)
 type Query = StrMap Value
+
+type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
 
 type TextInputErr err = Html5.TextInputErr (StringErr err)
 
@@ -50,6 +52,19 @@ textInputValidation
 textInputValidation r =
   liftPure catMaybes >>> required >>> scalar >>> Html5.textInputValidation r
 
+fromFieldCoerce
+  ∷ ∀ attrs e form m v v'
+  . Monad m
+  ⇒ (v → v')
+  → ({ value ∷ Either e v, name ∷ String | attrs } -> form)
+  → { value ∷ Either e v , name ∷ String | attrs }
+  → Field.Validation m e Value v
+  → Form.Component.Component m form Query v'
+fromFieldCoerce coerce singleton field validation =
+  Form.Component.fromFieldCoerce coerce singleton field (lmap fieldQuery validation)
+ where
+  fieldQuery query = fromMaybe [] (lookup field.name query)
+
 fromField
   ∷ ∀ attrs e form m v
   . Monad m
@@ -57,8 +72,5 @@ fromField
   → { value ∷ Either e v , name ∷ String | attrs }
   → Field.Validation m e Value v
   → Form.Component.Component m form Query v
-fromField singleton field validation =
-  Form.Component.fromField singleton field (lmap fieldQuery validation)
- where
-  fieldQuery query = fromMaybe [] (lookup field.name query)
+fromField = fromFieldCoerce id
 

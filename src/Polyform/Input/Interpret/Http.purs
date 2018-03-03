@@ -11,6 +11,7 @@ import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
 import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
+import Polyform.Input.Http (StringErr)
 import Polyform.Field.Validation (Validation, liftPure, required, runValidation, scalar)
 import Polyform.Field.Validation.Combinators (int)
 import Run (FProxy, Run, case_, on)
@@ -44,8 +45,6 @@ _handleValue n query k validation =
  where
   fieldQuery = fromMaybe [] (lookup (variantTag n) query)
 
-
-type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
 
 handleString
   ∷ forall e m n
