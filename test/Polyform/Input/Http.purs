@@ -271,6 +271,21 @@ checkedEmailInputValidationHttp
   = Field.liftPure catMaybes
   >>> Field.required
   >>> Field.scalar
+  -- | This composition chain stops
+  -- | on the first encountered error.
+  -- | If preceding validations fail
+  -- | we won't run the last one.
+  -- |
+  -- | As a side note we could consider
+  -- | also aggregating scenario
+  -- | like in `Alt` instance for `Except`.
+  -- | Currently there is no `Alt` instance
+  -- | for `Field.Validation` BUT I want to provide
+  -- | at least two instances `AltAcc` (which
+  -- | accumulates errors and would return `Left`
+  -- | when there is at least one error)  and
+  -- | `AltRight` (standard approach - return first `Right`
+  -- | if encountered).
   >>> checkedEmailInputValidation
 
 -- | Now we are fully armed - we have:
