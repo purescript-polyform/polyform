@@ -11,7 +11,7 @@ import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Polyform.Field as Field
 import Polyform.Field.Html5 as Html5
-import Polyform.Field.Validation (liftPure, required, scalar)
+import Polyform.Field.Validation (hoistPure, required, scalar)
 import Polyform.Form.Component as Form.Component
 
 -- | This representation should cover all
@@ -50,7 +50,7 @@ textInputValidation
   ⇒ { maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs }
   → Field.Validation m (Variant (TextInputErr err)) Value String
 textInputValidation r =
-  liftPure catMaybes >>> required >>> scalar >>> Html5.textInputValidation r
+  hoistPure catMaybes >>> required >>> scalar >>> Html5.textInputValidation r
 
 fromFieldCoerce
   ∷ ∀ attrs e form m v v'

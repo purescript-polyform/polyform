@@ -32,7 +32,7 @@ fromFieldCoerce
 fromFieldCoerce coerce singleton field validation =
   Form.Component.fromFieldCoerce coerce singleton field (index >>> validation)
  where
-  index = Field.liftEither $ \v →
+  index = Field.hoistEither $ \v →
     Bifunctor.lmap (inj (SProxy ∷ SProxy "indexErrors")) (runExcept (v ! field.name))
 
 fromField

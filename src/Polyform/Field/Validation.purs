@@ -75,32 +75,32 @@ withException
   → Validation m e' a b
 withException f = mapEither (Bifunctor.lmap f)
 
-liftPure
+hoistPure
   ∷ ∀ a b e m
   . Monad m
   ⇒ (a → b)
   → Validation m e a b
-liftPure f = do
+hoistPure f = do
   a ← ask
   pure $ f a
 
-liftEither
+hoistEither
   ∷ ∀ a e b m
   . Monad m
   ⇒ (a → Either e b)
   → Validation m e a b
-liftEither f = do
+hoistEither f = do
   i ← ask
   case f i of
     Left e → throwError e
     Right r → pure r
 
-liftMEither
+hoistMEither
   ∷ ∀ a e b m
   . Monad m
   ⇒ (a → m (Either e b))
   → Validation m e a b
-liftMEither f = Validation $ Star $ \a → ExceptT $ f a
+hoistMEither f = Validation $ Star $ \a → ExceptT $ f a
 
 tag :: forall a b e m p r r'
   . RowCons p e r r'
@@ -118,7 +118,7 @@ checkPure
   . Monad m
   ⇒ (a → Boolean)
   → Validation m a a a
-checkPure f = liftEither $ \i →
+checkPure f = hoistEither $ \i →
   if f i
     then Right i
     else Left i
@@ -128,7 +128,7 @@ checkM
   . Monad m
   ⇒ (a → m Boolean)
   → Validation m a a a
-checkM f = liftMEither $ \a → do
+checkM f = hoistMEither $ \a → do
     r ← f a
     pure $ if r
       then Left a
@@ -141,7 +141,7 @@ required
   . Monad m
   ⇒ Validation
       m (Variant (required ∷ Unit | e)) (Array a) (NonEmpty Array a)
-required = tag _required $ liftEither $ case _ of
+required = tag _required $ hoistEither $ case _ of
   [] → Left unit
   arr → case uncons arr of
     Nothing → Left unit
@@ -161,6 +161,6 @@ opt v =
 _scalar = (SProxy ∷ SProxy "scalar")
 
 scalar ∷ ∀ a e m. (Monad m) ⇒ Validation m (Variant (scalar ∷ NonEmpty Array a | e)) (NonEmpty Array a) a
-scalar = tag _scalar $ liftEither $ case _ of
+scalar = tag _scalar $ hoistEither $ case _ of
   NonEmpty a [] → Right a
   arr → Left arr

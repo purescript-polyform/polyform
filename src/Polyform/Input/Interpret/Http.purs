@@ -12,7 +12,7 @@ import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
 import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
 import Polyform.Input.Http (StringErr)
-import Polyform.Field.Validation (Validation, liftPure, required, runValidation, scalar)
+import Polyform.Field.Validation (Validation, hoistPure, required, runValidation, scalar)
 import Polyform.Field.Validation.Combinators (int)
 import Run (FProxy, Run, case_, on)
 import Run as Run
@@ -52,7 +52,7 @@ handleString
   ⇒ StringF (Variant n) (Variant (StringErr e)) Query
   ~> m
 handleString (StringF n query k) =
-  _handleValue n query k (liftPure catMaybes >>> required >>> scalar)
+  _handleValue n query k (hoistPure catMaybes >>> required >>> scalar)
 
 
 type IntErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ String | e)
@@ -63,7 +63,7 @@ handleInt
   ⇒ IntF (Variant n) (Variant (IntErr e)) Query
   ~> m
 handleInt (IntF n query k) =
-  _handleValue n query k (liftPure catMaybes >>> required >>> scalar >>> int)
+  _handleValue n query k (hoistPure catMaybes >>> required >>> scalar >>> int)
 
 onField = on _int handleInt >>> on _string handleString
 
