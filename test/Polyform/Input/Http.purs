@@ -32,7 +32,7 @@ import Polyform.Field.Generic.Option (type (:-), Nil)
 import Polyform.Field.Generic.Option as Option
 import Polyform.Field.Html5 (textInputValidation)
 import Polyform.Field.Html5 as Html5
-import Polyform.Form.Component (Component(..), hoistMV, hoistV, runValidation)
+import Polyform.Form.Component (Component(..), hoistFnMV, hoistFnV, runValidation)
 import Polyform.Form.Validation (V(..), isValid)
 import Polyform.Input.Http as Http
 import Polyform.Input.Interpret (stringForm)
@@ -141,7 +141,7 @@ signupForm
   <$> emailForm
   <*> (passwordForm (_{ name = "password1" }))
   <*> (passwordForm (_{ name = "password2" })))
-  >>> (hoistMV checkEmail *> hoistV checkPasswords)
+  >>> (hoistFnMV checkEmail *> hoistFnV checkPasswords)
  where
   checkPasswords r@{email, password1, password2 } =
     if password1 == password2
@@ -158,10 +158,10 @@ signupForm
 
 -- | ... and here is another form component.
 loginForm =
-  ({email: _, password: _} <$> emailForm <*> (passwordForm id)) >>> hoistV authenticate
+  ({email: _, password: _} <$> emailForm <*> (passwordForm id)) >>> hoistFnV authenticate
  where
   -- | This db lookup can also be performed in monadic context
-  -- | the only difference would be `hoistMV` usage.
+  -- | the only difference would be `hoistFnMV` usage.
   db = fromFoldable [Tuple "user1@example.com" "pass", Tuple "user2@example.com" "pass"]
   authenticate { email, password } =
     if email `lookup` db == Just password
@@ -184,7 +184,7 @@ signupForm'
   <$> emailForm
   <*> (passwordForm (_{ name = "password1" }))
   <*> (passwordForm (_{ name = "password2" })))
-  >>> (hoistMV checkEmail' *> hoistV checkPasswords)
+  >>> (hoistFnMV checkEmail' *> hoistFnV checkPasswords)
  where
   checkPasswords r@{email, password1, password2 } =
     if password1 == password2
@@ -246,7 +246,7 @@ checkedEmailInputValidation
     CheckedEmailErr
     String
     (Tuple Boolean String)
-checkedEmailInputValidation = Field.hoistMEither $ \addr → do
+checkedEmailInputValidation = Field.hoistFnMEither $ \addr → do
   isUsed ← email addr
   pure $ case isUsed of
     Unknown → pure (Tuple false addr)
@@ -268,7 +268,7 @@ checkedEmailInputValidationHttp
      Http.Value
      (Tuple Boolean String)
 checkedEmailInputValidationHttp
-  = Field.hoistPure catMaybes
+  = Field.hoistFn catMaybes
   >>> Field.required
   >>> Field.scalar
   -- | This composition chain stops
@@ -329,7 +329,7 @@ signupForm''
   <$> checkedEmailForm { name: "email", value: Right (Tuple false "") }
   <*> (passwordForm (_{ name = "password1" }))
   <*> (passwordForm (_{ name = "password2" })))
-  >>> (hoistMV checkEmail' *> hoistV checkPasswords)
+  >>> (hoistFnMV checkEmail' *> hoistFnV checkPasswords)
  where
   checkPasswords r@{email, password1, password2 } =
     if password1 == password2

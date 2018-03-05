@@ -104,10 +104,10 @@ We are going to build a login form which will be tested against HTTP input (full
   -- | append. For example the last `authenticate` step
   -- | "injects" form level errors into our structure.
   loginForm =
-    ({email: _, password: _} <$> emailForm <*> passwordForm) >>> hoistV authenticate
+    ({email: _, password: _} <$> emailForm <*> passwordForm) >>> hoistFnV authenticate
     where
       -- | This db lookup can also be performed in monadic context
-      -- | the only difference would be `hoistMV` usage.
+      -- | the only difference would be `hoistFnMV` usage.
       db = fromFoldable [Tuple "user@example.com" "pass", Tuple "user2@example.com" "pass"]
       authenticate { email, password } =
         if email `lookup` db == Just password

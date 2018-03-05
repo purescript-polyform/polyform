@@ -2,9 +2,9 @@ module Polyform.Form.Validation where
 
 import Prelude
 
--- import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
 import Data.Bifunctor (class Bifunctor, bimap)
+import Data.Either (Either(..))
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 
@@ -32,11 +32,6 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
 
--- XXX: I need to rethink if I should provide single Alt instance
--- instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
---   alt (Invalid e1) v = v
---   alt (Valid e1 r) _ = Valid e1 r
-
 instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
   append = lift2 append
 
@@ -46,6 +41,10 @@ instance monoidV :: (Monoid e, Monoid a) => Monoid (V e a) where
 isValid ∷ ∀ a e. V e a → Boolean
 isValid (Valid _ _) = true
 isValid _ = false
+
+fromEither ∷ ∀ a e. Either e a → V (Either e a) a
+fromEither (Left e) = Invalid (Left e)
+fromEither (Right a) = Valid (Right a) a
 
 newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _
@@ -59,9 +58,6 @@ instance applyValidation ∷ (Semigroup e, Monad m) ⇒ Apply (Validation m e a)
 
 instance applicativeValidation ∷ (Monoid e, Monad m) ⇒ Applicative (Validation m e a) where
   pure = Validation <<< const <<< pure <<< pure
-
--- instance altValidation ∷ (Alt m) ⇒ Alt (Validation m e a) where
---   alt (Validation v1) (Validation v2) = Validation (\a → v1 a <|> v2 a)
 
 instance semigroupValidation ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validation m e a b) where
   append (Validation v1) (Validation v2) = Validation (\a → v1 a <> v2 a)
@@ -87,11 +83,11 @@ instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e
 ask ∷ ∀ a e m. Monad m ⇒ Monoid e ⇒ Validation m e a a
 ask = Validation (\a → pure (Valid mempty a))
 
-hoistV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → V e b) → Validation m e a b
-hoistV f = ask >>> (Validation $ f >>> pure)
+hoistFnV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → V e b) → Validation m e a b
+hoistFnV f = ask >>> (Validation $ f >>> pure)
 
-hoistMV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → m (V e b)) → Validation m e a b
-hoistMV f = ask >>> (Validation f)
+hoistFnMV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → m (V e b)) → Validation m e a b
+hoistFnMV f = ask >>> (Validation f)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.

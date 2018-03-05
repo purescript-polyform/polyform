@@ -12,7 +12,7 @@ import Data.Maybe (Maybe(..))
 import Data.Record (insert)
 import Data.Tuple (Tuple(Tuple))
 import Polyform.Field as Field
-import Polyform.Field.Validation (hoistEither)
+import Polyform.Field.Validation (hoistFnEither)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
 -- | This type class provides basic way to transform simple sum type
@@ -64,7 +64,7 @@ choiceParser
   ⇒ Proxy a
   → Field.Validation m String String a
 choiceParser p =
-  hoistEither \s → case lookup s (fromFoldable $ choices p) of
+  hoistFnEither \s → case lookup s (fromFoldable $ choices p) of
     Just o → pure o
     Nothing → Left s
 
@@ -88,7 +88,7 @@ instance multiChoiceConstructor
         validate = any (reflectSymbol _name == _)
         product i = insert _name  (validate i) {}
         checkChoice i _ = validate i
-      in hoistEither $ \i → pure { product: product i, checkChoice: checkChoice i }
+      in hoistFnEither $ \i → pure { product: product i, checkChoice: checkChoice i }
 
 instance multiChoiceSum
   ∷ (IsSymbol name, MultiChoice tail tailRow, RowCons name Boolean tailRow row, RowLacks name tailRow)

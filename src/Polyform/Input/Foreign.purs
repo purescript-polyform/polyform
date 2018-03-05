@@ -8,6 +8,7 @@ import Data.Foreign (Foreign, MultipleErrors, readInt, readString)
 import Data.Foreign.Index (class Index, (!))
 import Data.Variant (Variant, inj)
 import Polyform.Field as Field
+import Polyform.Form.Validation as Form
 import Polyform.Form.Component as Form.Component
 import Type.Prelude (SProxy(..))
 
@@ -19,20 +20,28 @@ type Field attrs index err value =
 type IntField attrs index err = Field attrs index err Int
 type StringField attrs index err = Field attrs index err String
 type NumberField attrs index err = Field attrs index err Number
+type ArrayField attrs index err val = Field attrs index err (Array val)
+
+-- arrayValidation
+--   ∷ ∀ m err v
+--   . Monad m
+--   ⇒ Form.Validation m e Foreign v
+--   → Field.Validation m (Variant (valueErrors ∷ Array (Form.V e v) | err)) Foreign (Array v)
+-- arrayValidation =
 
 intValidation
   ∷ ∀ m err
   . Monad m
   ⇒ Field.Validation m (Variant (valueErrors ∷ MultipleErrors | err)) Foreign Int
 intValidation =
-  Field.hoistEither (readInt >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "valueErrors")))
+  Field.hoistFnEither (readInt >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "valueErrors")))
 
 stringValidation
   ∷ ∀ m err
   . Monad m
   ⇒ Field.Validation m (Variant (valueErrors ∷ MultipleErrors | err)) Foreign String
 stringValidation =
-  Field.hoistEither (readString >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "valueErrors")))
+  Field.hoistFnEither (readString >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "valueErrors")))
 
 fromFieldCoerce
   ∷ ∀ attrs err form index m value value'
@@ -46,7 +55,7 @@ fromFieldCoerce
 fromFieldCoerce coerce singleton field validation =
   Form.Component.fromFieldCoerce coerce singleton field (index >>> validation)
  where
-  index = Field.hoistEither $ \v →
+  index = Field.hoistFnEither $ \v →
     Bifunctor.lmap (inj (SProxy ∷ SProxy "indexErrors")) (runExcept (v ! field.name))
 
 fromField

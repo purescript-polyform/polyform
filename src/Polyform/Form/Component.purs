@@ -48,21 +48,21 @@ runValidation = unwrap <<< _.validation <<< unwrap
 fromValidation :: forall a b e m. Monoid e => Validation m e a b -> Component m e a b
 fromValidation validation = Component { validation, default: mempty }
 
-hoistV
+hoistFnV
   ∷ ∀ a b e m
   . Monoid e
   ⇒ Monad m
   ⇒ (a → V e b)
   → Component m e a b
-hoistV = fromValidation <<< Form.Validation.hoistV
+hoistFnV = fromValidation <<< Form.Validation.hoistFnV
 
-hoistMV
+hoistFnMV
   ∷ ∀ a b e m
   . Monoid e
   ⇒ Monad m
   ⇒ (a → m (V e b))
   → Component m e a b
-hoistMV = fromValidation <<< Form.Validation.hoistMV
+hoistFnMV = fromValidation <<< Form.Validation.hoistFnMV
 
 -- | Simple helper which combines basic pieces into `Component`:
 -- |  - form constructor (I could use `Applicative.pure` but it seems a bit to heavy constraint ;-))

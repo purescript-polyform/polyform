@@ -14,7 +14,7 @@ import Data.StrMap (lookup, fromFoldable)
 import Data.Tuple (Tuple(Tuple))
 import Partial.Unsafe (unsafeCrashWith)
 import Polyform.Field.Generic (class MultiChoice, class SingleChoice, choiceImpl, choicesImpl, multiChoiceParserImpl)
-import Polyform.Field.Validation (Validation, hoistEither, hoistPure)
+import Polyform.Field.Validation (Validation, hoistFnEither, hoistFn)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -148,7 +148,7 @@ choiceParser
   ⇒ Proxy opt
   → Validation m String String (Option opt)
 choiceParser p =
-  hoistEither \s → case lookup s (fromFoldable $ choices p) of
+  hoistFnEither \s → case lookup s (fromFoldable $ choices p) of
     Just o → pure o
     Nothing → Left s
 
@@ -165,7 +165,7 @@ instance _a_choicesNil
         v = any (reflectSymbol _name == _)
         product i = insert _name  (v i) {}
         checkChoice i = case_ # on _name (v i)
-      in hoistPure $ \i → { product: product i, checkChoice: checkChoice i}
+      in hoistFn $ \i → { product: product i, checkChoice: checkChoice i}
 
 instance _b_choicesRecurse
   ∷ (IsSymbol name, MultiChoice (Option tail) br, RowCons name Boolean br row, RowLacks name br)
