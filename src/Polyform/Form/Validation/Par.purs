@@ -4,6 +4,7 @@ import Prelude
 
 import Control.Parallel (class Parallel)
 import Control.Parallel as Parallel
+import Data.Monoid (class Monoid)
 import Data.Newtype (class Newtype)
 import Polyform.Form.Validation (Validation(..))
 
@@ -15,6 +16,9 @@ instance applyParValidation ∷ (Monad m, Parallel f m, Semigroup e) ⇒ Apply (
   apply (ParValidation (Validation mf)) (ParValidation (Validation ma)) =
     ParValidation $ Validation \i →
       Parallel.sequential $ (<*>) <$> Parallel.parallel (mf i) <*> Parallel.parallel (ma i)
+
+instance applicativeParValidation ∷ (Monad m, Parallel f m, Monoid e) ⇒ Applicative (ParValidation m e a) where
+  pure = ParValidation <<< pure
 
 -- | As we are not able to provide `Parallel` instance currently
 -- | (https://github.com/purescript/purescript-parallel/issues/24)
