@@ -13,5 +13,5 @@ derive instance functorParValidation ∷ (Functor m) ⇒ Functor (ParValidation 
 instance applyParValidation ∷ (Monad m, Parallel f m, Semigroup e) ⇒ Apply (ParValidation m e a) where
   apply (ParValidation (Validation mf)) (ParValidation (Validation ma)) =
     ParValidation $ Validation \i →
-      sequential $ (\vf va → vf <*> va) <$> parallel (mf i) <*> parallel (ma i)
+      sequential $ (<*>) <$> parallel (mf i) <*> parallel (ma i)
 
