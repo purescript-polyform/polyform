@@ -2,8 +2,7 @@ module Polyform.Field.Generic where
 
 import Prelude
 
-import Control.Monad.Reader.Class (ask)
-import Data.Either (Either(..))
+import Data.Array (filter, null)
 import Data.Foldable (any)
 import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..), from, to)
 import Data.List (List, singleton)
@@ -11,8 +10,7 @@ import Data.Map (fromFoldable, lookup)
 import Data.Maybe (Maybe(..))
 import Data.Record (insert)
 import Data.Tuple (Tuple(Tuple))
-import Polyform.Field as Field
-import Polyform.Field.Validation (hoistFnEither)
+import Polyform.Validation (V(Invalid, Valid), Validation, hoistFnV)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 
 -- | This type class provides basic way to transform simple sum type
@@ -62,51 +60,66 @@ choiceParser
   ⇒ Generic a choiceRep
   ⇒ SingleChoice choiceRep
   ⇒ Proxy a
-  → Field.Validation m String String a
+  → Validation m String String a
 choiceParser p =
-  hoistFnEither \s → case lookup s (fromFoldable $ choices p) of
-    Just o → pure o
-    Nothing → Left s
+  hoistFnV \s → case lookup s (fromFoldable $ choices p) of
+    Just o → Valid s o
+    Nothing → Invalid s
 
 class MultiChoice c (c' ∷ # Type) | c → c' where
+  -- | This function doesn't report
+  -- | invalid values (hence Unit as error type)
+  -- | It only marks valid ones currently...
   multiChoiceParserImpl
-    ∷ ∀ m
-    . Monad m
-    ⇒ Proxy c
-    → Field.Validation m String (Array String) { product ∷ (Record c') , checkChoice ∷ c → Boolean }
+    ∷ Proxy c
+    → Array String
+    → { result ∷
+        { product ∷ (Record c')
+        , checkChoice ∷ c → Boolean
+        }
+      , remaining ∷ Array String
+      }
 
 instance multiChoiceConstructor
   ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ())
   ⇒ MultiChoice (Constructor name NoArguments) row where
 
-  multiChoiceParserImpl proxy =
-    parser
-   where
-    parser =
-      let
-        _name = (SProxy ∷ SProxy name)
-        validate = any (reflectSymbol _name == _)
-        product i = insert _name  (validate i) {}
-        checkChoice i _ = validate i
-      in hoistFnEither $ \i → pure { product: product i, checkChoice: checkChoice i }
+  multiChoiceParserImpl proxy i =
+    let
+      _name = (SProxy ∷ SProxy name)
+      name = reflectSymbol _name
+      selected = any (name == _) i
+      product = insert _name selected {}
+    in
+      { result:
+          { product
+          , checkChoice: const $ selected
+          }
+      , remaining: filter (name /= _) i
+      }
 
 instance multiChoiceSum
   ∷ (IsSymbol name, MultiChoice tail tailRow, RowCons name Boolean tailRow row, RowLacks name tailRow)
   ⇒ MultiChoice (Sum (Constructor name NoArguments) tail) row where
 
   multiChoiceParserImpl proxy =
-    parser <$> ask <*> multiChoiceParserImpl (Proxy ∷ Proxy tail)
+    parser
    where
-    parser i { product, checkChoice } =
+    parser i =
       let
-        _name = (SProxy ∷ SProxy name)
-        r = any (reflectSymbol _name == _) i
+        { result: { product, checkChoice }, remaining } = multiChoiceParserImpl (Proxy ∷ Proxy tail) i
+        _name = SProxy ∷ SProxy name
+        name = reflectSymbol _name
+        r = any (name == _) remaining
         checkChoice' = case _ of
           (Inl _) → r
           (Inr b) → checkChoice b
       in
-        { product: insert _name r (product ∷ Record tailRow)
-        , checkChoice: checkChoice'
+        { result:
+            { product: insert _name r (product ∷ Record tailRow)
+            , checkChoice: checkChoice'
+            }
+        , remaining: filter (name /= _) remaining
         }
 
 multiChoiceParser
@@ -115,8 +128,14 @@ multiChoiceParser
   ⇒ (Generic a choiceRep)
   ⇒ (MultiChoice choiceRep row)
   ⇒ Proxy a
-  → Field.Validation m String (Array String) { product ∷ Record row, checkChoice ∷ a → Boolean }
+  → Validation m (Array String) (Array String) { product ∷ Record row, checkChoice ∷ a → Boolean }
 multiChoiceParser _ =
-  multiChoiceParserImpl (Proxy ∷ Proxy choiceRep) <#> \{ product, checkChoice } →
-    { product, checkChoice: checkChoice <<< from }
+  hoistFnV $ \i →
+    let
+      { result: { product, checkChoice }, remaining } =
+        multiChoiceParserImpl (Proxy ∷ Proxy choiceRep) i
+    in
+      if null remaining
+        then pure { product, checkChoice: checkChoice <<< from }
+        else Invalid remaining
 

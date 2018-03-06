@@ -3,8 +3,7 @@ module Polyform.Field.Generic.Option where
 import Prelude
 
 import Control.Alternative (class Alternative, empty)
-import Control.Monad.Reader.Class (ask)
-import Data.Either (Either(..))
+import Data.Array (filter, null)
 import Data.Foldable (any)
 import Data.List (List, singleton, (:))
 import Data.Maybe (Maybe(..))
@@ -14,7 +13,7 @@ import Data.StrMap (lookup, fromFoldable)
 import Data.Tuple (Tuple(Tuple))
 import Partial.Unsafe (unsafeCrashWith)
 import Polyform.Field.Generic (class MultiChoice, class SingleChoice, choiceImpl, choicesImpl, multiChoiceParserImpl)
-import Polyform.Field.Validation (Validation, hoistFnEither, hoistFn)
+import Polyform.Validation (V(Invalid, Valid), Validation, hoistFnV)
 import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -34,8 +33,13 @@ class Elem (n ∷ Symbol) l
 instance _a_headOnList ∷ (IsSymbol n) ⇒ Elem n (n :- tail)
 instance _b_elemOnList ∷ (Elem n tail, IsSymbol n) ⇒ Elem n (head :- tail)
 
-option ∷ ∀ opt opts. (Elem opt opts) ⇒ (IsSymbol opt) ⇒ Proxy opts → SProxy opt → Option opts
-option opts opt = unsafeCoerce (reflectSymbol opt)
+option
+  ∷ ∀ opt opts
+  . Elem opt opts
+  ⇒ IsSymbol opt
+  ⇒ SProxy opt
+  → Option opts
+option o = unsafeCoerce (reflectSymbol o)
 
 -- | `Option` is our symbol list carrier
 foreign import data Option ∷ Type → Type
@@ -107,10 +111,10 @@ instance _a_optionsEnd
   choiceImpl _ = reflectSymbol (SProxy ∷ SProxy name)
 
   choicesImpl p =
-    singleton (Tuple value opt)
+    singleton (Tuple value o)
    where
     value = reflectSymbol (SProxy ∷ SProxy name)
-    opt = option (Proxy ∷ Proxy (name :- Nil)) (SProxy ∷ SProxy name)
+    o = option (SProxy ∷ SProxy name)
 
 instance _b_optionsRecurse
   ∷ (IsSymbol name, SingleChoice (Option tail))
@@ -120,11 +124,11 @@ instance _b_optionsRecurse
 
   choicesImpl p =
     -- | We should use just unsafeCoerce here as this is what prepend really does
-    (Tuple value opt) : map (second (prepend _name)) (choicesImpl (Proxy ∷ Proxy (Option tail)))
+    (Tuple value o) : map (second (prepend _name)) (choicesImpl (Proxy ∷ Proxy (Option tail)))
    where
     _name = SProxy ∷ SProxy name
     value = reflectSymbol (SProxy ∷ SProxy name)
-    opt = option (Proxy ∷ Proxy (name :- tail)) (SProxy ∷ SProxy name)
+    o = option (SProxy ∷ SProxy name)
 
 choice
   ∷ ∀ opt
@@ -148,46 +152,59 @@ choiceParser
   ⇒ Proxy opt
   → Validation m String String (Option opt)
 choiceParser p =
-  hoistFnEither \s → case lookup s (fromFoldable $ choices p) of
-    Just o → pure o
-    Nothing → Left s
+  hoistFnV \s → case lookup s (fromFoldable $ choices p) of
+    Just o → Valid s o
+    Nothing → Invalid s
 
 instance _a_choicesNil
   ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ())
   ⇒ MultiChoice (Option (name :- Nil)) row where
 
-  multiChoiceParserImpl proxy =
-    parser
-   where
-    parser =
-      let
-        _name = (SProxy ∷ SProxy name)
-        v = any (reflectSymbol _name == _)
-        product i = insert _name  (v i) {}
-        checkChoice i = case_ # on _name (v i)
-      in hoistFn $ \i → { product: product i, checkChoice: checkChoice i}
-
+  multiChoiceParserImpl proxy i =
+    let
+      _name = (SProxy ∷ SProxy name)
+      name = reflectSymbol _name
+      v = any (name == _)
+      product i = insert _name  (v i) {}
+      checkChoice i = case_ # on _name (v i)
+    in
+      { result:
+          { product: product i
+          , checkChoice: checkChoice i
+          }
+      , remaining: filter (name /= _) i
+      }
 instance _b_choicesRecurse
   ∷ (IsSymbol name, MultiChoice (Option tail) br, RowCons name Boolean br row, RowLacks name br)
   ⇒ MultiChoice (Option (name :- tail)) row where
 
-  multiChoiceParserImpl proxy =
-    parser
-   where
-    parser = do
-      { product, checkChoice } ← multiChoiceParserImpl (Proxy ∷ Proxy (Option tail))
-      i ← ask
-      let
-        _name = (SProxy ∷ SProxy name)
-        v = any (reflectSymbol _name == _)
-        product' = insert _name  (v i) product
-        checkChoice' = on _name (v i) checkChoice
-      pure $ { product: product', checkChoice: checkChoice' }
+  multiChoiceParserImpl proxy i =
+    let
+      { result: { product, checkChoice }, remaining } =
+        multiChoiceParserImpl (Proxy ∷ Proxy (Option tail)) i
+      _name = SProxy ∷ SProxy name
+      name = reflectSymbol _name
+      v = any (name == _)
+      product' = insert _name  (v i) product
+      checkChoice' = on _name (v i) checkChoice
+    in
+      { result: { product: product', checkChoice: checkChoice' }
+      , remaining: filter (name /= _) remaining
+      }
 
 multiChoiceParser
   ∷ ∀ m opt row. (Monad m)
   ⇒ MultiChoice (Option opt) row
   ⇒ Proxy opt
-  → Validation m String (Array String) { checkChoice ∷ Option opt → Boolean, product ∷ Record row }
-multiChoiceParser _ = multiChoiceParserImpl (Proxy ∷ Proxy (Option opt))
+  → Validation m (Array String) (Array String) { checkChoice ∷ Option opt → Boolean, product ∷ Record row }
+multiChoiceParser _ =
+  hoistFnV $ \i →
+    let
+      { result: { product, checkChoice }, remaining } =
+        multiChoiceParserImpl (Proxy ∷ Proxy (Option opt)) i
+    in
+      if null remaining
+        then pure { product, checkChoice: checkChoice }
+        else Invalid remaining
+
 

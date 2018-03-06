@@ -2,7 +2,7 @@ module Polyform.Input.Interpret.Record where
 
 import Prelude
 
-import Data.Either (Either(..))
+import Data.Monoid (class Monoid)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(VariantRep), unsafeGet)
 import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
@@ -33,37 +33,41 @@ onMatch r v =
 
 handleInt
   ∷ forall e n m q ql
-  . Monad m
+  . Monoid e
+  ⇒ Monad m
   ⇒ RowToList q ql
   ⇒ VariantFieldsType ql n Int
-  ⇒ IntF (Variant n) (Variant e) (Record q) ~> m
+  ⇒ IntF (Variant n) e (Record q) ~> m
 handleInt (IntF n query k) =
   pure $ k value
  where
-  value = Right $ onMatch query n
+  value = pure $ onMatch query n
 
 
 handleString
-  ∷ forall e n m q ql
-  . Monad m
+  ∷ forall err n m q ql
+  . Monoid err
+  ⇒ Monad m
   ⇒ RowToList q ql
   ⇒ VariantFieldsType ql n String
-  ⇒ StringF (Variant n) (Variant e) (Record q) ~> m
+  ⇒ StringF (Variant n) err (Record q) ~> m
 handleString (StringF n query k) =
   pure $ k value
  where
-  value = Right $ onMatch query n
+  value = pure $ onMatch query n
 
 
 handle
   ∷ forall ei es n n' m q ql
-  . Monad m
+  . Monoid ei
+  ⇒ Monoid es
+  ⇒ Monad m
   ⇒ RowToList q ql
   ⇒ VariantFieldsType ql n String
   ⇒ VariantFieldsType ql n' Int
   ⇒ VariantF
-      ( string ∷ FProxy (StringF (Variant n) (Variant es) (Record q))
-      , int ∷ FProxy (IntF (Variant n') (Variant ei) (Record q))
+      ( string ∷ FProxy (StringF (Variant n) es (Record q))
+      , int ∷ FProxy (IntF (Variant n') ei (Record q))
       )
   ~> m
 handle =
@@ -76,13 +80,14 @@ handle =
 
 interpret
   ∷ forall a e n n' m q ql
-  . Monad m
+  . Monoid e
+  ⇒ Monad m
   ⇒ RowToList q ql
   ⇒ VariantFieldsType ql n String
   ⇒ VariantFieldsType ql n' Int
   ⇒ Run
-      ( string ∷ FProxy (StringF (Variant n) (Variant e) (Record q))
-      , int ∷ FProxy (IntF (Variant n') (Variant e) (Record q))
+      ( string ∷ FProxy (StringF (Variant n) e (Record q))
+      , int ∷ FProxy (IntF (Variant n') e (Record q))
       )
       a
   → m a

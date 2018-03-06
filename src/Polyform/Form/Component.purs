@@ -2,14 +2,11 @@ module Polyform.Form.Component where
 
 import Prelude
 
--- import Control.Alt (class Alt, (<|>))
-import Control.Monad.Except (runExceptT)
-import Data.Either (Either(..))
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
-import Polyform.Field as Field
-import Polyform.Form.Validation (V(..), Validation(..))
-import Polyform.Form.Validation as Form.Validation
+import Data.Profunctor (class Profunctor)
+import Polyform.Validation (V(..), Validation(..))
+import Polyform.Validation as Validation
 
 newtype Component m form i o =
   Component
@@ -29,12 +26,6 @@ instance applyComponent ∷ (Semigroup e, Monad m) ⇒ Apply (Component m e a) w
 instance applicativeComponent ∷ (Monoid e, Monad m) ⇒ Applicative (Component m e a) where
   pure a = Component { validation: pure a, default: mempty }
 
--- instance altComponent ∷ (Semigroup e, Alt m) ⇒ Alt (Component m e a) where
---   alt (Component r1) (Component r2) = Component
---     { validation: r1.validation <|> r2.validation
---     , default: r1.default <> r2.default
---     }
-
 instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Component m e) where
   compose (Component r2) (Component r1) =
     Component { default: r1.default <> r2.default, validation: r2.validation <<< r1.validation }
@@ -42,11 +33,22 @@ instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Comp
 instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) where
   id = Component { validation: id, default: mempty }
 
+instance profunctorComponent ∷ (Monad m, Monoid e) ⇒ Profunctor (Component m e) where
+  dimap l r c = hoistFn l >>> c >>> hoistFn r
+
 runValidation ∷ ∀ form i o m. Component m form i o → (i → m (V form o))
 runValidation = unwrap <<< _.validation <<< unwrap
 
 fromValidation :: forall a b e m. Monoid e => Validation m e a b -> Component m e a b
 fromValidation validation = Component { validation, default: mempty }
+
+hoistFn
+  ∷ ∀ a b e m
+  . Monoid e
+  ⇒ Monad m
+  ⇒ (a → b)
+  → Component m e a b
+hoistFn = fromValidation <<< Validation.hoistFn
 
 hoistFnV
   ∷ ∀ a b e m
@@ -54,7 +56,7 @@ hoistFnV
   ⇒ Monad m
   ⇒ (a → V e b)
   → Component m e a b
-hoistFnV = fromValidation <<< Form.Validation.hoistFnV
+hoistFnV = fromValidation <<< Validation.hoistFnV
 
 hoistFnMV
   ∷ ∀ a b e m
@@ -62,7 +64,7 @@ hoistFnMV
   ⇒ Monad m
   ⇒ (a → m (V e b))
   → Component m e a b
-hoistFnMV = fromValidation <<< Form.Validation.hoistFnMV
+hoistFnMV = fromValidation <<< Validation.hoistFnMV
 
 -- | Simple helper which combines basic pieces into `Component`:
 -- |  - form constructor (I could use `Applicative.pure` but it seems a bit to heavy constraint ;-))
@@ -71,9 +73,9 @@ hoistFnMV = fromValidation <<< Form.Validation.hoistFnMV
 fromField
   ∷ ∀ attrs e form m q v
   . Monad m
-  ⇒ (Record (value ∷ Either e v | attrs) → form)
-  → Record (value ∷ Either e v | attrs)
-  → Field.Validation m e q v
+  ⇒ (Record (value ∷ V e v | attrs) → form)
+  → Record (value ∷ V e v | attrs)
+  → Validation m e q v
   → Component m form q v
 fromField = fromFieldCoerce id
 
@@ -84,15 +86,15 @@ fromFieldCoerce
   ∷ ∀ attrs e form m q v v'
   . Monad m
   ⇒ (v → v')
-  → (Record (value ∷ Either e v | attrs) → form)
-  → Record (value ∷ Either e v | attrs)
-  → Field.Validation m e q v
+  → (Record (value ∷ V e v | attrs) → form)
+  → Record (value ∷ V e v | attrs)
+  → Validation m e q v
   → Component m form q v'
 fromFieldCoerce coerce singleton field validation = Component $
   { validation: Validation $ \query → do
-      r ← runExceptT (Field.runValidation validation query)
+      r ← Validation.runValidation validation query
       pure $ case r of
-        Left e → Invalid (singleton $ field { value = Left e })
-        Right v → Valid (singleton $ field { value = Right v }) (coerce v)
+        Valid e v → Valid (singleton $ field { value = Valid e v }) (coerce v)
+        Invalid e → Invalid (singleton $ field { value = Invalid e })
   , default: singleton field
   }

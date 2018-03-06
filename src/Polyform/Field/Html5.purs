@@ -2,14 +2,15 @@ module Polyform.Field.Html5 where
 
 import Prelude
 
-import Data.Either (Either)
+import Data.Array (singleton)
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe, maybe)
 import Data.String (length)
 import Data.Variant (Variant)
 import Polyform.Field (Input)
-import Polyform.Field.Validation (checkPure, tag, Validation)
-import Type.Prelude (class IsSymbol, SProxy(..), reflectSymbol)
+import Polyform.Field.Validation.Combinators (check, checkAndTag)
+import Polyform.Validation (V, Validation)
+import Type.Prelude (class IsSymbol, SProxy(SProxy), reflectSymbol)
 
 -- | RangeInput can be used to represent
 -- | `type="range"` and `type="number"`
@@ -31,12 +32,30 @@ type RangeInputBase err attrs name value =
   , max ∷ Maybe Int
   , step ∷ Int
   , type ∷ RangeInputType
-  , value ∷ Either (RangeInputErr err) value
+  , value ∷ V (Array (RangeInputErr err)) value
   | attrs
   }
 
 type RangeInput err attrs name = RangeInputBase err attrs (SProxy name) Int
 type OptRangeInput err attrs name = RangeInputBase err attrs (SProxy name) (Maybe Int)
+
+
+check'
+  ∷ ∀ a m
+  . Monad m
+  ⇒ (a → Boolean)
+  → Validation m (Array a) a a
+check' = check singleton
+
+checkAndTag'
+  ∷ ∀ a e e' m n
+  . Monad m
+  ⇒ RowCons n a e' e
+  ⇒ IsSymbol n
+  ⇒ SProxy n
+  → (a -> Boolean)
+  → Validation m (Array (Variant e)) a a
+checkAndTag' = checkAndTag singleton
 
 rangeInputValidation
   ∷ forall attrs err name m
@@ -44,14 +63,14 @@ rangeInputValidation
   ⇒ RangeInput err attrs name
   → Validation
       m
-      (Variant (min ∷ Int, max ∷ Int | err))
+      (Array (Variant (min ∷ Int, max ∷ Int | err)))
       Int
       Int
 rangeInputValidation field =
   minV <<< maxV
  where
-  maxV = tag _max (checkPure (\i → maybe true (i <= _) field.max))
-  minV = tag _min (checkPure (\i → maybe true (i >= _) field.min))
+  maxV = checkAndTag' _max (\i → maybe true (i <= _) field.max)
+  minV = checkAndTag' _min (\i → maybe true (i >= _) field.min)
 
 type TextInputErr err = (maxlength ∷ String, minlength ∷ String | err)
 
@@ -59,7 +78,7 @@ type TextInputBase (type_ ∷ Symbol) attrs name err value =
   Input
     (maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs)
     name
-    (Variant (TextInputErr err))
+    (Array (Variant (TextInputErr err)))
     value
 
 -- | All these input types share same attributes... but email.
@@ -71,11 +90,11 @@ type TextInputBase (type_ ∷ Symbol) attrs name err value =
 type EmailInput attrs name err = TextInputBase "email" attrs name err String
 type OptEmailInput attrs name err = TextInputBase "email" attrs name err (Maybe String)
 
-type PasswordInput attrs name err = TextInputBase "password" attrs name err String
-type OptPasswordInput attrs name err = TextInputBase "password" attrs name err (Maybe String)
-
 type SearchInput attrs name err = TextInputBase "search" attrs name err String
 type OptSearchInput attrs name err = TextInputBase "search" attrs name err (Maybe String)
+
+type PasswordInput attrs name err = TextInputBase "password" attrs name err String
+type OptPasswordInput attrs name err = TextInputBase "password" attrs name err (Maybe String)
 
 type TelInput attrs name err = TextInputBase "tel" attrs name err String
 type OptTelInput attrs name err = TextInputBase "tel" attrs name err (Maybe String)
@@ -101,9 +120,9 @@ textInputValidation
   ∷ ∀ attrs err m
   . Monad m
   ⇒ { maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs }
-  → Validation m (Variant (TextInputErr err)) String String
+  → Validation m (Array (Variant (TextInputErr err))) String String
 textInputValidation r =
   maxV >>> minV
  where
-  maxV = tag _maxlength (checkPure (\i → maybe true (length i > _) r.maxlength))
-  minV = tag _minlength (checkPure (\i → maybe true (length i < _) r.minlength))
+  maxV = checkAndTag' _maxlength (\i → maybe true (length i > _) r.maxlength)
+  minV = checkAndTag' _minlength (\i → maybe true (length i < _) r.minlength)

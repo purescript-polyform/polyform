@@ -2,13 +2,11 @@ module Polyform.Field
   ( Input
   , SingleChoice
   , MultiChoice
-  , module Validation
   ) where
 
-import Data.Either (Either)
 import Data.List (List)
 import Data.Tuple (Tuple)
-import Polyform.Field.Validation as Validation
+import Polyform.Validation (V)
 
 
 -- | This module provides some very simple representations of HTML fields.
@@ -17,16 +15,16 @@ import Polyform.Field.Validation as Validation
 -- | Fields represantation is as minimal as possible, so only
 -- | validation relevant pieces are exposed as attrs.
 
-type Input attrs name err value =
+type Input attrs name e value =
   { name ∷ name
-  , value ∷ Either err value
+  , value ∷ V e value
   | attrs
   }
 
 type SingleChoice e opt attrs name =
   { name ∷ name
   , choices ∷ List (Tuple String opt)
-  , value ∷ Either e opt
+  , value ∷ V e opt
   | attrs
   }
 
@@ -60,7 +58,7 @@ type SingleChoice e opt attrs name =
 type MultiChoice e opt attrs name =
   { name ∷ name
   , choices ∷ List (Tuple String opt)
-  , value ∷ Either e (opt → Boolean)
+  , value ∷ V e (opt → Boolean)
   | attrs
   }
 

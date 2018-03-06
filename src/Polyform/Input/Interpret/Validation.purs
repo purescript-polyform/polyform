@@ -2,17 +2,14 @@ module Polyform.Input.Interpret.Validation where
 
 import Prelude
 
-import Control.Monad.Except (ExceptT(..))
-import Data.Either (Either)
 import Data.Maybe (Maybe)
-import Data.Profunctor.Star (Star(..))
 import Data.Variant (Variant, inj)
-import Polyform.Field.Validation (Validation(..))
+import Polyform.Validation (V, Validation(..))
 import Run (FProxy, Run)
 import Run as Run
 import Type.Prelude (class IsSymbol, SProxy(..))
 
-data StringF n e q a = StringF n q (Either e String → a)
+data StringF n e q a = StringF n q (V e String → a)
 derive instance functorStringF ∷ Functor (StringF n q e)
 
 type STRING n e q = FProxy (StringF (Variant n) e q)
@@ -26,10 +23,10 @@ string ∷ ∀ e q eff name names names'
   → Validation
       (Run (string ∷ (STRING names' e q) | eff)) e q String
 string name =
-  Validation $ Star \q → ExceptT (Run.lift _string (StringF (inj name unit) q id))
+  Validation \q → (Run.lift _string (StringF (inj name unit) q id))
 
 
-data OptStringF n q e a = OptStringF (SProxy n) q (Either e (Maybe String) → a)
+data OptStringF n q e a = OptStringF (SProxy n) q (V e (Maybe String) → a)
 derive instance functorOptStringF ∷ Functor (OptStringF n q e)
 
 type OPTSTRING n q e a = FProxy (OptStringF n q e)
@@ -42,10 +39,10 @@ optString
   → Validation
       (Run (optString ∷ OPTSTRING n q e a | eff)) e q (Maybe String)
 optString name =
-  Validation $ Star \q → ExceptT (Run.lift _optString (OptStringF name q id))
+  Validation \q → Run.lift _optString (OptStringF name q id)
 
 
-data IntF n e q a = IntF n q (Either e Int → a)
+data IntF n e q a = IntF n q (V e Int → a)
 derive instance functorIntF ∷ Functor (IntF n e q)
 
 type INT names e q = FProxy (IntF (Variant names) e q)
@@ -60,10 +57,10 @@ int
   → Validation
     (Run ( int :: (INT names' e q) | eff)) e q Int
 int name =
-  Validation $ Star \q → ExceptT (Run.lift _int (IntF (inj name unit) q id))
+  Validation \q → Run.lift _int (IntF (inj name unit) q id)
 
 
-data OptIntF n q e a = OptIntF (SProxy n) q (Either e (Maybe Int) → a)
+data OptIntF n q e a = OptIntF (SProxy n) q (V e (Maybe Int) → a)
 derive instance functorOptIntF ∷ Functor (OptIntF n q e)
 
 type OPTINT n q e a = FProxy (OptIntF n q e)
@@ -76,5 +73,5 @@ optInt
   → Validation
       (Run (optInt ∷ OPTINT n q e a | eff)) e q (Maybe Int)
 optInt name =
-  Validation $ Star \q → ExceptT (Run.lift _optInt (OptIntF name q id))
+  Validation \q → Run.lift _optInt (OptIntF name q id)
 
