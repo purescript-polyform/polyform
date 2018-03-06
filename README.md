@@ -18,6 +18,10 @@ An attempt to build simple, composable form validation toolkit.
 
 ## Validation overview
 
+### Rewrite is coming
+
+I'm going to try drop `Field.Validation` and replace it with `Form.Validation.Monad` in the next two days... Please don't attach too much to the current design ;-)
+
 ### Form Validation
 
   In `Polyform.Form.Validation` you can find `Validation` type - a function which in case of success produces final result and a monoidal "form" value. In case of validation error it also produces "form" value as a failure representation (this allows us for example to always render our form). Our validation result has type:
