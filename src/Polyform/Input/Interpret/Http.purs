@@ -2,18 +2,16 @@ module Polyform.Input.Interpret.Http where
 
 import Prelude
 
-import Control.Monad.Except (runExceptT)
-import Data.Array (catMaybes)
-import Data.Either (Either)
+import Data.Array (catMaybes, singleton)
 import Data.Maybe (Maybe, fromMaybe)
 import Data.NonEmpty (NonEmpty)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
-import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
+import Polyform.Field.Validation.Combinators (int, required, scalar)
 import Polyform.Input.Http (StringErr)
-import Polyform.Field.Validation (Validation, hoistFn, required, runValidation, scalar)
-import Polyform.Field.Validation.Combinators (int)
+import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
+import Polyform.Validation (V, Validation, hoistFn, runValidation)
 import Run (FProxy, Run, case_, on)
 import Run as Run
 import Unsafe.Coerce (unsafeCoerce)
@@ -37,11 +35,11 @@ _handleValue :: forall a e n m v
   . Monad m
   => Variant n
   -> Query
-  -> (Either e v -> a)
+  -> (V e v -> a)
   -> Validation m e Value v
   -> m a
 _handleValue n query k validation =
-  (runExceptT $ runValidation validation fieldQuery) >>= (k >>> pure)
+  runValidation validation fieldQuery >>= (k >>> pure)
  where
   fieldQuery = fromMaybe [] (lookup (variantTag n) query)
 
@@ -49,10 +47,10 @@ _handleValue n query k validation =
 handleString
   ∷ forall e m n
   . Monad m
-  ⇒ StringF (Variant n) (Variant (StringErr e)) Query
+  ⇒ StringF (Variant n) (Array (Variant (StringErr e))) Query
   ~> m
 handleString (StringF n query k) =
-  _handleValue n query k (hoistFn catMaybes >>> required >>> scalar)
+  _handleValue n query k (hoistFn catMaybes >>> required singleton >>> scalar singleton)
 
 
 type IntErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ String | e)
@@ -60,10 +58,10 @@ type IntErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit, int ∷ St
 handleInt
   ∷ forall e n m
   . Monad m
-  ⇒ IntF (Variant n) (Variant (IntErr e)) Query
+  ⇒ IntF (Variant n) (Array (Variant (IntErr e))) Query
   ~> m
 handleInt (IntF n query k) =
-  _handleValue n query k (hoistFn catMaybes >>> required >>> scalar >>> int)
+  _handleValue n query k (hoistFn catMaybes >>> required singleton >>> scalar singleton >>> int singleton)
 
 onField = on _int handleInt >>> on _string handleString
 
@@ -78,8 +76,8 @@ interpret
   ∷ forall ei es n n' m
   . Monad m
   ⇒ Run
-      ( string ∷ FProxy (StringF (Variant n) (Variant (StringErr es)) Query)
-      , int ∷ FProxy (IntF (Variant n') (Variant (IntErr ei)) Query)
+      ( string ∷ FProxy (StringF (Variant n) (Array (Variant (StringErr es))) Query)
+      , int ∷ FProxy (IntF (Variant n') (Array (Variant (IntErr ei))) Query)
       )
   ~> m
 interpret = Run.interpret handle

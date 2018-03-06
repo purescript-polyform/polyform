@@ -2,23 +2,25 @@ module Polyform.Input.Interpret where
 
 import Prelude
 
-import Data.Either (Either, either, note)
+import Data.Either (either, note)
 import Data.Maybe (Maybe(..))
+import Data.Monoid (class Monoid)
 import Data.Profunctor (dimap)
 import Data.Profunctor.Choice (right)
-import Polyform.Field as Field
-import Polyform.Input.Interpret.Validation (INT, OptIntF, OptStringF, STRING, int, optInt, optString, string)
 import Polyform.Form.Component (Component, fromField)
+import Polyform.Input.Interpret.Validation (INT, OptIntF, OptStringF, STRING, int, optInt, optString, string)
+import Polyform.Validation (V, Validation)
 import Run (FProxy, Run)
 import Type.Prelude (class IsSymbol, SProxy)
 
 intForm
   ∷ ∀ attrs e eff form q n ns ns' v
-  . RowCons n Unit ns ns'
+  . Monoid e
+  ⇒ RowCons n Unit ns ns'
   ⇒ IsSymbol n
-  ⇒ ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
-  → { value :: Either e v , name :: SProxy n | attrs }
-  → Field.Validation
+  ⇒ ({ value ∷ V e v, name ∷ SProxy n | attrs } -> form)
+  → { value :: V e v , name :: SProxy n | attrs }
+  → Validation
       (Run ( int ∷ (INT ns' e q) | eff))
       e
       Int
@@ -33,9 +35,10 @@ intForm singleton field validation =
 
 optIntForm
   ∷ ∀ attrs e eff form q n v
-  . ({ value ∷ Either e (Maybe v), name ∷ SProxy n | attrs } -> form)
-  → { value :: Either e (Maybe v), name :: SProxy n | attrs }
-  → Field.Validation
+  . Monoid e
+  ⇒ ({ value ∷ V e (Maybe v), name ∷ SProxy n | attrs } -> form)
+  → { value :: V e (Maybe v), name :: SProxy n | attrs }
+  → Validation
       (Run ( optInt ∷ FProxy (OptIntF n q e) | eff))
       e
       Int
@@ -56,9 +59,10 @@ stringForm
   ∷ ∀ attrs e eff form q n ns ns' v
   . RowCons n Unit ns ns'
   ⇒ IsSymbol n
-  ⇒ ({ value ∷ Either e v, name ∷ SProxy n | attrs } -> form)
-  → { value :: Either e v , name :: SProxy n | attrs }
-  → Field.Validation
+  ⇒ Semigroup e
+  ⇒ ({ value ∷ V e v, name ∷ SProxy n | attrs } -> form)
+  → { value :: V e v , name :: SProxy n | attrs }
+  → Validation
       (Run ( string ∷ (STRING ns' e q) | eff))
       e
       String
@@ -73,9 +77,10 @@ stringForm singleton field validation =
 
 optStringForm
   ∷ ∀ attrs e eff form q n v
-  . ({ value ∷ Either e (Maybe v), name ∷ SProxy n | attrs } -> form)
-  → { value :: Either e (Maybe v), name :: SProxy n | attrs }
-  → Field.Validation
+  . Monoid e
+  ⇒ ({ value ∷ V e (Maybe v), name ∷ SProxy n | attrs } -> form)
+  → { value :: V e (Maybe v), name :: SProxy n | attrs }
+  → Validation
       (Run ( optString ∷ FProxy (OptStringF n q e) | eff))
       e
       String

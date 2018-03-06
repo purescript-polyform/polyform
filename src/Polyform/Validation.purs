@@ -1,14 +1,16 @@
-module Polyform.Form.Validation where
+module Polyform.Validation where
 
 import Prelude
 
 import Control.Apply (lift2)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Either (Either(..))
+import Data.Maybe (Maybe(..))
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
+import Data.Profunctor (class Profunctor)
+import Data.Profunctor.Choice (class Choice)
 
--- Nearly (Tuple e (Maybe a)) but without monad instance
 data V e a = Invalid e | Valid e a
 derive instance functorV ∷ Functor (V e)
 
@@ -80,8 +82,26 @@ instance semigroupoidValidation ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Val
 instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e) where
   id = Validation $ pure <<< pure
 
+instance profunctorValidation ∷ (Monad m, Monoid e) ⇒ Profunctor (Validation m e) where
+  dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
+
+instance choiceValidation ∷ (Monad m, Monoid e) ⇒ Choice (Validation m e) where
+  left v = Validation (case _ of
+    Left i → map Left <$> runValidation v i
+    Right r → pure (Valid mempty (Right r)))
+
+  right v = Validation (case _ of
+    Right i → map Right <$> runValidation v i
+    Left l → pure (Valid mempty (Left l)))
+
+runValidation ∷ ∀ a b e m. Validation m e a b → (a → m (V e b))
+runValidation = unwrap
+
 ask ∷ ∀ a e m. Monad m ⇒ Monoid e ⇒ Validation m e a a
 ask = Validation (\a → pure (Valid mempty a))
+
+hoistFn ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → b) → Validation m e a b
+hoistFn f = ask >>> (Validation $ f >>> pure >>> pure)
 
 hoistFnV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → V e b) → Validation m e a b
 hoistFnV f = ask >>> (Validation $ f >>> pure)
