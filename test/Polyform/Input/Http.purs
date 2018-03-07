@@ -2,6 +2,7 @@ module Test.Polyform.Input.Http where
 
 import Prelude
 
+import Control.Alt ((<|>))
 import Control.Monad.Aff (Aff)
 import Control.Monad.Aff.Console (log)
 import Control.Monad.Except (runExceptT, throwError)
@@ -17,6 +18,7 @@ import Data.Identity (Identity(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.Monoid (mempty)
+import Data.Newtype (unwrap)
 import Data.NonEmpty (NonEmpty(..))
 import Data.Record (set)
 import Data.StrMap (StrMap, fromFoldable, lookup)
@@ -31,7 +33,7 @@ import Polyform.Field.Generic.Option (type (:-), Nil)
 import Polyform.Field.Generic.Option as Option
 import Polyform.Field.Html5 (textInputValidation)
 import Polyform.Field.Html5 as Html5
-import Polyform.Form.Component (Component(..), hoistFnMV, hoistFnV, runValidation)
+import Polyform.Form.Component (Component(..), hoistFn, hoistFnMV, hoistFnV, runValidation)
 import Polyform.Input.Http as Http
 import Polyform.Input.Interpret (stringForm)
 import Polyform.Validation (V(..), Validation(..), isValid)
@@ -145,9 +147,9 @@ signupForm
   <*> (passwordForm (_{ name = "password2" })))
   >>> (hoistFnMV checkEmail *> hoistFnV checkPasswords)
  where
-  checkPasswords r@{email, password1, password2 } =
+  checkPasswords r@{ email, password1, password2 } =
     if password1 == password2
-      then pure { password: password1, email }
+      then pure { email, password: password1 }
       else Invalid (errorForm "Passwords don't match")
 
   checkEmail r@{ email } = do

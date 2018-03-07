@@ -9,6 +9,8 @@ import Data.Profunctor (class Profunctor)
 import Polyform.Validation (V(..), Validation(..))
 import Polyform.Validation as Validation
 
+-- | Tiny wrapper around validation which also
+-- | carries default "form" value.
 newtype Component m form i o =
   Component
     { validation ∷ Validation m form i o
@@ -27,29 +29,10 @@ instance applyComponent ∷ (Semigroup e, Monad m) ⇒ Apply (Component m e a) w
 instance applicativeComponent ∷ (Monoid e, Monad m) ⇒ Applicative (Component m e a) where
   pure a = Component { validation: pure a, default: mempty }
 
--- | Wraps `Polyform.Validation.AltInvalid`
-newtype AltInvalid m e a b = AltInvalid (Component m e a b)
-derive instance newtypeAltInvalidVaildation ∷ Newtype (AltInvalid m e a b) _
-derive instance functorAltInvalid ∷ (Functor m) ⇒ Functor (AltInvalid m e a)
-derive newtype instance applyAltInvalid ∷ (Semigroup e, Monad m) ⇒ Apply (AltInvalid m e a)
-instance altInvalidValidation ∷ (Monoid e, Monad m) ⇒ Alt (AltInvalid m e a) where
-  alt (AltInvalid (Component v1)) (AltInvalid (Component v2)) =
-    AltInvalid $ Component $
-      { validation:
-          unwrap (Validation.AltInvalid v1.validation <|> Validation.AltInvalid v2.validation)
-      , default: v1.default <> v2.default
-      }
-
--- | Wraps `Polyform.Validation.AltValid`
-newtype AltValid m e a b = AltValid (Component m e a b)
-derive instance newtypeAltValidVaildation ∷ Newtype (AltValid m e a b) _
-derive instance functorAltValid ∷ (Functor m) ⇒ Functor (AltValid m e a)
-derive newtype instance applyAltValid ∷ (Semigroup e, Monad m) ⇒ Apply (AltValid m e a)
-instance altValidValidation ∷ (Monoid e, Monad m) ⇒ Alt (AltValid m e a) where
-  alt (AltValid (Component v1)) (AltValid (Component v2)) =
-    AltValid $ Component $
-      { validation:
-          unwrap (Validation.AltValid v1.validation <|> Validation.AltValid v2.validation)
+instance altComponent ∷ (Monoid e, Monad m) ⇒ Alt (Component m e a) where
+  alt (Component v1) (Component v2) =
+    Component
+      { validation: v1.validation <|> v2.validation
       , default: v1.default <> v2.default
       }
 
