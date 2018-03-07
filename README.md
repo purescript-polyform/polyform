@@ -88,7 +88,7 @@ buildPasswordForm name =
     (Http.textInputValidation passwordField')
 ```
 
-This particular helper produces a validation function from `Polyform.Input.Http.Query` to `String` (our password) and accompanying `Form`. In case of validation failure we are going to get just a `Form` with field filled with errors. Representation chosen for this type of fields (from `Field.Html5`) is a list of `Variant` values so you can always extend predefined validations and add your own errors values.
+This particular helper produces a validation function from `Polyform.Input.Http.Query` to `String` (which is our `password` value) and accompanying `Form`. In case of validation failure we are going to get just a `Form` with field filled with errors. Representation chosen for this type of fields (from `Field.Html5`) is a list of `Variant` values so you can always extend predefined validations and add your own errors values.
 
 Strategy used by validators in case of plain input fields is simple. They only update `value` attribute from your default record according to the validation result. Of course your etire form also gives you ways to access (through `Functor`, `Applicative`, `Category`) potential results of validation so here we are using `Applicative` to collect values from two fields:
 
@@ -103,14 +103,14 @@ This `passwordForm` value is a validation which produces a record in case of suc
 
 
 ``` purescript
-passwordForm = passwordsForm >>> (hoistFnV \r@{ password1, password2 } →
+passwordForm = passwordsForm >>> (hoistFnV \{ password1, password2 } →
   if password1 == password2
     -- | Here we are able to use just applicative `pure`
     then Valid mempty password1
     else Invalid (Tuple ["Password doesn't match"] [])
 ```
 
-Function `hoistFnV` lifts function from `a → V e b` into `Validation m e a b` it is just `hoistFnV = Validation f >>> pure` ;-)
+`hoistFnV` lifts function `a → V e b` into `Validation m e a b` it is just: ```hoistFnV f = Validation $ f >>> pure ```
 
 So now we have a form which validates if two provided passwords are the same and we are getting single `String` value in case of success.
 
@@ -139,8 +139,10 @@ emailInUse = Validation $ \email → do
   pure $ if inUse
     -- | In case of these fields we
     -- | are using list of extensible `Variant`
-    -- | to represent errors
-    else Invalid $ [inj "emailInUse" email]
+    -- | to represent errors.
+    -- | Don't be affraid of variants their are
+    -- | really handy!!!
+    else Invalid $ [inj (SProxy :: SProxy "emailInUse") email]
     else Valid [] email
 ```
 
@@ -150,11 +152,17 @@ Of course we are able to combine these forms and build a final form:
 signupForm = {email: _, password: _} <$> emailForm <*> passwordForm
 ```
 
+There are more examples for example in `test/Polyform/Input/Http.purs`. I'm going to provide full guide soon. I promise.
 
 ### Parallel execution
 
-There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`.
+There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`. Shortly you can build parrallel execution of validation tree using `<|>` or `<*>` for example like this:
 
+```purescript
+sequential $ { email: _, password: _} <$> parallel emailForm <*> parallel passwordForm
+```
+
+You have to use `sequential` and `parallel` from `Polyform.Validation.Par` as I'm not able to implement `Par` instance for non monad (`Validation` doesn't form a `Monad`).
 
 
 ## API Documentation
