@@ -34,12 +34,12 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
 
--- | This instance uses first valid value and accumulates our semigroup in the brackground.
+-- | This instance uses first valid value and accumulates our semigroup.
 -- |
 -- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
 -- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
 -- |
--- | If you want to use opposite strategy just use apply which "prefers" invalid results:
+-- | If you need opposite strategy just use apply which "prefers" invalid results:
 -- |
 -- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
 -- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
@@ -112,6 +112,7 @@ instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e
 instance profunctorValidation ∷ (Monad m, Monoid e) ⇒ Profunctor (Validation m e) where
   dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
 
+-- XXX: Provide Strong instance too
 instance choiceValidation ∷ (Monad m, Monoid e) ⇒ Choice (Validation m e) where
   left v = Validation (case _ of
     Left i → map Left <$> runValidation v i

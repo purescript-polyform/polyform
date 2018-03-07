@@ -56,7 +56,6 @@ type ExtraAttrs =
   , helpText ∷ Maybe String
   )
 
-
 -- | We are going to build sign up form and later a login form
 -- | In both cases we need need two types of fields.
 -- | They can of course be used in different forms too.
