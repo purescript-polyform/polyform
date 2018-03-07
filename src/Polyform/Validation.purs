@@ -129,13 +129,13 @@ ask ∷ ∀ a e m. Monad m ⇒ Monoid e ⇒ Validation m e a a
 ask = Validation (\a → pure (Valid mempty a))
 
 hoistFn ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → b) → Validation m e a b
-hoistFn f = ask >>> (Validation $ f >>> pure >>> pure)
+hoistFn f = Validation $ f >>> pure >>> pure
 
 hoistFnV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → V e b) → Validation m e a b
-hoistFnV f = ask >>> (Validation $ f >>> pure)
+hoistFnV f = Validation $ f >>> pure
 
 hoistFnMV ∷ ∀ a e b m. Monad m ⇒ Monoid e ⇒ (a → m (V e b)) → Validation m e a b
-hoistFnMV f = ask >>> (Validation f)
+hoistFnMV f = Validation f
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
