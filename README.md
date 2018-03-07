@@ -41,122 +41,183 @@ and `Validation` is just a function with additional `Monadic` context `m`:
 
 ### Quick example
 
-By using these three instances you can build quite complicated scenarios of form validation. I'm going to provide really brief overview of form construction here.
-
-At first let choose our `Form` representation - `Tuple` provides us `Monoid` instance for free and we can use `Array String` as simple container for form level errors:
-
-```purescript
-type Form = Tuple (Array String) (Array Field)
-```
-
-In general polyform doesn't really care how you represent the form. It only requires a `Monoid` instance. There are some stubs provided (just records) for `HTML5` fields with related validation functions. Of course you can ignore them and write your own fields and validations if you need different representation.
-
-This library implements also other helpers for other "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on frontend and backend).
-
-As I've said provided fields are really minimal and we are going to use them for simplicity. You can always extend them too if you need:
+To gain an intuition of how the whole validation works we are not going to use any ready to use "helpers" and we are going to try to build record validation backend with some forms.
+As we want to validate records as inputs we have to somehow fetch values from this input record pass it to validation function and accumulate errors or return a result. But how to access value from a record... maybe with a function like `_.myField` (thanks @thomashoneyman for this idea ;-)
+That solves our most difficult problem for this backend. Let's write some code:
 
 ```purescript
-import Polyform.Input.Http as Http
+module Main where
+
+import Prelude
+
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Random (random)
+import Data.Array (any, elem)
+import Data.Maybe (Maybe(..))
+import Data.String (Pattern(..), contains, indexOf, length, toCharArray)
+import Data.Tuple (Tuple(..))
+import Data.Variant (Variant, inj)
+import Debug.Trace (traceAnyA)
+import Polyform.Validation (V(..), Validation(..), runValidation)
+import Polyform.Validation as Validation
+import Type.Prelude (SProxy(..))
+
+-- | Let's assume that our fields are really simple
+-- | and contain only validation result.
+-- | Errors are kept in `Array`.
+type Input err value = V (Array err) value
+
+-- | Let's define some simple validators for email field
+
+-- | ...of course they are really dummy validators ;-)
+
+emailFormat = Validation.hoistFnV \e →
+  if contains (Pattern "@") e
+    then pure e
+    else Invalid [inj (SProxy ∷ SProxy "emailFormat") e]
+
+emailIsUsed = Validation.hoistFnMV \e → do
+  -- | Some effectful computation inside your monad.
+  -- | Let's toss a coin instead of quering the db
+  -- | if email is really used.
+  v ← random
+  pure $ if v > 0.5
+    then Invalid [inj (SProxy ∷ SProxy "emailIsUsed") e]
+    else pure e
+
+emailFieldValidation = emailFormat *> emailIsUsed
+
+-- | Let's define some simple validators for password field.
+
+minLength m = Validation.hoistFnV \p →
+  if length p < m
+    then Invalid [inj (SProxy ∷ SProxy "minLength") (Tuple m p)]
+    else pure p
+
+maxLength m = Validation.hoistFnV \p →
+  if length p > m
+    then Invalid [inj (SProxy ∷ SProxy "maxLength") (Tuple m p)]
+    else pure p
+
+hasDigit = Validation.hoistFnV \p →
+  let
+    chars = toCharArray p
+  in
+    if any (_ `elem` chars) (toCharArray "0123456789")
+      then pure p
+      else Invalid [inj (SProxy ∷ SProxy "hasDigit") p]
+
+passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
 
 data Field
-  -- | We are able to provide here additional fields row and additional errors row
-  = EmailInput (Http.EmailInput () ())
-  | PasswordInput (Http.PasswordInput () ())
+  = EmailField (Input (Variant (emailFormat ∷ String, emailIsUsed ∷ String)) String)
+  | PasswordField (Input (Variant (hasDigit ∷ String, maxLength ∷ Tuple Int String, minLength ∷ Tuple Int String)) String)
 
--- | For sure you would like more customization
--- | in this field constructor to reuse this
--- | field in different forms.
--- | But let's keep it simple.
-passwordField name =
-  { maxlength: Nothing
-  , minlength: Just 8
-  , name: name
-  , value: Valid [] ""
-  }
+
+
+-- | Form types and form related helpers and validations
+
+-- | This is our form type so when you see `Tuple`
+-- | below it means that we are building a Form.
+-- |
+-- | Such a `Tuple` gives us `Monoid` for free.
+type Form = Tuple (Array String) (Array Field)
+
+-- | Let's build our form without any external helpers
+-- | This function builds a single field form based on:
+-- |  * value fetcher
+-- |  * field type constructor
+-- |  * field validation
+-- |
+-- | Here we can also observe that validation is
+-- | nothing more than a function from an input to
+-- | some `V` value in monadic context.
+fieldForm fetchValue constructor fieldValidation =
+  Validation $ \inputRecord → do
+    -- | Fetch field value from record using fetcher
+    let inputValue = fetchValue inputRecord
+    -- | Run field validation agains this value
+    r ← Validation.runValidation fieldValidation inputValue
+    -- | Based on field validation result let's return:
+    pure $ case r of
+      -- | form togheter with result value
+      -- | so we can combine both into larger values and forms
+      Valid e v → Valid (Tuple [] [constructor (Valid e v)]) v
+      -- | or form as representation of our error which
+      -- | can be combined with other forms
+      Invalid e → Invalid (Tuple [] [constructor (Invalid e)])
+
+emailForm = fieldForm (_.email) EmailField emailFieldValidation
+
+buildPasswordForm fetch = fieldForm fetch PasswordField (passwordFieldValidation 5 50)
+
+passwordForm
+  = ({password1: _, password2: _} <$> (buildPasswordForm _.password1) <*> (buildPasswordForm _.password2))
+  -- | Here we are composing validations
+  -- | so previous step results
+  -- | (record with two passwords)
+  -- | are inputs for this next step.
+  -- |
+  -- | This is nearly "function composition"
+  -- | (or nearly Kleis... please stop pretending
+  -- | to be so wise paluh ;-)
+  -- | so you can always return from this function
+  -- | completely new type. For example here
+  -- | we are returning single password value.
+  -- |
+  -- | Of course this is composition of validation
+  -- | function so you can use your monadic context
+  -- | here too.
+  -- |
+  -- | We can always fail here and return
+  -- | form representing our failure
+  -- | which will be appended to the
+  -- | whole form.
+  >>> Validation.hoistFnV \{ password1, password2 } →
+    if password1 /= password2
+      then Invalid (Tuple ["Password dont match"] [])
+      else pure password1
+
+signupForm = {password: _, email: _} <$> passwordForm <*> emailForm
+
+printResult =
+  case _ of
+    Valid form value → do
+      log "FORM VALID:"
+      traceAnyA form
+      log "FINAL VALUE:"
+      traceAnyA value
+
+    Invalid form → do
+      log "FORM INVALID:"
+      traceAnyA form
+
+main = do
+  log "EXAMPLE"
+
+  v1 ← runValidation signupForm {email: "wrongemailformat", password1: "shrt", password2: "nodigits"}
+  printResult v1
+
+  log "\n\n"
+
+  v2 ← runValidation signupForm {email: "email@example.com", password1: "password1", password2: "password2"}
+  printResult v2
+
+  log "\n\n"
+
+  v3 ← runValidation signupForm {email: "email@example.com", password1: "password921", password2: "password921"}
+  printResult v3
 ```
-We are going to use form construction helper which is a function which glues together validation and default form value and in this case fetches data from HTTP query based on the value from `name` attribute of field record.
 
-``` purescript
-buildPasswordForm ∷ String → Validation m Form Query String
-buildPasswordForm name =
-  Http.fromField
-    -- | Here we have to provide single field form "constructor"
-    (\r → Tuple [] [PasswordInput r])
-    -- | Here goes our field
-    (passwordField name)
-    -- | And here is our valiation function of this field
-    (Http.textInputValidation passwordField')
-```
+### Inputs and helpers
 
-This particular helper produces a validation function from `Polyform.Input.Http.Query` to `String` (which is our `password` value) and accompanying `Form`. In case of validation failure we are going to get just a `Form` with field filled with errors. Representation chosen for this type of fields (from `Field.Html5`) is a list of `Variant` values so you can always extend predefined validations and add your own errors values.
-
-Strategy used by validators in case of plain input fields is simple. They only update `value` attribute from your default record according to the validation result. Of course your etire form also gives you ways to access (through `Functor`, `Applicative`, `Category`) potential results of validation so here we are using `Applicative` to collect values from two fields:
-
-``` purescript
-passwordsForm =
-  { password1: _, password2: _ }
-    <$> (buildPasswordForm "password1")
-    <*> (buildPasswordForm "password2")
-```
-
-This `passwordForm` value is a validation which produces a record in case of success but also a "sum" of both subforms. We can use another form of composition to process this form
-
-
-``` purescript
-passwordForm = passwordsForm >>> (hoistFnV \{ password1, password2 } →
-  if password1 == password2
-    -- | Here we are able to use just applicative `pure`
-    then Valid mempty password1
-    else Invalid (Tuple ["Password doesn't match"] [])
-```
-
-`hoistFnV` lifts function `a → V e b` into `Validation m e a b` it is just: ```hoistFnV f = Validation $ f >>> pure ```
-
-So now we have a form which validates if two provided passwords are the same and we are getting single `String` value in case of success.
-
-When we are writing our validation we are allowed to any monad as validation context so for example you can hit db to check if `email` is in use or use `ajax` etc. (or define this as effect using `puerscript-run` and interpret this check in different contexts ;-).
-
-```purescript
-emailField =
-  { maxlength: Nothing
-  , minlength: Nothing
-  , name: "email"
-  , value: Valid [] ""
-  }
-
-emailForm =
-  Http.fromField
-    (fieldForm EmailInput)
-    emailField
-    (Http.textInputValidation emailField >>> emailInUse)
-
-
--- | Custom field validation function.
--- | F
-emailInUse = Validation $ \email → do
-  -- | Some monadic action
-  inUse ← checkIfEmailUsed email
-  pure $ if inUse
-    -- | In case of these fields we
-    -- | are using list of extensible `Variant`
-    -- | to represent errors.
-    -- | Don't be affraid of variants their are
-    -- | really handy!!!
-    else Invalid $ [inj (SProxy :: SProxy "emailInUse") email]
-    else Valid [] email
-```
-
-Of course we are able to combine these forms and build a final form:
-
-```purescript
-signupForm = {email: _, password: _} <$> emailForm <*> passwordForm
-```
-
-There are more examples for example in `test/Polyform/Input/Http.purs`. I'm going to provide full guide soon. I promise.
+Of course this library is starting to grow and you can find some ready to use pieces and functions. For example you can find some Html5 related fields and validations in `Polyform.Field.Html5`.
+There are also modules (or stubs) which could be used with other "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on the frontend and the backend).
 
 ### Parallel execution
 
-There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`. Shortly you can build parrallel execution of validation tree using `<|>` or `<*>` for example like this:
+There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`. Shortly you can build parrallel execution of validation tree using (`alt` or `apply`) for example like this:
 
 ```purescript
 sequential $ { email: _, password: _} <$> parallel emailForm <*> parallel passwordForm
