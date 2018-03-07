@@ -210,12 +210,57 @@ main = do
   printResult v3
 ```
 
+And here is raw output from the above program (of course you result can be different as
+we using coin tossing as an email validation method :-P):
+
+```purescript
+Tuple {
+  value0: [],
+  value1:
+   [ PasswordField {
+       value0:
+        Invalid {
+          value0:
+           [ { type: 'minLength',
+               value: Tuple { value0: 5, value1: 'shrt' } },
+             { type: 'hasDigit', value: 'shrt' } ] } },
+     PasswordField {
+       value0: Invalid { value0: [ { type: 'hasDigit', value: 'nodigits' } ] } },
+     EmailField {
+       value0:
+        Invalid {
+          value0:
+           [ { type: 'emailFormat', value: 'wrongemailformat' },
+             { type: 'emailIsUsed', value: 'wrongemailformat' } ] } } ] }
+
+
+FORM INVALID:
+Tuple {
+  value0: [ 'Password dont match' ],
+  value1:
+   [ PasswordField { value0: Valid { value0: [], value1: 'password1' } },
+     PasswordField { value0: Valid { value0: [], value1: 'password2' } },
+     EmailField { value0: Valid { value0: [], value1: 'email@example.com' } } ] }
+
+
+
+FORM VALID:
+Tuple {
+  value0: [],
+  value1:
+   [ PasswordField { value0: Valid { value0: [], value1: 'password921' } },
+     PasswordField { value0: Valid { value0: [], value1: 'password921' } },
+     EmailField { value0: Valid { value0: [], value1: 'email@example.com' } } ] }
+FINAL VALUE:
+{ password: 'password921', email: 'email@example.com' }
+```
+
 ### Inputs and helpers
 
 Of course this library is starting to grow and you can find some ready to use pieces and functions. For example you can find some Html5 related fields and validations in `Polyform.Field.Html5`.
-There are also modules (or stubs) which could be used with other "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on the frontend and the backend).
+There are also modules which could be used with different "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on the frontend and the backend).
 
-### Parallel execution
+### Parallel validation
 
 There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`. Shortly you can build parrallel execution of validation tree using (`alt` or `apply`) for example like this:
 
