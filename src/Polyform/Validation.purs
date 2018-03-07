@@ -42,9 +42,10 @@ instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
 -- | If you want to use opposite strategy just use apply which "prefers" invalid results:
 -- |
 -- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
+-- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
 -- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
 -- |
--- | If you find nonaccumulative instances useful please provide an PR with related test example.
+-- | If you find not accumulative instances useful please provide a PR with related tests.
 
 instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
   alt (Valid m1 a) (Valid m2 _) = Valid (m1 <> m2) a
