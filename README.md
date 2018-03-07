@@ -162,7 +162,7 @@ There is simple wrapper which allows you to execute validations in "parallel" us
 sequential $ { email: _, password: _} <$> parallel emailForm <*> parallel passwordForm
 ```
 
-You have to use `sequential` and `parallel` from `Polyform.Validation.Par` as I'm not able to implement `Par` instance for non monad (`Validation` doesn't form a `Monad`).
+You have to use `sequential` and `parallel` from `Polyform.Validation.Par` as I'm not able to implement `Parallel` instance for non monad (`Validation` doesn't form a `Monad`).
 
 
 ## API Documentation
