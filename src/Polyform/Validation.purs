@@ -2,7 +2,7 @@ module Polyform.Validation where
 
 import Prelude
 
-import Control.Alt (class Alt)
+import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Either (Either(..))
@@ -34,8 +34,26 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
 
--- | This semigroup appends valid and invalid
--- | parts of our `V`
+-- | This instance uses first valid value and accumulates our semigroup in the brackground.
+-- |
+-- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
+-- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
+-- |
+-- | If you want to use opposit strategy just use apply which "prefers" invalid result:
+-- |
+-- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
+-- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
+-- |
+-- | If you find non accumulative instances useful please provide an PR with test example.
+
+instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
+  alt (Valid m1 a) (Valid m2 _) = Valid (m1 <> m2) a
+  alt (Valid m1 a) (Invalid m2) = Valid (m1 <> m2) a
+  alt (Invalid m1) (Valid m2 a) = Valid (m1 <> m2) a
+  alt (Invalid m1) (Invalid m2) = Invalid (m1 <> m2)
+
+-- | Defaul `Semigroup` instance appends valid and invalid
+-- | parts of our `V`.
 instance semigroupV :: (Semigroup err, Semigroup a) => Semigroup (V err a) where
   append = lift2 append
 
@@ -63,45 +81,11 @@ instance applyValidation ∷ (Semigroup e, Monad m) ⇒ Apply (Validation m e a)
 instance applicativeValidation ∷ (Monoid e, Monad m) ⇒ Applicative (Validation m e a) where
   pure = Validation <<< const <<< pure <<< pure
 
--- | Some proposition of different instances for `Alt`.
--- | If you find non accumulative instances useful please
--- | provide a PR to github repo.
--- |
--- | This instance "prefers errors" - it is
--- | like `Apply` but when everything is valid
--- | it just takes first value.
--- |
--- | pure (Valid e1 a1) <|> pure (Invalid e2) = Invalid (e1 <> e2)
--- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
-
-newtype AltInvalid m e a b = AltInvalid (Validation m e a b)
-derive instance newtypeAltInvalidVaildation ∷ Newtype (AltInvalid m e a b) _
-derive instance functorAltInvalid ∷ (Functor m) ⇒ Functor (AltInvalid m e a)
-derive newtype instance applyAltInvalid ∷ (Semigroup e, Monad m) ⇒ Apply (AltInvalid m e a)
-instance altInvalidValidation ∷ (Monoid e, Monad m) ⇒ Alt (AltInvalid m e a) where
-  alt v1 v2 = AltInvalid $ Validation \a → do
-    v1' ← unwrap (unwrap v1) a
-    v2' ← unwrap (unwrap v2) a
-    pure $ const id <$> v1' <*> v2'
-
--- | This instance uses first valid value and accumulates our semigroup.
--- |
--- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
--- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
-
-newtype AltValid m e a b = AltValid (Validation m e a b)
-derive instance newtypeAltValidVaildation ∷ Newtype (AltValid m e a b) _
-derive instance functorAltValid ∷ (Functor m) ⇒ Functor (AltValid m e a)
-derive newtype instance applyAltValid ∷ (Semigroup e, Monad m) ⇒ Apply (AltValid m e a)
-instance altValidValidation ∷ (Monoid e, Monad m) ⇒ Alt (AltValid m e a) where
-  alt v1 v2 = AltValid $ Validation \a → do
-    v1' ← unwrap (unwrap v1) a
-    v2' ← unwrap (unwrap v2) a
-    pure $ case v1', v2' of
-      Valid e1 a1, Valid e2 _ → Valid (e1 <> e2) a1
-      Valid e1 a1, Invalid e2 → Valid (e1 <> e2) a1
-      Invalid e1, Valid e2 a2 → Valid (e1 <> e2) a2
-      Invalid e1, Invalid e2 → Invalid (e1 <> e2)
+instance altValidation ∷ (Monoid e, Monad m) ⇒ Alt (Validation m e a) where
+  alt v1 v2 = Validation \a → do
+    v1' ← unwrap v1 a
+    v2' ← unwrap v2 a
+    pure $ v1' <|> v2'
 
 instance semigroupValidation ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validation m e a b) where
   append (Validation v1) (Validation v2) = Validation (\a → v1 a <> v2 a)
