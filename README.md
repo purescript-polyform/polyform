@@ -18,188 +18,145 @@ An attempt to build simple, composable form validation toolkit.
 
 ## Validation overview
 
-### Form Validation
+### Types
 
-  In `Polyform.Form.Validation` you can find `Validation` type - a function which in case of success produces final result and a monoidal "form" value. In case of validation error it also produces "form" value as a failure representation (this allows us for example to always render our form). Our validation result has type:
+  In `Polyform.Validation` you can find `Validation` type - a function which in case of a success produces final result and a monoidal "form" value. In case of a validation error it also produces "form" value as a failure representation (this allows us for example to always render our form). Our validation result has type:
 
   ```purescript
     data V e a = Invalid e | Valid e a
   ```
 
-and `Validation` is just a function with additional `Applicative` context `m`:
+and `Validation` is just a function with additional `Monadic` context `m`:
 
   ```purescript
     data Validation m e q a = Validation (q -> m (V e a))
   ```
   We can think of `q` as an input data/query, `m` as a computational context, `e` could be our "form" and `a` is a result type of successful validation.
 
-  Having this structure of validation we can combine (using `Applicative` or `Category` instances) multiple validation functions to produce larger and larger forms even when some of these functions fail. All combined (using `Applicative`) validation functions operate on the same input data in similar way as `Applicative` instance is implemented for `Function` type.
+  Having this structure of validation we can combine (using `Applicative` or `Alt` or `Category` instances) multiple validation functions to produce larger and larger forms even when some of these functions fail.
 
-### Field Validation
+  All combined (using `Applicative` or `Alt`) validation functions operate on the same input data in similar way as `Applicative` instance is implemented for `Function` type.
 
-  Field validation is built upon `Either` so it short circuits on the first error. Altough it can look scarry (it is defined using `Star` and `ExceptT`) there is nothing special about it. This is just a function from input into `Either e a` in monadic context:
+  Values glued together through `Category` composition form a processing chain. Inside this chain you can always append "errors" (or any information) to your "form" value. In this manner we are able to perform additional checking, validation etc.
 
-  ```purescript
-    newtype Validation m e a b = Validation (Star (ExceptT e m) a b)
-  ```
+### Quick example
 
-## Usage
+By using these three instances you can build quite complicated scenarios of form validation. I'm going to provide really brief overview of form construction here.
 
-This scenario is a starting point for full length guide which is under development.
+At first let choose our `Form` representation - `Tuple` provides us `Monoid` instance for free and we can use `Array String` as simple container for form level errors:
 
-We are going to build a login form which will be tested against HTTP input (full code is in `test/Polyform/Input/Http.purs`). We will use helpers from `Polyform.Input.Http` to simplify our work.
+```purescript
+type Form = Tuple (Array String) (Array Field)
+```
 
-  ```purescript
-  -- | Polyform provides only attributes of fields related to validation
-  -- | (all fields are records with at least `name`, `value`).
-  -- | but we can easily extend them. Let's assume that we want these
-  -- | additional properties:
-  type ExtraAttrs =
-    ( label ∷ String
-    , classes ∷ Array String
-    , helpText ∷ Maybe String
-    )
+In general polyform doesn't really care how you represent the form. It only requires a `Monoid` instance. There are some stubs provided (just records) for `HTML5` fields with related validation functions. Of course you can ignore them and write your own fields and validations if you need different representation.
 
-  -- | We are going to build login form, so we need two types of fields.
-  -- | They can of course be used in different forms too.
-  data Field
-    = EmailInput (Http.EmailInput ExtraAttrs ())
-    | PasswordInput (Http.PasswordInput ExtraAttrs ())
+This library implements also other helpers for other "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on frontend and backend).
 
-  -- | It is time to define our form type. Let's represent it as a... `Tuple` :-)
-  -- | We are going to use `Array` of `Strings` for form level error representation.
-  -- | `Tuple` provides `Monoid` instance which appends our `Arrays` and it
-  -- | seems sufficient for our simple example.
-  type Form = Tuple (Array String) (Array Field)
+As I've said provided fields are really minimal and we are going to use them for simplicity. You can always extend them too if you need:
 
-  -- | 2 helpers which facilitates form usage
-  errorForm err =
-    Tuple [err] []
+```purescript
+import Polyform.Input.Http as Http
 
-  fieldForm constructor record =
-    Tuple [] [constructor record]
+data Field
+  -- | We are able to provide here additional fields row and additional errors row
+  = EmailInput (Http.EmailInput () ())
+  | PasswordInput (Http.PasswordInput () ())
 
-  -- | By using `fromField` helper (from `Polyform.Input.Http`)
-  -- | we are building single field forms.
-  -- | This helper takes:
-  -- |  * "form constructor" which builds form from field record
-  -- |  * field record
-  -- |  * field validation
-  -- | We are using basic text field validation here, but we are going
-  -- | to extend it later.
-  passwordForm =
-    Http.fromField
-      (fieldForm PasswordInput)
-      passwordField
-      (Http.textInputValidation passwordField)
-  emailForm =
-    Http.fromField
-      (fieldForm EmailInput)
-      emailField
-      (Http.textInputValidation emailField)
+-- | For sure you would like more customization
+-- | in this field constructor to reuse this
+-- | field in different forms.
+-- | But let's keep it simple.
+passwordField name =
+  { maxlength: Nothing
+  , minlength: Just 8
+  , name: name
+  , value: Valid [] ""
+  }
+```
+We are going to use form construction helper which is a function which glues together validation and default form value and in this case fetches data from HTTP query based on the value from `name` attribute of field record.
 
-  -- | Now we are ready to build our form validation component.
-  -- | When using `Applicative`/`Category` instances to combine/process
-  -- | our forms we are essentially joining our form values using monoidal
-  -- | append. For example the last `authenticate` step
-  -- | "injects" form level errors into our structure.
-  loginForm =
-    ({email: _, password: _} <$> emailForm <*> passwordForm) >>> hoistFnV authenticate
-    where
-      -- | This db lookup can also be performed in monadic context
-      -- | the only difference would be `hoistFnMV` usage.
-      db = fromFoldable [Tuple "user@example.com" "pass", Tuple "user2@example.com" "pass"]
-      authenticate { email, password } =
-        if email `lookup` db == Just password
-          then
-            pure email
-          else
-            Invalid $ errorForm ("Invalid credentials")
+``` purescript
+buildPasswordForm ∷ String → Validation m Form Query String
+buildPasswordForm name =
+  Http.fromField
+    -- | Here we have to provide single field form "constructor"
+    (\r → Tuple [] [PasswordInput r])
+    -- | Here goes our field
+    (passwordField name)
+    -- | And here is our valiation function of this field
+    (Http.textInputValidation passwordField')
+```
+
+This particular helper produces a validation function from `Polyform.Input.Http.Query` to `String` (our password) and accompanying `Form`. In case of validation failure we are going to get just a `Form` with field filled with errors. Representation chosen for this type of fields (from `Field.Html5`) is a list of `Variant` values so you can always extend predefined validations and add your own errors values.
+
+Strategy used by validators in case of plain input fields is simple. They only update `value` attribute from your default record according to the validation result. Of course your etire form also gives you ways to access (through `Functor`, `Applicative`, `Category`) potential results of validation so here we are using `Applicative` to collect values from two fields:
+
+``` purescript
+passwordsForm =
+  { password1: _, password2: _ }
+    <$> (buildPasswordForm "password1")
+    <*> (buildPasswordForm "password2")
+```
+
+This `passwordForm` value is a validation which produces a record in case of success but also a "sum" of both subforms. We can use another form of composition to process this form
 
 
-  -- | We can now use our form to run validation and produce a form and potential result
-  main = do
-    let query = fromFoldable [Tuple "email" [Just "user@example.com"], Tuple "password" [Just "pass"]]
-    v ← runValidation loginForm query
-    case v of
-      Valid form email → do
-        traceAnyA form
-      Invalid form → do
-        traceAnyA form
-  ```
+``` purescript
+passwordForm = passwordsForm >>> (hoistFnV \r@{ password1, password2 } →
+  if password1 == password2
+    -- | Here we are able to use just applicative `pure`
+    then Valid mempty password1
+    else Invalid (Tuple ["Password doesn't match"] [])
+```
 
-We are getting this debug representation on the console for correct data:
+Function `hoistFnV` lifts function from `a → V e b` into `Validation m e a b` it is just `hoistFnV = Validation f >>> pure` ;-)
+
+So now we have a form which validates if two provided passwords are the same and we are getting single `String` value in case of success.
+
+When we are writing our validation we are allowed to any monad as validation context so for example you can hit db to check if `email` is in use or use `ajax` etc. (or define this as effect using `puerscript-run` and interpret this check in different contexts ;-).
+
+```purescript
+emailField =
+  { maxlength: Nothing
+  , minlength: Nothing
+  , name: "email"
+  , value: Valid [] ""
+  }
+
+emailForm =
+  Http.fromField
+    (fieldForm EmailInput)
+    emailField
+    (Http.textInputValidation emailField >>> emailInUse)
 
 
-  ``` purescript
-  Tuple {
-    value0: [],
-    value1:
-     [ EmailInput {
-         value0:
-          { classes: [],
-            helpText: Nothing {},
-            label: 'Email',
-            maxlength: Nothing {},
-            minlength: Nothing {},
-            name: 'email',
-            value: Right { value0: 'user@example.com' } } },
-       PasswordInput {
-         value0:
-          { classes: [],
-            helpText: Nothing {},
-            label: 'Password',
-            maxlength: Nothing {},
-            minlength: Just { value0: 8 },
-            name: 'password',
-            value: Right { value0: 'pass' } } } ] }
-  ```
+-- | Custom field validation function.
+-- | F
+emailInUse = Validation $ \email → do
+  -- | Some monadic action
+  inUse ← checkIfEmailUsed email
+  pure $ if inUse
+    -- | In case of these fields we
+    -- | are using list of extensible `Variant`
+    -- | to represent errors
+    else Invalid $ [inj "emailInUse" email]
+    else Valid [] email
+```
 
-and in case of failure for this data `query = fromFoldable [Tuple "password" []]`:
+Of course we are able to combine these forms and build a final form:
 
-  ```purescript
-  Tuple {
-    value0: [],
-    value1:
-     [ EmailInput {
-        ...
-            value: Left { value0: { type: 'required', value: {} } } } },
-       PasswordInput {
-        ...
-            value: Left { value0: { type: 'required', value: {} } } } } ] }
-  ```
+```purescript
+signupForm = {email: _, password: _} <$> emailForm <*> passwordForm
+```
 
-and for incorrect credentials:
 
-  ```purescript
-  query = fromFoldable [Tuple "email" [Just "user@example.com"], Tuple "password" [Just "wrong"]]
-  ```
+### Parallel execution
 
-we are getting this:
+There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`.
 
-  ```purescript
-  Tuple {
-    value0: [ 'Invalid credentials' ],
-    value1:
-     [ EmailInput {
-         value0:
-          ...
-            value: Right { value0: 'user@example.com' } } },
-       PasswordInput {
-         value0:
-            ...
-            value: Right { value0: 'wrong' } } } ] }
-  ```
 
 
 ## API Documentation
 
 Module documentation is [published on Pursuit](http://pursuit.purescript.org/packages/purescript-polyform).
-
-## TODO
-
-- Provide multiple `Alt` implementations for `Field.Validation`.
-
-- Add all missing `Html5` fields.
-
-- Test how this design would work with indexed applicative and non monoidal forms.
