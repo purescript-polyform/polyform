@@ -34,23 +34,24 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
 
--- | This instance uses first valid value and accumulates our semigroup.
+-- | This instance uses first valid value and accumulates only in case of invalid
+-- | results.
 -- |
--- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
--- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
+-- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid e1 a1
+-- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid e1 a1
+-- | pure (Invalid e1) <|> pure (Invalid e2) = Invalid (e1 <> e2)
 -- |
--- | If you need opposite strategy just use apply which "prefers" invalid results:
+-- | If you need "dual" strategy just use apply which "prefers" invalid results:
 -- |
 -- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
 -- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
--- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
+-- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid (e1 <> e2) a2
 -- |
 -- | If you find not accumulative instances useful please provide a PR with related tests.
 
 instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
-  alt (Valid m1 a) (Valid m2 _) = Valid (m1 <> m2) a
-  alt (Valid m1 a) (Invalid m2) = Valid (m1 <> m2) a
-  alt (Invalid m1) (Valid m2 a) = Valid (m1 <> m2) a
+  alt (Valid m1 a) _ = Valid m1 a
+  alt (Invalid m1) (Valid m2 a) = Valid m2 a
   alt (Invalid m1) (Invalid m2) = Invalid (m1 <> m2)
 
 -- | Defaul `Semigroup` instance appends valid and invalid
