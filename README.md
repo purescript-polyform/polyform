@@ -190,9 +190,8 @@ passwordForm
   -- | (record with two passwords)
   -- | are inputs for this next step.
   -- |
-  -- | This is nearly "function composition"
-  -- | (or nearly Kleis... please stop pretending
-  -- | to be so wise paluh ;-)
+  -- | This is nearly a "function composition"
+  -- | (or The Kleis...;-)
   -- | so you can always return from this function
   -- | completely new type. For example here
   -- | we are returning single password value.
