@@ -109,6 +109,11 @@ hasDigit = Validation.hoistFnV \p →
       then pure p
       else Invalid [inj (SProxy ∷ SProxy "hasDigit") p]
 
+-- | Here we are combining validations using categorical
+-- | composition so first validation has to succeed
+-- | to second could proceed on it's result.
+emailFieldValidation = emailFormat >>> emailIsUsed
+
 -- | We are combining validations using applicative
 -- | instance which in essence works like that:
 -- |
@@ -116,8 +121,6 @@ hasDigit = Validation.hoistFnV \p →
 -- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
 -- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
 -- |
-emailFieldValidation = emailFormat *> emailIsUsed
-
 passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
 
 -- | It is worth to point out that there is also `Alt` instance

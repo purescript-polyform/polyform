@@ -60,6 +60,11 @@ hasDigit = Validation.hoistFnV \p →
       then pure p
       else Invalid [inj (SProxy ∷ SProxy "hasDigit") p]
 
+-- | Here we are combining validations using categorical
+-- | composition so first validation has to succeed
+-- | to second could proceed on it's result.
+emailFieldValidation = emailFormat >>> emailIsUsed
+
 -- | We are combining validations using applicative
 -- | instance which in essence works like that:
 -- |
@@ -67,8 +72,6 @@ hasDigit = Validation.hoistFnV \p →
 -- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
 -- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
 -- |
-emailFieldValidation = emailFormat *> emailIsUsed
-
 passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
 
 -- | It is worth to point out that there is also `Alt` instance
@@ -79,13 +82,14 @@ passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
 -- |
 -- | It is not used here so sorry for this spam...
 
+-- | Now we are ready to define field type
+
 data Field
-  = EmailField (Input (Variant (emailFormat ∷ String, emailIsUsed ∷ String)) String)
-  | PasswordField (Input (Variant (hasDigit ∷ String, maxLength ∷ Tuple Int String, minLength ∷ Tuple Int String)) String)
+  = EmailField
+      (Input (Variant (emailFormat ∷ String, emailIsUsed ∷ String)) String)
+  | PasswordField
+      (Input (Variant (hasDigit ∷ String, maxLength ∷ Tuple Int String, minLength ∷ Tuple Int String)) String)
 
-
-
--- | Form types and form related helpers and validations
 
 -- | This is our form type so when you see `Tuple`
 -- | below it means that we are building a Form.
@@ -121,6 +125,15 @@ emailForm = fieldForm (_.email) EmailField emailFieldValidation
 
 buildPasswordForm fetch = fieldForm fetch PasswordField (passwordFieldValidation 5 50)
 
+-- | This form introduces different level of validation.
+-- | Field validations errors are accumulated in our specific case
+-- | in on the field level (in the `Array` of `errs`) as defined above.
+-- |
+-- | Here we introducing form level errors which are aggregated
+-- | on the form level inside this first `Array` of `Strings` from
+-- | our form `Tuple`.
+-- |
+-- | I'm talking about the second part of this function...
 passwordForm
   = ({password1: _, password2: _} <$> (buildPasswordForm _.password1) <*> (buildPasswordForm _.password2))
   -- | Here we are composing validations
@@ -177,3 +190,4 @@ main = do
 
   v3 ← runValidation signupForm {email: "email@example.com", password1: "password921", password2: "password921"}
   printResult v3
+
