@@ -15,9 +15,10 @@ import Polyform.Validation (V(..), Validation(..), runValidation)
 import Polyform.Validation as Validation
 import Type.Prelude (SProxy(..))
 
+
 -- | Let's assume that our fields are really simple
--- | and contain only validation result.
--- | Errors are kept in `Array`.
+-- | and contain only validation result or
+-- | errors which are kept in `Array`.
 type Input err value = V (Array err) value
 
 -- | Let's define some simple validators for email field
@@ -25,6 +26,7 @@ type Input err value = V (Array err) value
 -- | ...of course they are really dummy validators ;-)
 
 emailFormat = Validation.hoistFnV \e →
+  -- | @ is just enough for as to send an email ;-)
   if contains (Pattern "@") e
     then pure e
     else Invalid [inj (SProxy ∷ SProxy "emailFormat") e]
@@ -32,13 +34,11 @@ emailFormat = Validation.hoistFnV \e →
 emailIsUsed = Validation.hoistFnMV \e → do
   -- | Some effectful computation inside your monad.
   -- | Let's toss a coin instead of quering the db
-  -- | if email is really used.
+  -- | if email is really used :-P
   v ← random
   pure $ if v > 0.5
     then Invalid [inj (SProxy ∷ SProxy "emailIsUsed") e]
     else pure e
-
-emailFieldValidation = emailFormat *> emailIsUsed
 
 -- | Let's define some simple validators for password field.
 
@@ -60,7 +60,24 @@ hasDigit = Validation.hoistFnV \p →
       then pure p
       else Invalid [inj (SProxy ∷ SProxy "hasDigit") p]
 
+-- | We are combining validations using applicative
+-- | instance which in essence works like that:
+-- |
+-- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
+-- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
+-- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
+-- |
+emailFieldValidation = emailFormat *> emailIsUsed
+
 passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
+
+-- | It is worth to point out that there is also `Alt` instance
+-- | which in essence works like that:
+-- |
+-- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
+-- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
+-- |
+-- | It is not used here so sorry for this spam...
 
 data Field
   = EmailField (Input (Variant (emailFormat ∷ String, emailIsUsed ∷ String)) String)

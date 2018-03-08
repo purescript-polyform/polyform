@@ -41,9 +41,10 @@ and `Validation` is just a function with additional `Monadic` context `m`:
 
 ### Quick example
 
-To gain an intuition of how the whole validation works we are not going to use any ready to use "helpers" and we are going to try to build record validation backend with some forms.
-As we want to validate records as inputs we have to somehow fetch values from this input record pass it to validation function and accumulate errors or return a result. But how to access value from a record... maybe with a function like `_.myField` (thanks @thomashoneyman for this idea ;-)
-That solves our most difficult problem for this backend. Let's write some code:
+To gain some intuition about this library desing and how this architecture of validation works in practive we are not going to build record validation backend without any ready to use "helpers" from polyform.
+
+As we want to validate records as inputs we have to somehow fetch values from this input record pass it to validation function and accumulate errors or return a result. But how to access value from a record... maybe with a function like `_.myField` (thanks @thomashoneyman)!
+That solves our most difficult problem for this backend so let's write some code:
 
 ```purescript
 module Main where
@@ -63,9 +64,10 @@ import Polyform.Validation (V(..), Validation(..), runValidation)
 import Polyform.Validation as Validation
 import Type.Prelude (SProxy(..))
 
+
 -- | Let's assume that our fields are really simple
--- | and contain only validation result.
--- | Errors are kept in `Array`.
+-- | and contain only validation result or
+-- | errors which are kept in `Array`.
 type Input err value = V (Array err) value
 
 -- | Let's define some simple validators for email field
@@ -73,6 +75,7 @@ type Input err value = V (Array err) value
 -- | ...of course they are really dummy validators ;-)
 
 emailFormat = Validation.hoistFnV \e →
+  -- | @ is just enough for as to send an email ;-)
   if contains (Pattern "@") e
     then pure e
     else Invalid [inj (SProxy ∷ SProxy "emailFormat") e]
@@ -80,13 +83,11 @@ emailFormat = Validation.hoistFnV \e →
 emailIsUsed = Validation.hoistFnMV \e → do
   -- | Some effectful computation inside your monad.
   -- | Let's toss a coin instead of quering the db
-  -- | if email is really used.
+  -- | if email is really used :-P
   v ← random
   pure $ if v > 0.5
     then Invalid [inj (SProxy ∷ SProxy "emailIsUsed") e]
     else pure e
-
-emailFieldValidation = emailFormat *> emailIsUsed
 
 -- | Let's define some simple validators for password field.
 
@@ -108,15 +109,33 @@ hasDigit = Validation.hoistFnV \p →
       then pure p
       else Invalid [inj (SProxy ∷ SProxy "hasDigit") p]
 
+-- | We are combining validations using applicative
+-- | instance which in essence works like that:
+-- |
+-- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
+-- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
+-- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
+-- |
+emailFieldValidation = emailFormat *> emailIsUsed
+
 passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
 
+-- | It is worth to point out that there is also `Alt` instance
+-- | which in essence works like that:
+-- |
+-- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
+-- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
+-- |
+-- | It is not used here so sorry for this spam...
+
+-- | Now we are ready to define field type
+
 data Field
-  = EmailField (Input (Variant (emailFormat ∷ String, emailIsUsed ∷ String)) String)
-  | PasswordField (Input (Variant (hasDigit ∷ String, maxLength ∷ Tuple Int String, minLength ∷ Tuple Int String)) String)
+  = EmailField
+      (Input (Variant (emailFormat ∷ String, emailIsUsed ∷ String)) String)
+  | PasswordField
+      (Input (Variant (hasDigit ∷ String, maxLength ∷ Tuple Int String, minLength ∷ Tuple Int String)) String)
 
-
-
--- | Form types and form related helpers and validations
 
 -- | This is our form type so when you see `Tuple`
 -- | below it means that we are building a Form.
@@ -152,6 +171,15 @@ emailForm = fieldForm (_.email) EmailField emailFieldValidation
 
 buildPasswordForm fetch = fieldForm fetch PasswordField (passwordFieldValidation 5 50)
 
+-- | This form introduces different level of validation.
+-- | Field validations errors are accumulated in our specific case
+-- | in on the field level (in the `Array` of `errs`) as defined above.
+-- |
+-- | Here we introducing form level errors which are aggregated
+-- | on the form level inside this first `Array` of `Strings` from
+-- | our form `Tuple`.
+-- |
+-- | I'm talking about the second part of this function...
 passwordForm
   = ({password1: _, password2: _} <$> (buildPasswordForm _.password1) <*> (buildPasswordForm _.password2))
   -- | Here we are composing validations
