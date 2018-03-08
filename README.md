@@ -41,10 +41,10 @@ and `Validation` is just a function with additional `Monadic` context `m`:
 
 ### Quick example
 
-To gain some intuition about this library desing and how this architecture of validation works in practive we are not going to build record validation backend without any ready to use "helpers" from polyform.
+To gain some intuition about this library desing and how this architecture of validation works in practive we are going to build record validation backend without any ready to use "helpers" from polyform.
 
-As we want to validate records as inputs we have to somehow fetch values from this input record pass it to validation function and accumulate errors or return a result. But how to access value from a record... maybe with a function like `_.myField` (thanks @thomashoneyman)!
-That solves our most difficult problem for this backend so let's write some code:
+As we want to validate records we have to somehow fetch values from them pass them to validation functions and accumulate errors or return a result. But how to access a record field... maybe with field accessor - a function like this: `_.myField` (thanks @thomashoneyman)!
+This solves our most difficult problem for this backend so let's write some code:
 
 ```purescript
 module Main where
