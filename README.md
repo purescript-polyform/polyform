@@ -41,7 +41,7 @@ and `Validation` is just a function with additional `Monadic` context `m`:
 
 ### Quick example
 
-To gain some intuition about this library desing and how this architecture of validation works in practive we are going to build record validation backend without any ready to use "helpers" from polyform.
+To gain some intuition about this library desing and how this architecture of validation works in practive we are going to build record validation backend and some forms from scratch - without any ready to use "helpers" or backends from polyform.
 
 As we want to validate records we have to somehow fetch values from them pass them to validation functions and accumulate errors or return a result. But how to access a record field... maybe with field accessor - a function like this: `_.myField` (thanks @thomashoneyman)!
 This solves our most difficult problem for this backend so let's write some code:
@@ -284,6 +284,13 @@ Tuple {
 FINAL VALUE:
 { password: 'password921', email: 'email@example.com' }
 ```
+
+### Fields Validation and V type
+
+You can say that it is abuse to use `data V e a = Invalid e | Valid e a` for valiation of "atomic" field values and you are probably right (in most cases something isomorphic to `Either` would be sufficient). I want to point out that this library had also this kind of approach and had provided two types for validations (one for forms and one for fields) in the past. It was really confusing to work with and maintain two `Validation` types so now we have The Only One.
+
+There are also cases where this additional `e` value in `Valid` can be used for something useful (like for example marking "validation in progress" through monoidal value in progressive, parallel validation scenario). If this extra piece really bothers you just use your own validation function and error representation on the field level.
+
 
 ### Inputs and helpers
 
