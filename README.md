@@ -287,7 +287,8 @@ FINAL VALUE:
 
 ### Inputs and helpers
 
-Of course this library is starting to grow and you can find some ready to use pieces and functions. For example you can find some Html5 related fields and validations in `Polyform.Field.Html5`.
+You can find some ready to use Html5 related fields and validations in `Polyform.Field.Html5`.
+
 There are also modules which could be used with different "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on the frontend and the backend).
 
 ### Parallel validation
