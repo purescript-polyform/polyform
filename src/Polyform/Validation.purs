@@ -75,6 +75,9 @@ fromEither ∷ ∀ a e. (Monoid e) ⇒ Either e a → V e a
 fromEither (Left e) = Invalid e
 fromEither (Right a) = Valid mempty a
 
+toEither ∷ ∀ a e. V e a → Either e a
+toEither (Invalid e) = Left e
+toEither (Valid _ a) = Right a
 
 newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _

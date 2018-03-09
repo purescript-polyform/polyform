@@ -8,65 +8,80 @@ import Data.Array as Array
 import Data.Bifunctor as Bifunctor
 import Data.Either (Either(..))
 import Data.Foldable (fold)
-import Data.Foreign (Foreign, ForeignError(..), MultipleErrors, readArray, readInt, readString)
-import Data.Foreign.Index (class Index, (!))
-import Data.Functor.Variant (VariantF)
-import Data.Monoid (class Monoid)
-import Data.StrMap (StrMap)
-import Data.StrMap as StrMap
-import Data.Traversable (sequence, traverse)
-import Data.Tuple (Tuple(..))
+import Data.Foreign (Foreign, MultipleErrors, readArray, readInt, readString)
+import Data.Foreign.Index ((!))
+import Data.Traversable (sequence)
 import Data.Variant (Variant, inj)
-import Polyform.Field as Field
-import Polyform.Validation (V(..), Validation(..), fromEither, hoistFnMV, hoistFnV, lmapValidation, runValidation)
-import Type.Prelude (class IsSymbol, SProxy(..))
+import Polyform.Validation (V(Valid, Invalid), Validation, fromEither, hoistFnMV, hoistFnV, lmapValidation, runValidation)
+import Type.Prelude (SProxy(SProxy))
 
+-- | WARNING!
+-- | It is still prototyping phase
+-- | of this module.
 type FieldErr = Variant (value ∷ MultipleErrors)
 
-type Field attrs err value = { value :: V err value | attrs }
+type Field attrs err value = { value ∷ V err value | attrs }
 
 type IntField attrs = Field attrs FieldErr Int
 type StringField attrs = Field attrs FieldErr String
 type NumberField attrs = Field attrs FieldErr Number
 -- | Val is a self reference to an object
 type ArrayField attrs e val = Field attrs (Array e) (Array val)
--- | This probably seems strange but we are not able to handle
--- | real value on our monoidal representation level.
--- | Don't worry - real, valid and fully typed values are going
--- | to be aggregated on the validation level ;-)
-type ObjectField val = { value ∷ Array (Attr val) }
 
-data Attr a = Attr String (Variant (index ∷ MultipleErrors, value ∷ a))
+-- | You shuld wrap this array into
+-- | your constructors which represent
+-- | some type of object.
+type Attrs val = Array (Attr val)
 
--- | THIS IS STILL PLAYGROUND
--- | We don't really want this fields and
--- | they should be proviede by the user.
-data MyField
-  = IntField (IntField ())
-  | StringField (StringField ())
-  | NumberField (NumberField ())
-  | Object (ObjectField MyField)
+-- | `Attr` wraps other field and attaches attribute name to it
+data AttrErr field
+  = AttrIndexErr Foreign MultipleErrors
+  | AttrFieldErr Foreign field
+data Attr field = Attr
+  { name ∷ String
+  , value ∷ Either (AttrErr field) field
+  }
+
+-- | You should define your fields using something
+-- | like:
+-- |
+-- | data MyField
+-- |   = IntField (IntField ())
+-- |   | StringField (StringField ())
+-- |   | NumberField (NumberField ())
+-- |   | Object (Attrs MyField)
+-- |
+-- | What is really imporant is that `Attrs` wrapper should be recursive.
 
 attr
-  ∷ ∀ m v
+  ∷ ∀ field m v
   . Monad m
   ⇒ String
-  → Validation m MyField Foreign v
-  → Validation m (Array (Attr MyField)) Foreign v
+  → Validation m field Foreign v
+  → Validation m (Array (Attr field)) Foreign v
 attr name v = hoistFnMV \input → do
-  let r = runExcept (input ! name)
+  let
+    r = runExcept (input ! name)
+    attr' value = singleton $ Attr { name, value }
+    invalid = Invalid <<< attr' <<< Left
   case r of
-    Left e → pure $ Invalid (singleton $ Attr name (inj (SProxy ∷ SProxy "index") e))
+    Left e →
+      pure $ invalid $ AttrIndexErr input e
     Right input' → do
-      let v' = lmapValidation (\e → singleton $ Attr name (inj (SProxy ∷ SProxy "value") e)) v
-      runValidation v' input'
+      r ← runValidation v input'
+      pure $ case r of
+        Invalid field →
+          invalid (AttrFieldErr input' field)
+        Valid field result →
+          Valid (attr' (Right field)) result
 
 object
-  ∷ ∀ m v
+  ∷ ∀ field m v
   . Monad m
-  ⇒ Validation m (Array (Attr MyField)) Foreign v
-  → Validation m MyField Foreign v
-object = lmapValidation (Object <<< { value: _ })
+  ⇒ (Array (Attr field) → field)
+  → Validation m (Array (Attr field)) Foreign v
+  → Validation m field Foreign v
+object constructor = lmapValidation constructor
 
 arrayFieldsValidation
   ∷ ∀ e es m v m
