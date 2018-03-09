@@ -47,26 +47,26 @@ data MyField
   | NumberField (NumberField ())
   | Object (ObjectField MyField)
 
--- attr
---   ∷ ∀ m v
---   . Monad m
---   ⇒ String
---   → Validation m MyField Foreign v
---   → Validation m (Array (Attr MyField)) Foreign v
--- attr name v = hoistFnMV \input → do
---   let r = runExcept (input ! name)
---   pure $ case r of
---     Left e → Invalid (singleton $ Attr name (inj (SProxy ∷ SProxy "index") e))
---     Right input' → do
---       runValidation v input'
---       Valid (singleton $ Attr name (inj (SProxy ∷ SProxy "value") v))
+attr
+  ∷ ∀ m v
+  . Monad m
+  ⇒ String
+  → Validation m MyField Foreign v
+  → Validation m (Array (Attr MyField)) Foreign v
+attr name v = hoistFnMV \input → do
+  let r = runExcept (input ! name)
+  case r of
+    Left e → pure $ Invalid (singleton $ Attr name (inj (SProxy ∷ SProxy "index") e))
+    Right input' → do
+      let v' = lmapValidation (\e → singleton $ Attr name (inj (SProxy ∷ SProxy "value") e)) v
+      runValidation v' input'
 
--- object
---   ∷ ∀ m v
---   . Monad m
---   ⇒ Validation m (Array (Attr MyField)) Foreign v
---   → Validation m MyField Foreign v
--- object = lmapValidation (Object <<< { value: _ })
+object
+  ∷ ∀ m v
+  . Monad m
+  ⇒ Validation m (Array (Attr MyField)) Foreign v
+  → Validation m MyField Foreign v
+object = lmapValidation (Object <<< { value: _ })
 
 arrayFieldsValidation
   ∷ ∀ e es m v m
