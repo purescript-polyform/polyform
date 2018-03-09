@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
-import Data.Bifunctor (class Bifunctor, bimap)
+import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..))
 import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
@@ -49,7 +49,10 @@ instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
 -- |
 -- | If you find any not accumulative instance useful please
 -- | add a newtype wrapper and provide a PR with related tests.
-
+-- |
+-- | And maybe there is also a place for
+-- | "`Alt` somewhat dual to our `Category`"
+-- | which short circuits on the first valid result...
 instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
   alt (Valid m1 a) (Valid m2 _) = Valid (m1 <> m2) a
   alt (Valid m1 a) (Invalid m2) = Valid (m1 <> m2) a
@@ -68,9 +71,10 @@ isValid ∷ ∀ a e. V e a → Boolean
 isValid (Valid _ _) = true
 isValid _ = false
 
-fromEither ∷ ∀ a e. Either e a → V (Either e a) a
-fromEither (Left e) = Invalid (Left e)
-fromEither (Right a) = Valid (Right a) a
+fromEither ∷ ∀ a e. (Monoid e) ⇒ Either e a → V e a
+fromEither (Left e) = Invalid e
+fromEither (Right a) = Valid mempty a
+
 
 newtype Validation m e a b = Validation (a → m (V e b))
 derive instance newtypeVaildation ∷ Newtype (Validation m e a b) _
@@ -158,3 +162,6 @@ bimapValidation ∷ ∀ a b b' e e' m
   → Validation m e' a b'
 bimapValidation l r = unwrap <<< bimap l r <<< BifunctorValidation
 
+
+lmapValidation l = unwrap <<< lmap l <<< BifunctorValidation
+rmapValidation l = unwrap <<< rmap l <<< BifunctorValidation

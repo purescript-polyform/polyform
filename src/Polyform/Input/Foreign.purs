@@ -1,84 +1,109 @@
 module Polyform.Input.Foreign where
 
--- import Prelude
--- 
--- import Control.Monad.Except (runExcept)
--- import Data.Array as Array
--- import Data.Bifunctor as Bifunctor
--- import Data.Either (Either(..))
--- import Data.Foldable (fold)
--- import Data.Foreign (Foreign, MultipleErrors, readArray, readInt, readString)
--- import Data.Foreign.Index (class Index, (!))
--- import Data.Monoid (class Monoid)
--- import Data.Traversable (traverse)
--- import Data.Variant (Variant, inj)
--- import Polyform.Field as Field
--- import Polyform.Form.Component as Form.Component
--- import Polyform.Form.Validation (V(..))
--- import Polyform.Form.Validation as Form
--- import Type.Prelude (SProxy(..))
--- 
+import Prelude
+
+import Control.Monad.Except (runExcept)
+import Data.Array (mapWithIndex, singleton)
+import Data.Array as Array
+import Data.Bifunctor as Bifunctor
+import Data.Either (Either(..))
+import Data.Foldable (fold)
+import Data.Foreign (Foreign, ForeignError(..), MultipleErrors, readArray, readInt, readString)
+import Data.Foreign.Index (class Index, (!))
+import Data.Functor.Variant (VariantF)
+import Data.Monoid (class Monoid)
+import Data.StrMap (StrMap)
+import Data.StrMap as StrMap
+import Data.Traversable (sequence, traverse)
+import Data.Tuple (Tuple(..))
+import Data.Variant (Variant, inj)
+import Polyform.Field as Field
+import Polyform.Validation (V(..), Validation(..), fromEither, hoistFnMV, hoistFnV, lmapValidation, runValidation)
+import Type.Prelude (class IsSymbol, SProxy(..))
+
 -- type ForeignErr err = (index ∷ MultipleErrors, value ∷ MultipleErrors | err)
--- 
--- type Field attrs index err value =
---   Field.Input attrs index (Variant (ForeignErr err)) value
--- 
--- type IntField attrs index err = Field attrs index err Int
--- type StringField attrs index err = Field attrs index err String
--- type NumberField attrs index err = Field attrs index err Number
--- type ArrayField attrs index err val = Field attrs index err (Array val)
--- 
--- arrayValidation
---   ∷ ∀ m err err' v
+type FieldErr = Variant (value ∷ MultipleErrors)
+
+type Field attrs err value = { value :: V err value | attrs }
+
+  -- Field.Input attrs (Variant (ForeignErr err)) String value
+
+type IntField attrs = Field attrs FieldErr Int
+type StringField attrs = Field attrs FieldErr String
+type NumberField attrs = Field attrs FieldErr Number
+-- | Val is a self reference to an object
+type ArrayField attrs e val = Field attrs (Array e) (Array val)
+-- | This probably seems strange but we are not able to handle
+-- | real value on our monoidal representation level.
+-- | Don't worry - real, valid and fully typed values are going
+-- | to be aggregated on the validation level ;-)
+type ObjectField val = { value ∷ Array (Attr val) }
+
+data Attr a = Attr String (Variant (index ∷ MultipleErrors, value ∷ a))
+
+data MyField
+  = IntField (IntField ())
+  | StringField (StringField ())
+  | NumberField (NumberField ())
+  | Object (ObjectField MyField)
+
+attr
+  ∷ ∀ m v
+  . Monad m
+  ⇒ String
+  → Validation m MyField Foreign v
+  → Validation m (Array (Attr MyField)) Foreign v
+attr name v = hoistFnMV \input → do
+  let r = runExcept (input ! name)
+  pure $ case r of
+    Left e → Invalid (singleton $ Attr name (inj (SProxy ∷ SProxy "index") e))
+    Right input' → do
+      runValidation v input'
+      lmapValidation (
+      Valid (singleton $ Attr name (inj (SProxy ∷ SProxy "value") v))
+
+-- object
+--   ∷ ∀ m v
 --   . Monad m
---   ⇒ Monoid err
---   ⇒ Form.Validation m err Foreign v
---   → Field.Validation m (Variant (array ∷ MultipleErrors, values ∷ err | err')) Foreign (Array v)
--- arrayValidation v =
---   arrV >>> fieldsV
---  where
---   arrV = hoistFnEither (readArray >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "array")))
---   fieldsV = hoistFnMEither $ \arr → do
---     arr' ← traverse ((map Array.singleton <$> _) <<< Form.runValidation v) arr
---     pure $ case fold arr' of
---       Valid _ r → Right r
---       Invalid e → Left (inj (SProxy ∷ SProxy "values") e)
--- 
--- intValidation
---   ∷ ∀ m err
---   . Monad m
---   ⇒ Field.Validation m (Variant (value ∷ MultipleErrors | err)) Foreign Int
--- intValidation =
---   Field.hoistFnEither (readInt >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "value")))
--- 
--- stringValidation
---   ∷ ∀ m err
---   . Monad m
---   ⇒ Field.Validation m (Variant (value ∷ MultipleErrors | err)) Foreign String
--- stringValidation =
---   Field.hoistFnEither (readString >>> runExcept >>> Bifunctor.lmap (inj (SProxy ∷ SProxy "value")))
--- 
--- fromFieldCoerce
---   ∷ ∀ attrs err form index m value value'
---   . Index index
---   ⇒ Monad m
---   ⇒ (value → value')
---   → (Field attrs index err value -> form)
---   → (Field attrs index err value)
---   → Field.Validation m (Variant (ForeignErr err)) Foreign value
---   → Form.Component.Component m form Foreign value'
--- fromFieldCoerce coerce singleton field validation =
---   Form.Component.fromFieldCoerce coerce singleton field (index >>> validation)
---  where
---   index = Field.hoistFnEither $ \v →
---     Bifunctor.lmap (inj (SProxy ∷ SProxy "index")) (runExcept (v ! field.name))
--- 
--- fromField
---   ∷ ∀ attrs err form index m value
---   . Index index
---   ⇒ Monad m
---   ⇒ (Field attrs index err value -> form)
---   → (Field attrs index err value)
---   → Field.Validation m (Variant (ForeignErr err)) Foreign value
---   → Form.Component.Component m form Foreign value
--- fromField = fromFieldCoerce id
+--   ⇒ Validation m (Array (Attr MyField)) Foreign v
+--   → Validation m MyField Foreign v
+-- object = lmapValidation (Object <<< { value: _ })
+
+arrayFieldsValidation
+  ∷ ∀ e es m v m
+  . Monad m
+  ⇒ Validation m e Foreign v
+  → Validation m (Array e) (Array Foreign) (Array v)
+arrayFieldsValidation v = hoistFnMV $ \arr → do
+  arr'← sequence $ mapWithIndex validateItem arr
+  pure $ fold arr'
+ where
+  validateItem index item =
+    Bifunctor.bimap Array.singleton Array.singleton <$> runValidation v item
+
+arrayValidation v =
+  arr >>> fields
+ where
+  fields =
+    lmapValidation
+      (singleton <<< inj (SProxy ∷ SProxy "values"))
+      (arrayFieldsValidation v)
+
+  arr = hoistFnV $ readArray >>> runExcept >>= \eitherArr → do
+    let arr' = Bifunctor.lmap (singleton <<< inj (SProxy ∷ SProxy "array")) eitherArr
+    pure (fromEither $ arr')
+
+intValidation
+  ∷ ∀ m err
+  . Monad m
+  ⇒ Validation m (Array (Variant (value ∷ MultipleErrors | err))) Foreign Int
+intValidation =
+  hoistFnV (readInt >>> runExcept >>> (fromEither <<< (Bifunctor.lmap (singleton <<< inj (SProxy ∷ SProxy "value")))))
+
+stringValidation
+  ∷ ∀ m err
+  . Monad m
+  ⇒ Validation m (Array (Variant (value ∷ MultipleErrors | err))) Foreign String
+stringValidation =
+  hoistFnV (readString >>> runExcept >>> (fromEither <<< (Bifunctor.lmap (singleton <<< inj (SProxy ∷ SProxy "value")))))
+
