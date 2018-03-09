@@ -21,12 +21,9 @@ import Polyform.Field as Field
 import Polyform.Validation (V(..), Validation(..), fromEither, hoistFnMV, hoistFnV, lmapValidation, runValidation)
 import Type.Prelude (class IsSymbol, SProxy(..))
 
--- type ForeignErr err = (index ∷ MultipleErrors, value ∷ MultipleErrors | err)
 type FieldErr = Variant (value ∷ MultipleErrors)
 
 type Field attrs err value = { value :: V err value | attrs }
-
-  -- Field.Input attrs (Variant (ForeignErr err)) String value
 
 type IntField attrs = Field attrs FieldErr Int
 type StringField attrs = Field attrs FieldErr String
@@ -41,6 +38,9 @@ type ObjectField val = { value ∷ Array (Attr val) }
 
 data Attr a = Attr String (Variant (index ∷ MultipleErrors, value ∷ a))
 
+-- | THIS IS STILL PLAYGROUND
+-- | We don't really want this fields and
+-- | they should be proviede by the user.
 data MyField
   = IntField (IntField ())
   | StringField (StringField ())
