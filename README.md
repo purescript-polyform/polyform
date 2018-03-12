@@ -119,7 +119,7 @@ emailFieldValidation = emailFormat >>> emailIsUsed
 -- |
 -- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
 -- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
--- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid e2 a2
+-- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid (e1 <> e2) a2
 -- |
 passwordFieldValidation min max = maxLength max *> minLength min *> hasDigit
 
