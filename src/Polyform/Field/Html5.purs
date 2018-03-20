@@ -51,9 +51,9 @@ type NumberInput attrs name err = RangeInputBase "number" attrs name err Int
 type OptNumberInput attrs name err = RangeInputBase "number" attrs name err (Maybe Int)
 
 rangeInputValidation
-  ∷ forall attrs err name m
+  ∷ forall attrs err m
   . Monad m
-  ⇒ RangeInput attrs name err
+  ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
   → Validation
       m
       (Array (Variant (min ∷ Int, max ∷ Int | err)))

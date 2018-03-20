@@ -10,7 +10,7 @@ import Data.Profunctor (lmap)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
 import Polyform.Field.Html5 as Html5
-import Polyform.Field.Validation.Combinators (required, scalar)
+import Polyform.Field.Validation.Combinators (int, required, scalar)
 import Polyform.Form.Component as Form.Component
 import Polyform.Validation (V, Validation, hoistFn)
 
@@ -47,10 +47,24 @@ type OptUrlInput attrs err = Html5.OptUrlInput attrs String (StringErr err)
 textInputValidation
   ∷ ∀ attrs err m
   . Monad m
-  ⇒ { maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs }
+  ⇒ { minlength ∷ Maybe Int, maxlength ∷ Maybe Int | attrs }
   → Validation m (Array (Variant (TextInputErr err))) Value String
 textInputValidation r =
   hoistFn catMaybes >>> required singleton >>> scalar singleton >>> Html5.textInputValidation r
+
+type RangeInputErr err = Html5.RangeInputErr (StringErr (int ∷ String | err))
+
+rangeInputValidation
+  ∷ ∀ attrs err m
+  . Monad m
+  ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
+  → Validation m (Array (Variant (RangeInputErr err))) Value Int
+rangeInputValidation r
+  = hoistFn catMaybes
+  >>> required singleton
+  >>> scalar singleton
+  >>> int singleton
+  >>> Html5.rangeInputValidation r
 
 fromFieldCoerce
   ∷ ∀ attrs e form m v v'
