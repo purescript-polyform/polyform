@@ -4,7 +4,8 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (class Newtype)
+import Data.Newtype (class Newtype, unwrap)
+import Data.Profunctor (class Profunctor, lmap)
 import Polyform.Validation (V, Validation)
 import Polyform.Validation as Validation
 
@@ -55,12 +56,19 @@ instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Comp
 instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) where
   id = Component $ ComponentD { validation: id, serialize: id, default: mempty }
 
--- | Create diverging component which serializes from some
--- | different type than initial.
--- | With this function we are able to use both types of composition
--- | provided by `Applicative`/`Alternative` and `Category`.
+instance profunctorComponentD ∷ (Functor m, Monoid e) ⇒ Profunctor (ComponentD m e i) where
+  dimap l r (ComponentD { default, serialize, validation }) =
+    ComponentD
+      { default
+      , serialize: l >>> serialize
+      , validation: map r validation
+      }
+
+-- | This function provides a way to diverge component serialization
+-- | from validation so we are able to "divide for a moment `o` type"
+-- | and join them later by using `Applicative` composition.
 -- |
--- | Let's assume that user has to set email twice when editing profile:
+-- | Quick example:
 -- |
 -- | profile = Component $
 -- |   ( { email1: _, email2: _, age: _}
@@ -75,23 +83,22 @@ instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) 
 -- |    then
 -- |      errorForm "Emails don't match"
 -- |    else
--- |      { email: r.email1, age: r.age }
+-- |      pure { email: r.email1, age: r.age }
 -- |   s r = { email1: r.email1, email2: r.email, age: r.age }
 -- |
 
 infixl 5 diverge as >-
 
-diverge ∷ ∀ e i o o' m. (o' → o) → Component m e i o → ComponentD m e i o' o
-diverge d (Component (ComponentD c)) = ComponentD
-  { default: c.default
-  , serialize: d >>> c.serialize
-  , validation: c.validation
-  }
+diverge
+  ∷ ∀ e i o o' m
+  . Functor m
+  ⇒ Monoid e
+  ⇒ (o' → o)
+  → Component m e i o
+  → ComponentD m e i o' o
+diverge f = lmap f <<< unwrap
 
 
--- instance profunctorComponent ∷ (Monad m, Monoid e) ⇒ Profunctor (Component m e) where
---   dimap l r c = hoistFn l >>> c >>> hoistFn r
---
 -- runValidation ∷ ∀ form i o m. Component m form i o → (i → m (V form o))
 -- runValidation = unwrap <<< _.validation <<< unwrap
 --
