@@ -4,9 +4,8 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (class Newtype, unwrap)
-import Data.Profunctor (class Profunctor)
-import Polyform.Validation (V(..), Validation(..))
+import Data.Newtype (class Newtype)
+import Polyform.Validation (V, Validation)
 import Polyform.Validation as Validation
 
 -- | `D` from __D__iverging
@@ -80,7 +79,7 @@ instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) 
 -- |   s r = { email1: r.email1, email2: r.email, age: r.age }
 -- |
 
-infixl 3 diverge as >-
+infixl 5 diverge as >-
 
 diverge ∷ ∀ e i o o' m. (o' → o) → Component m e i o → ComponentD m e i o' o
 diverge d (Component (ComponentD c)) = ComponentD
