@@ -25,7 +25,7 @@ An attempt to build simple, composable validation toolkit.
   ```purescript
     data V r a = Invalid r | Valid r a
   ```
-You can think about this `r` as a carrier for some informations you want to produce from validation beside your final value. This "report" possibly contains inforamtions about failure about success but also can carry informations about your validation process (for example marking "pending" validation etc.). Some examples:
+You can think about this `r` as a carrier for some informations you want to produce from validation beside your final value. This "report" possibly contains details about failed or successful processing, but also can carry informations about your validation process (for example marking "pending" validation etc.) or some extra data (like Html field attributes). Some examples:
 
 * In case of traditional HTML forms it is often a requirement to render a form even if it is completely valid. Or render all valid and invalid fields.
 In such a case your "report" would be possibly list of fields (some valid and some invalid) and list of form level errors (or even nested subforms with errors). This kind of representation can be easily composable by monoidal `append`.
@@ -294,19 +294,6 @@ FINAL VALUE:
 { password: 'password921', email: 'email@example.com' }
 ```
 
-### Fields Validation and V type
-
-You can say that it is abuse to use `data V e a = Invalid e | Valid e a` for valiation of "atomic" field values and you are probably right (in most cases something isomorphic to `Either` would be sufficient). I want to point out that this library had also this kind of approach and had provided two types for validations (one for forms and one for fields) in the past. It was really confusing to work with and maintain two `Validation` types so now we have The Only One.
-
-There are also cases where this additional `e` value in `Valid` can be used for something useful (like for example marking "validation in progress" through monoidal value in progressive, parallel validation scenario). If this extra piece really bothers you just use your own validation function and error representation on the field level.
-
-
-### Inputs and helpers
-
-You can find some ready to use Html5 related fields and validations in `Polyform.Field.Html5`.
-
-There are also modules which could be used with different "data sources" like `Polyform.Input.Foreign` or `Polyform.Input.Http`. There is even basic `Polyform.Input.Interpret` module which can help you build really general form and interpret it in different contexts (forexample reuse it on the frontend and the backend).
-
 ### Parallel validation
 
 There is simple wrapper which allows you to execute validations in "parallel" using your underling monad parallelism - check `Polyform.Validation.Par`. Shortly you can build parrallel execution of validation tree using (`alt` or `apply`) for example like this:
@@ -317,6 +304,20 @@ sequential $ { email: _, password: _} <$> parallel emailForm <*> parallel passwo
 
 You have to use `sequential` and `parallel` from `Polyform.Validation.Par` as I'm not able to implement `Parallel` instance for non monad (`Validation` doesn't form a `Monad`).
 
+
+## Project structure
+
+* `Validation` is the core part of this library where validation type is defined and it's parallel wrapper.
+
+* `Field` contains some proposition which can be a base for `Html` (especially `Field.Html5`) form validation. Other types of validation could also reuse parts of this helpers. You can find there also some generic solutions for choice and multichoice validation.
+
+* `Form` provides two types of components.
+
+    * First builds up default form value when composed.
+
+    * Second also composes serialization function. You can generate input for your form from your final value. Be careful it generated input doesn't have to be "valid" (you should probably mark input elements which you don't want to validate) ;-)
+
+* `Input` is a battle field which explores validation scenarios for different types of input. Currently we have: `Input.Foreign`, `Input.Http` and `Input.Interpret`.
 
 ## API Documentation
 

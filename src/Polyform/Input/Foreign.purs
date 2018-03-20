@@ -28,7 +28,7 @@ type NumberField attrs = Field attrs FieldErr Number
 -- | Val is a self reference to an object
 type ArrayField attrs e val = Field attrs (Array e) (Array val)
 
--- | You shuld wrap this array into
+-- | You should wrap this array into
 -- | your constructors which represent
 -- | some type of object.
 type Attrs val = Array (Attr val)
