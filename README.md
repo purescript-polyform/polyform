@@ -1,6 +1,6 @@
 # purescript-polyform
 
-An attempt to build simple, composable form validation toolkit.
+An attempt to build simple, composable validation toolkit.
 
 ## Objectives
 
@@ -20,20 +20,27 @@ An attempt to build simple, composable form validation toolkit.
 
 ### Types
 
-  In `Polyform.Validation` you can find `Validation` type - a function which in case of a success produces final result and a monoidal "form" value. In case of a validation error it also produces "form" value as a failure representation (this allows us for example to always render our form). Our validation result has type:
+  In `Polyform.Validation` you can find `Validation` type - a function which in case of a success produces final result and a monoidal "validation report" value. In case of a validation error it also produces value of this "report" type as a failure representation. Our validation result has type:
 
   ```purescript
-    data V e a = Invalid e | Valid e a
+    data V r a = Invalid r | Valid r a
   ```
+You can think about this `r` as a carrier for some informations you want to produce from validation beside your final value. This "report" possibly contains inforamtions about failure about success but also can carry informations about your validation process (for example marking "pending" validation etc.). Some examples:
 
-and `Validation` is just a function with additional `Monadic` context `m`:
+* In case of traditional HTML forms it is often a requirement to render a form even if it is completely valid. Or render all valid and invalid fields.
+In such a case your "report" would be possibly list of fields (some valid and some invalid) and list of form level errors (or even nested subforms with errors). This kind of representation can be easily composable by monoidal `append`.
+
+* When you are validating `Foreign` value you can build representation of your possibly nested tree of objects in your monoidal report and indicate exactly which parts failed to validate (please check `Polyform.Input.Foreign` if you are interested).
+
+
+Going back to `Validation` function. It is just a function with additional `Monadic` context `m` which produces above `V`:
 
   ```purescript
     data Validation m e q a = Validation (q -> m (V e a))
   ```
-  We can think of `q` as an input data/query, `m` as a computational context, `e` could be our "form" and `a` is a result type of successful validation.
+  We can think of `q` as an input data/query, `m` as a computational context, `e` could be our "report" and `a` is a result type of successful validation.
 
-  Having this structure of validation we can combine (using `Applicative` or `Alt` or `Category` instances) multiple validation functions to produce larger and larger forms even when some of these functions fail.
+  Having this structure of validation we can combine (using `Applicative` or `Alt` or `Category` instances - all of them just append our monoidal values) multiple validation functions to produce larger and larger forms even when some of these functions fail.
 
   All combined (using `Applicative` or `Alt`) validation functions operate on the same input data in similar way as `Applicative` instance is implemented for `Function` type.
 
@@ -41,7 +48,7 @@ and `Validation` is just a function with additional `Monadic` context `m`:
 
 ### Quick example
 
-To gain some intuition about this library desing and how this architecture of validation works in practive we are going to build record validation backend and some forms from scratch - without any ready to use "helpers" or backends from polyform.
+To gain some intuition about this library desing and how this architecture of validation works in practice we are going to build record validation backend and some forms from scratch - without any ready to use "helpers" or backends from polyform, but using only `Validation`.
 
 As we want to validate records we have to somehow fetch values from them pass them to validation functions and accumulate errors or return a result. But how to access a record field... maybe with field accessor - a function like this: `_.myField` (thanks @thomashoneyman)!
 This solves our most difficult problem for this backend so let's write some code:
@@ -73,6 +80,8 @@ type Input err value = V (Array err) value
 -- | Let's define some simple validators for email field
 
 -- | ...of course they are really dummy validators ;-)
+
+-- | `Validation.hoist*` transform functions to `Validation`
 
 emailFormat = Validation.hoistFnV \e →
   -- | @ is just enough for as to send an email ;-)
