@@ -8,7 +8,7 @@ An attempt to build simple, composable validation toolkit.
 
   * Allow validation to be abstracted over data source, so we can reuse it on the backend or frontend or during typed input validation.
 
-  * But also provide modules dedicated for handling HTTP input and untyped record input.
+  * But also provide modules dedicated for handling HTTP input or Foreign data.
 
   * Validation should produce well typed result value __and form__ structure or form filled with errors, so you can always render it.
 
