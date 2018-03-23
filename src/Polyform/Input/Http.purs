@@ -63,7 +63,7 @@ intInputValidation r
   >>> required singleton
   >>> scalar singleton
   >>> int singleton
-  >>> Html5.rangeInputValidation r
+  >>> Html5.numberInputValidation r
 
 -- | XXX: Drop this "coerce" version
 fromFieldCoerce

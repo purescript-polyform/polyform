@@ -55,16 +55,17 @@ type OptIntRangeInput attrs name err = NumberInputBase "range" attrs name err In
 type IntInput attrs name err = NumberInputBase "number" attrs name (IntInputErr err) Int I
 type OptIntInput attrs name err = NumberInputBase "number" attrs name err Int Maybe
 
-rangeInputValidation
-  ∷ forall attrs err m
+numberInputValidation
+  ∷ forall attrs err m v
   . Monad m
-  ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
+  ⇒ Ord v
+  ⇒ { min ∷ Maybe v, max ∷ Maybe v | attrs }
   → Validation
       m
-      (Array (Variant (min ∷ Int, max ∷ Int | err)))
-      Int
-      Int
-rangeInputValidation field =
+      (Array (Variant (min ∷ v, max ∷ v | err)))
+      v
+      v
+numberInputValidation field =
   minV <<< maxV
  where
   maxV = checkAndTag' _max (\i → maybe true (i <= _) field.max)
