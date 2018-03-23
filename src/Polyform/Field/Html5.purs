@@ -29,10 +29,10 @@ checkAndTag'
 checkAndTag' = checkAndTag singleton
 
 
--- | RangeInput can be used to represent
+-- | NumberInput can be used to represent
 -- | `type="range"` and `type="number"`
 -- | of Integer values
-type RangeInputErr err = (min ∷ Int, max ∷ Int | err)
+type IntInputErr err = (min ∷ Int, max ∷ Int | err)
 
 _min = SProxy ∷ SProxy "min"
 _max = SProxy ∷ SProxy "max"
@@ -40,18 +40,20 @@ _max = SProxy ∷ SProxy "max"
 -- | I'm not sure if this `type ∷ SProxy` attribute
 -- | is really good idea.
 -- | If you find it problematic please fill an issue.
-type RangeInputBase (type_ ∷ Symbol) attrs name err value =
+type NumberInputBase (type_ ∷ Symbol) attrs name err value f =
   Input
-    (min ∷ Maybe Int, max ∷ Maybe Int, step ∷ Maybe Int, type ∷ SProxy type_| attrs)
+    (min ∷ Maybe value, max ∷ Maybe value, step ∷ Maybe value, type ∷ SProxy type_| attrs)
     name
-    (Array (Variant (RangeInputErr err)))
-    value
+    (Array (Variant err))
+    (f value)
 
-type RangeInput attrs name err = RangeInputBase "range" attrs name err Int
-type OptRangeInput attrs name err = RangeInputBase "range" attrs name err (Maybe Int)
+type I a = a
 
-type NumberInput attrs name err = RangeInputBase "number" attrs name err Int
-type OptNumberInput attrs name err = RangeInputBase "number" attrs name err (Maybe Int)
+type IntRangeInput attrs name err = NumberInputBase "range" attrs name (IntInputErr err) Int I
+type OptIntRangeInput attrs name err = NumberInputBase "range" attrs name err Int Maybe
+
+type IntInput attrs name err = NumberInputBase "number" attrs name (IntInputErr err) Int I
+type OptIntInput attrs name err = NumberInputBase "number" attrs name err Int Maybe
 
 rangeInputValidation
   ∷ forall attrs err m

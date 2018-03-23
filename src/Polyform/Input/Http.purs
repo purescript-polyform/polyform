@@ -9,7 +9,7 @@ import Data.NonEmpty (NonEmpty)
 import Data.Profunctor (lmap)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
-import Polyform.Field.Html5 (RangeInputErr, TextInputErr)
+import Polyform.Field.Html5 (IntInputErr, TextInputErr)
 import Polyform.Field.Html5 as Html5
 import Polyform.Field.Validation.Combinators (int, required, scalar)
 import Polyform.Form.Component as Form.Component
@@ -53,12 +53,12 @@ textInputValidation r =
 
 type IntErr err = StringErr (int ∷ String | err)
 
-rangeInputValidation
+intInputValidation
   ∷ ∀ attrs err m
   . Monad m
   ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
-  → Validation m (Array (Variant (RangeInputErr (IntErr err)))) Value Int
-rangeInputValidation r
+  → Validation m (Array (Variant (IntInputErr (IntErr err)))) Value Int
+intInputValidation r
   = hoistFn catMaybes
   >>> required singleton
   >>> scalar singleton
