@@ -3,6 +3,7 @@ module Polyform.Input.Interpret.Http where
 import Prelude
 
 import Data.Array (catMaybes, singleton)
+import Data.Functor.Variant (VariantF)
 import Data.Maybe (Maybe, fromMaybe)
 import Data.NonEmpty (NonEmpty)
 import Data.StrMap (StrMap, lookup)
@@ -63,8 +64,70 @@ handleInt
 handleInt (IntF n query k) =
   _handleValue n query k (hoistFn catMaybes >>> required singleton >>> scalar singleton >>> int singleton)
 
+onField :: forall t139 t145 t146 t147 t154 t155 t156.
+   Monad t155 => (VariantF t139 t147 -> t155 t147)
+                 -> VariantF
+                      ( string :: FProxy
+                                    (StringF (Variant t154)
+                                       (Array
+                                          (Variant
+                                             ( scalar :: NonEmpty Array String
+                                             , required :: Unit
+                                             | t156
+                                             )
+                                          )
+                                       )
+                                       (StrMap (Array (Maybe String)))
+                                    )
+                      , int :: FProxy
+                                 (IntF (Variant t145)
+                                    (Array
+                                       (Variant
+                                          ( scalar :: NonEmpty Array String
+                                          , required :: Unit
+                                          , int :: String
+                                          | t146
+                                          )
+                                       )
+                                    )
+                                    (StrMap (Array (Maybe String)))
+                                 )
+                      | t139
+                      )
+                      t147
+                    -> t155 t147
 onField = on _int handleInt >>> on _string handleString
 
+handle :: forall t103 t111 t112 t120 t121 t122.
+   Monad t121 => VariantF
+                   ( string :: FProxy
+                                 (StringF (Variant t120)
+                                    (Array
+                                       (Variant
+                                          ( scalar :: NonEmpty Array String
+                                          , required :: Unit
+                                          | t122
+                                          )
+                                       )
+                                    )
+                                    (StrMap (Array (Maybe String)))
+                                 )
+                   , int :: FProxy
+                              (IntF (Variant t111)
+                                 (Array
+                                    (Variant
+                                       ( scalar :: NonEmpty Array String
+                                       , required :: Unit
+                                       , int :: String
+                                       | t112
+                                       )
+                                    )
+                                 )
+                                 (StrMap (Array (Maybe String)))
+                              )
+                   )
+                   t103
+                 -> t121 t103
 handle =
   case_
     # on _int handleInt

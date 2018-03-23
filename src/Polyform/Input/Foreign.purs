@@ -68,8 +68,8 @@ attr name v = hoistFnMV \input → do
     Left e →
       pure $ invalid $ AttrIndexErr input e
     Right input' → do
-      r ← runValidation v input'
-      pure $ case r of
+      r' ← runValidation v input'
+      pure $ case r' of
         Invalid field →
           invalid (AttrFieldErr input' field)
         Valid field result →
@@ -84,7 +84,7 @@ object
 object constructor = lmapValidation constructor
 
 arrayFieldsValidation
-  ∷ ∀ e es m v m
+  ∷ ∀ e m v
   . Monad m
   ⇒ Validation m e Foreign v
   → Validation m (Array e) (Array Foreign) (Array v)
@@ -95,6 +95,19 @@ arrayFieldsValidation v = hoistFnMV $ \arr → do
   validateItem index item =
     Bifunctor.bimap Array.singleton Array.singleton <$> runValidation v item
 
+arrayValidation :: forall t191 t194 t198 t236.
+   Monad t198 => Validation t198 t194 Foreign t191
+                 -> Validation t198
+                      (Array
+                         (Variant
+                            ( values :: Array t194
+                            , array :: MultipleErrors
+                            | t236
+                            )
+                         )
+                      )
+                      Foreign
+                      (Array t191)
 arrayValidation v =
   arr >>> fields
  where

@@ -166,5 +166,8 @@ bimapValidation ∷ ∀ a b b' e e' m
 bimapValidation l r = unwrap <<< bimap l r <<< BifunctorValidation
 
 
+lmapValidation :: forall t167 t168 t169 t173 t174. Monad t174 => (t169 -> t168) -> Validation t174 t169 t173 t167 -> Validation t174 t168 t173 t167
 lmapValidation l = unwrap <<< lmap l <<< BifunctorValidation
+
+rmapValidation :: forall t100 t101 t94 t95 t96. Monad t101 => (t95 -> t94) -> Validation t101 t96 t100 t95 -> Validation t101 t96 t100 t94
 rmapValidation l = unwrap <<< rmap l <<< BifunctorValidation
