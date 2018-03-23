@@ -63,7 +63,6 @@ data Field
   = EmailInput (Http.EmailInput ExtraAttrs ())
   | PasswordInput (Http.PasswordInput ExtraAttrs ())
   -- | CheckedEmailInput CheckedEmailInput
-derive instance eqField ∷ Eq Field
 
 
 -- | It is time to define our form type and we have chosen... just a `Tuple` :-)
@@ -94,6 +93,7 @@ passwordField =
   , maxlength: Nothing
   , minlength: Just 8
   , name: "password"
+  , type: SProxy
   , value: Valid [] ""
   }
 emailField =
@@ -102,6 +102,7 @@ emailField =
   , label: "Email"
   , maxlength: Nothing
   , minlength: Nothing
+  , type: SProxy
   , name: "email"
   , value: Valid [] ""
   }
