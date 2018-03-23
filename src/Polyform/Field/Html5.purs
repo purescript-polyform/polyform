@@ -37,6 +37,9 @@ type RangeInputErr err = (min ∷ Int, max ∷ Int | err)
 _min = SProxy ∷ SProxy "min"
 _max = SProxy ∷ SProxy "max"
 
+-- | I'm not sure if this `type ∷ SProxy` attribute
+-- | is really good idea.
+-- | If you find it problematic please fill an issue.
 type RangeInputBase (type_ ∷ Symbol) attrs name err value =
   Input
     (min ∷ Maybe Int, max ∷ Maybe Int, step ∷ Maybe Int, type ∷ SProxy type_| attrs)
