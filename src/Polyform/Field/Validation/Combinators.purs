@@ -69,11 +69,13 @@ required singleton = hoistFnV $ case _ of
 
 _int = SProxy ∷ SProxy "int"
 
+type IntErr e = (int ∷ String | e)
+
 int
   ∷ ∀ m err r
   . Monad m
   ⇒ Monoid err
-  ⇒ (Variant (int ∷ String | r) → err)
+  ⇒ (Variant (IntErr r) → err)
   → Validation m err String Int -- err String Int
 int singleton = hoistFnV (\i → case fromString i of
   Just a → pure a

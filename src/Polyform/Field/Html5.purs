@@ -39,7 +39,7 @@ _max = SProxy ∷ SProxy "max"
 
 type RangeInputBase (type_ ∷ Symbol) attrs name err value =
   Input
-    (min ∷ Maybe Int, max ∷ Maybe Int, step ∷ Maybe Int | attrs)
+    (min ∷ Maybe Int, max ∷ Maybe Int, step ∷ Maybe Int, type ∷ SProxy type_| attrs)
     name
     (Array (Variant (RangeInputErr err)))
     value
@@ -69,7 +69,7 @@ type TextInputErr err = (maxlength ∷ String, minlength ∷ String | err)
 
 type TextInputBase (type_ ∷ Symbol) attrs name err value =
   Input
-    (maxlength ∷ Maybe Int, minlength ∷ Maybe Int | attrs)
+    (maxlength ∷ Maybe Int, minlength ∷ Maybe Int, type ∷ SProxy type_ | attrs)
     name
     (Array (Variant (TextInputErr err)))
     value
@@ -79,7 +79,6 @@ type TextInputBase (type_ ∷ Symbol) attrs name err value =
 -- | but this will be handled by separate field for handling list of
 -- | emails.
 
--- | XXX: Provide email validation
 type EmailInput attrs name err = TextInputBase "email" attrs name err String
 type OptEmailInput attrs name err = TextInputBase "email" attrs name err (Maybe String)
 

@@ -9,6 +9,7 @@ import Data.NonEmpty (NonEmpty)
 import Data.Profunctor (lmap)
 import Data.StrMap (StrMap, lookup)
 import Data.Variant (Variant)
+import Polyform.Field.Html5 (RangeInputErr, TextInputErr)
 import Polyform.Field.Html5 as Html5
 import Polyform.Field.Validation.Combinators (int, required, scalar)
 import Polyform.Form.Component as Form.Component
@@ -23,8 +24,6 @@ type Value = Array (Maybe String)
 type Query = StrMap Value
 
 type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
-
-type TextInputErr err = Html5.TextInputErr (StringErr err)
 
 type EmailInput attrs err = Html5.EmailInput attrs String (StringErr err)
 type OptEmailInput attrs err = Html5.OptEmailInput attrs String (StringErr err)
@@ -48,17 +47,17 @@ textInputValidation
   ∷ ∀ attrs err m
   . Monad m
   ⇒ { minlength ∷ Maybe Int, maxlength ∷ Maybe Int | attrs }
-  → Validation m (Array (Variant (TextInputErr err))) Value String
+  → Validation m (Array (Variant (TextInputErr (StringErr err)))) Value String
 textInputValidation r =
   hoistFn catMaybes >>> required singleton >>> scalar singleton >>> Html5.textInputValidation r
 
-type RangeInputErr err = Html5.RangeInputErr (StringErr (int ∷ String | err))
+type IntErr err = StringErr (int ∷ String | err)
 
 rangeInputValidation
   ∷ ∀ attrs err m
   . Monad m
   ⇒ { min ∷ Maybe Int, max ∷ Maybe Int | attrs }
-  → Validation m (Array (Variant (RangeInputErr err))) Value Int
+  → Validation m (Array (Variant (RangeInputErr (IntErr err)))) Value Int
 rangeInputValidation r
   = hoistFn catMaybes
   >>> required singleton
@@ -66,6 +65,7 @@ rangeInputValidation r
   >>> int singleton
   >>> Html5.rangeInputValidation r
 
+-- | XXX: Drop this "coerce" version
 fromFieldCoerce
   ∷ ∀ attrs e form m v v'
   . Monad m
