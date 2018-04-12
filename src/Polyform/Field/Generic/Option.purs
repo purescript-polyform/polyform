@@ -165,8 +165,8 @@ instance _a_choicesNil
       _name = (SProxy ∷ SProxy name)
       name = reflectSymbol _name
       v = any (name == _)
-      product i = insert _name  (v i) {}
-      checkChoice i = case_ # on _name (v i)
+      product j = insert _name  (v j) {}
+      checkChoice j = case_ # on _name (v j)
     in
       { result:
           { product: product i
