@@ -100,7 +100,6 @@ type OptTelInput attrs name err = TextInputBase "tel" attrs name err (Maybe Stri
 type TextInput attrs name err = TextInputBase "text"  attrs name err String
 type OptTextInput attrs name err = TextInputBase "text" attrs name err (Maybe String)
 
--- | XXX: Provide url validation
 type UrlInput attrs name err = TextInputBase "url" attrs name err String
 type OptUrlInput attrs name err = TextInputBase "url" attrs name err (Maybe String)
 

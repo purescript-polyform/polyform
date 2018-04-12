@@ -54,12 +54,13 @@ data Attr field = Attr
 -- | What is really imporant is that `Attrs` wrapper should be recursive.
 
 attr
-  ∷ ∀ field m v
+  ∷ ∀ e field m v
   . Monad m
-  ⇒ String
-  → Validation m field Foreign v
+  ⇒ (e → field)
+  → String
+  → Validation m e Foreign v
   → Validation m (Array (Attr field)) Foreign v
-attr name v = hoistFnMV \input → do
+attr constructor name v = hoistFnMV \input → do
   let
     r = runExcept (input ! name)
     attr' value = singleton $ Attr { name, value }
@@ -70,10 +71,10 @@ attr name v = hoistFnMV \input → do
     Right input' → do
       r' ← runValidation v input'
       pure $ case r' of
-        Invalid field →
-          invalid (AttrFieldErr input' field)
-        Valid field result →
-          Valid (attr' (Right field)) result
+        Invalid e' →
+          invalid (AttrFieldErr input' (constructor e'))
+        Valid e result →
+          Valid (attr' (Right (constructor e))) result
 
 object
   ∷ ∀ field m v
