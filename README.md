@@ -32,6 +32,8 @@ In such a case your "report" would be possibly list of fields (some valid and so
 
 * When you are validating `Foreign` value you can build representation of your possibly nested tree of objects in your monoidal report and indicate exactly which parts failed to validate (please check `Polyform.Input.Foreign` if you are interested).
 
+* Your `r` can also be this strange `a -> a` `Monoid` and represent some transformation (for example a record representation of your form).
+
 
 Going back to `Validation` function. It is just a function with additional `Monadic` context `m` which produces above `V`:
 
