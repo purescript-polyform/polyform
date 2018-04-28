@@ -101,7 +101,8 @@ instance altAltAll ∷ (Monoid e, Monad m) ⇒ Alt (AltAll m e a) where
       Invalid m1, Valid m2 r → Valid (m1 <> m2) r
       Invalid m1, Invalid m2 → Invalid (m1 <> m2)
 
--- | `AltErrs` accumulates only errors reports and drops it in case of valid result:
+-- | `AltErrs` accumulates only errors report and drops it when encounters
+-- | valid result:
 -- |
 -- | pure (Valid e1 a1) <|> _ = Valid e1 a1
 -- | pure (Invalid e1) <|> Valid e2 a2 = Valid e2 a2
