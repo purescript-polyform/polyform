@@ -2,7 +2,7 @@ module Polyform.Validation where
 
 import Prelude
 
-import Control.Alt (class Alt, (<|>))
+import Control.Alt (class Alt)
 import Control.Apply (lift2)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..))
@@ -33,31 +33,6 @@ instance showV ∷ (Show e, Show a) => Show (V e a) where
 
 instance applicativeV ∷ (Monoid e) ⇒ Applicative (V e) where
   pure a = Valid mempty a
-
--- | This instance uses first valid value and accumulates only in case of invalid
--- | results.
--- |
--- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
--- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
--- | pure (Invalid e1) <|> pure (Invalid e2) = Invalid (e1 <> e2)
--- |
--- | If you need "dual" strategy just use apply which "prefers" invalid results:
--- |
--- | pure (Valid e1 a1) *> pure (Invalid e2) = Invalid (e1 <> e2)
--- | pure (Invalid e1) *> pure (Valid e2 a2) = Invalid (e1 <> e2)
--- | pure (Valid e1 a1) *> pure (Valid e2 a2) = Valid (e1 <> e2) a2
--- |
--- | If you find any not accumulative instance useful please
--- | add a newtype wrapper and provide a PR with related tests.
--- |
--- | And maybe there is also a place for
--- | "`Alt` somewhat dual to our `Category`"
--- | which short circuits on the first valid result...
-instance altV ∷ (Semigroup e) ⇒ Alt (V e) where
-  alt (Valid m1 a) (Valid m2 _) = Valid (m1 <> m2) a
-  alt (Valid m1 a) (Invalid m2) = Valid (m1 <> m2) a
-  alt (Invalid m1) (Valid m2 a) = Valid (m1 <> m2) a
-  alt (Invalid m1) (Invalid m2) = Invalid (m1 <> m2)
 
 -- | Defaul `Semigroup` instance appends valid and invalid
 -- | parts of our `V`.
@@ -92,11 +67,85 @@ instance applyValidation ∷ (Semigroup e, Monad m) ⇒ Apply (Validation m e a)
 instance applicativeValidation ∷ (Monoid e, Monad m) ⇒ Applicative (Validation m e a) where
   pure = Validation <<< const <<< pure <<< pure
 
-instance altValidation ∷ (Monoid e, Monad m) ⇒ Alt (Validation m e a) where
-  alt v1 v2 = Validation \a → do
-    v1' ← unwrap v1 a
-    v2' ← unwrap v2 a
-    pure $ v1' <|> v2'
+-- | Three potentatial instances of `Alt` for our Validation type.
+-- |
+-- | `AltAll` accumulates whole report but returns first valid result.
+-- | It has to evaluates all expressions:
+-- |
+-- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
+-- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
+-- | pure (Invalid e1) <|> pure (Invalid e2) = Invalid (e1 <> e2)
+-- |
+-- | If we provide `Plus` instance for this type (where `empty = Invalid mempty`)
+-- | this alt instance would break `Alternative` laws:
+-- |
+-- | ```purescript
+-- | (Invalid [e] <*> pure unit) <|> (Invalid [e] <*> pure unit) = Invalid [e, e]
+-- |
+-- | but
+-- |
+-- | Invalid [e] <*> (pure unit <|> pure unit) = Invalid [e]
+-- | ```
+
+newtype AltAll m e a b = AltAll (Validation m e a b)
+derive newtype instance functorAltAll ∷ (Functor m) ⇒ Functor (AltAll m e a)
+derive instance newtypeAltAll ∷ Newtype (AltAll m e a b) _
+
+instance altAltAll ∷ (Monoid e, Monad m) ⇒ Alt (AltAll m e a) where
+  alt v1 v2 = AltAll $ Validation \a → do
+    v1' ← unwrap (unwrap v1) a
+    v2' ← unwrap (unwrap v2) a
+    pure $ case v1', v2' of
+      Valid m1 r, Valid m2 _ → Valid (m1 <> m2) r
+      Valid m1 r, Invalid m2 → Valid (m1 <> m2) r
+      Invalid m1, Valid m2 r → Valid (m1 <> m2) r
+      Invalid m1, Invalid m2 → Invalid (m1 <> m2)
+
+-- | `AltErrs` accumulates only errors reports and drops it in case of valid result:
+-- |
+-- | pure (Valid e1 a1) <|> _ = Valid e1 a1
+-- | pure (Invalid e1) <|> Valid e2 a2 = Valid e2 a2
+-- | pure (Invalid e1) <|> (Invalid e2) = Invalid (e1 <> e2)
+-- |
+-- | There is similar story with this instance as with `AltAll` - if we provide `Plus`
+-- | it would break `Alternative` laws.
+newtype AltErrs m e a b = AltErrs (Validation m e a b)
+derive newtype instance functorAltErrs ∷ (Functor m) ⇒ Functor (AltErrs m e a)
+derive instance newtypeAltErrs ∷ Newtype (AltErrs m e a b) _
+
+instance altAltErrs ∷ (Monoid e, Monad m) ⇒ Alt (AltErrs m e a) where
+  alt v1 v2 = AltErrs $ Validation \a → do
+    v1' ← unwrap (unwrap v1) $ a
+    case v1' of
+      v@(Valid _ _) → pure v
+      (Invalid i1) → do
+        v2' ← unwrap (unwrap v2) a
+        pure $ case v2' of
+          v@(Valid _ _) → v
+          (Invalid i2) → Invalid (i1 <> i2)
+
+-- | `AltFirst` can't break `Alternative` laws instance as I think it
+-- | doesn't have empty value. It returns first valid result or first invalid
+-- | when all subvalidations fail:
+-- |
+-- | pure (Valid e1 a1) <|> _ = Valid e1 a1
+-- | pure (Invalid e1) <|> Valid e2 a2 = Valid e2 a2
+-- | pure (Invalid e1) <|> (Invalid e2) = Invalid e1
+-- |
+newtype AltFirst m e a b = AltFirst (Validation m e a b)
+derive newtype instance functorAltFirst ∷ (Functor m) ⇒ Functor (AltFirst m e a)
+derive instance newtypeAltFirst ∷ Newtype (AltFirst m e a b) _
+
+instance altAltFirst ∷ (Monoid e, Monad m) ⇒ Alt (AltFirst m e a) where
+  alt v1 v2 = AltFirst $ Validation \a → do
+    v1' ← unwrap (unwrap v1) $ a
+    case v1' of
+      v@(Valid _ _) → pure v
+      i@(Invalid m) → do
+        v2' ← unwrap (unwrap v2) $ a
+        pure $ case v2' of
+          v@(Valid _ _) → v
+          otherwise → i
 
 instance semigroupValidation ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validation m e a b) where
   append (Validation v1) (Validation v2) = Validation (\a → v1 a <> v2 a)

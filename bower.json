@@ -17,7 +17,8 @@
     "purescript-profunctor": "^3.2.0",
     "purescript-invariant": "^3.0.0",
     "purescript-run": "^1.0.1",
-    "purescript-foreign": "^4.0.1"
+    "purescript-foreign": "^4.0.1",
+    "purescript-validation": "^3.2.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^3.0.0",
