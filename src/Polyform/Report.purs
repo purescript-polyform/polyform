@@ -70,7 +70,7 @@ instance applicativeValidation ∷ (Monoid e, Monad m) ⇒ Applicative (Validati
 -- | Three potentatial instances of `Alt` for our Validation type.
 -- |
 -- | `AltAll` accumulates whole report but returns first valid result.
--- | It has to evaluates all expressions:
+-- | It evaluates all expressions:
 -- |
 -- | pure (Valid e1 a1) <|> pure (Invalid e2) = Valid (e1 <> e2) a1
 -- | pure (Valid e1 a1) <|> pure (Valid e2 a2) = Valid (e1 <> e2) a1
