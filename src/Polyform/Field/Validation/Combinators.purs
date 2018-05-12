@@ -2,13 +2,13 @@ module Polyform.Field.Validation.Combinators where
 
 import Prelude
 
-import Data.Array (uncons)
+import Data.Array (catMaybes, uncons)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
 import Data.Monoid (class Monoid)
 import Data.NonEmpty (NonEmpty(..))
-import Data.Variant (Variant, inj)
-import Polyform.Validation (V(..), Validation, hoistFnV)
+import Data.Variant (Variant, inj, on)
+import Polyform.Validation (V(..), Validation, hoistFnMV, hoistFnV, runValidation)
 import Type.Prelude (class IsSymbol, SProxy(SProxy))
 
 -- | These helpers seems rather useful only
@@ -66,6 +66,23 @@ required singleton = hoistFnV $ case _ of
   arr → case uncons arr of
     Nothing → Invalid (singleton (inj _required unit))
     Just { head, tail } → pure (NonEmpty head tail)
+
+opt
+  ∷ ∀ e i m o
+  . Monad m
+  ⇒ Validation
+        m
+        (Array (Variant ( required ∷ Unit | e)))
+        i
+        o
+  → Validation m (Array (Variant e)) i (Maybe o)
+opt v = hoistFnMV \i → do
+  result ← runValidation v i
+  pure $ case result of
+    Valid e o → Valid (catMaybes <<< map dropRequired $ e) (Just o)
+    Invalid e → Invalid $ catMaybes <<< map dropRequired $ e
+  where
+  dropRequired = (Just # on (SProxy ∷ SProxy "required") (const Nothing))
 
 _int = SProxy ∷ SProxy "int"
 

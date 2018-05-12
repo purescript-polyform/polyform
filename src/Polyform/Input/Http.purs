@@ -24,24 +24,25 @@ type Value = Array (Maybe String)
 type Query = StrMap Value
 
 type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
+type OptStringErr e = (scalar ∷ NonEmpty Array String, missing ∷ Array String | e)
 
 type EmailInput attrs err = Html5.EmailInput attrs String (StringErr err)
-type OptEmailInput attrs err = Html5.OptEmailInput attrs String (StringErr err)
+type OptEmailInput attrs err = Html5.OptEmailInput attrs String (OptStringErr err)
 
 type SearchInput attrs err = Html5.SearchInput attrs String (StringErr err)
-type OptSearchInput attrs err = Html5.OptSearchInput attrs String (StringErr err)
+type OptSearchInput attrs err = Html5.OptSearchInput attrs String (OptStringErr err)
 
 type PasswordInput attrs err = Html5.PasswordInput attrs String (StringErr err)
-type OptPasswordInput attrs err = Html5.OptPasswordInput attrs String (StringErr err)
+type OptPasswordInput attrs err = Html5.OptPasswordInput attrs String (OptStringErr err)
 
 type TelInput attrs err = Html5.TelInput attrs String (StringErr err)
-type OptTelInput attrs err = Html5.OptTelInput attrs String (StringErr err)
+type OptTelInput attrs err = Html5.OptTelInput attrs String (OptStringErr err)
 
 type TextInput attrs err = Html5.TextInput attrs String (StringErr err)
-type OptTextInput attrs err = Html5.OptTextInput attrs String (StringErr err)
+type OptTextInput attrs err = Html5.OptTextInput attrs String (OptStringErr err)
 
 type UrlInput attrs err = Html5.UrlInput attrs String (StringErr err)
-type OptUrlInput attrs err = Html5.OptUrlInput attrs String (StringErr err)
+type OptUrlInput attrs err = Html5.OptUrlInput attrs String (OptStringErr err)
 
 textInputValidation
   ∷ ∀ attrs err m
@@ -71,7 +72,7 @@ fromFieldCoerce
   . Monad m
   ⇒ Monoid e
   ⇒ (v → v')
-  → ({ value ∷ V e v, name ∷ String | attrs } -> form)
+  → ({ value ∷ V e v, name ∷ String | attrs } → form)
   → { value ∷ V e v , name ∷ String | attrs }
   → Validation m e Value v
   → Form.Component.Component m form Query v'
@@ -84,7 +85,7 @@ fromField
   ∷ ∀ attrs e form m v
   . Monad m
   ⇒ Monoid e
-  ⇒ ({ value ∷ V e v, name ∷ String | attrs } -> form)
+  ⇒ ({ value ∷ V e v, name ∷ String | attrs } → form)
   → { value ∷ V e v, name ∷ String | attrs }
   → Validation m e Value v
   → Form.Component.Component m form Query v
