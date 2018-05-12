@@ -50,10 +50,10 @@ type NumberInputBase (type_ ∷ Symbol) attrs name err value f =
 type I a = a
 
 type IntRangeInput attrs name err = NumberInputBase "range" attrs name (IntInputErr err) Int I
-type OptIntRangeInput attrs name err = NumberInputBase "range" attrs name err Int Maybe
+type OptIntRangeInput attrs name err = NumberInputBase "range" attrs name (IntInputErr err) Int Maybe
 
 type IntInput attrs name err = NumberInputBase "number" attrs name (IntInputErr err) Int I
-type OptIntInput attrs name err = NumberInputBase "number" attrs name err Int Maybe
+type OptIntInput attrs name err = NumberInputBase "number" attrs name (IntInputErr err) Int Maybe
 
 numberInputValidation
   ∷ forall attrs err m v
