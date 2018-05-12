@@ -80,7 +80,9 @@ opt v = hoistFnMV \i → do
   result ← runValidation v i
   pure $ case result of
     Valid e o → Valid (catMaybes <<< map dropRequired $ e) (Just o)
-    Invalid e → Invalid $ catMaybes <<< map dropRequired $ e
+    Invalid e → case catMaybes <<< map dropRequired $ e of
+      [] → Valid [] Nothing
+      e' → Invalid e'
   where
   dropRequired = (Just # on (SProxy ∷ SProxy "required") (const Nothing))
 
