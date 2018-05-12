@@ -24,7 +24,7 @@ type Value = Array (Maybe String)
 type Query = StrMap Value
 
 type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
-type OptStringErr e = (scalar ∷ NonEmpty Array String, missing ∷ Array String | e)
+type OptStringErr e = (scalar ∷ NonEmpty Array String | e)
 
 type EmailInput attrs err = Html5.EmailInput attrs String (StringErr err)
 type OptEmailInput attrs err = Html5.OptEmailInput attrs String (OptStringErr err)
