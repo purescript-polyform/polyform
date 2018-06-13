@@ -2,20 +2,20 @@ module Polyform.Input.Interpret.Record where
 
 import Prelude
 
-import Data.Monoid (class Monoid)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(VariantRep), unsafeGet)
 import Polyform.Input.Interpret.Validation (IntF(..), StringF(..), _int, _string)
 import Run (FProxy, Run, VariantF, case_, on)
 import Run as Run
 import Type.Row (class RowToList, Cons, Nil, kind RowList)
+import Prim.Row (class Cons)
 import Unsafe.Coerce (unsafeCoerce)
 
 class VariantFieldsType (rl ∷ RowList) (vo ∷ # Type) a | rl a → vo
 
-instance a_variantFieldsTypeSame ∷ (VariantFieldsType rl vo' a, RowCons sym Unit vo' vo) ⇒ VariantFieldsType (Cons sym a rl) vo a
-instance b_variantFieldsTypeDiff ∷ (VariantFieldsType rl vo a) ⇒ VariantFieldsType (Cons sym b rl) vo a
-instance c_variantFieldsTypeNil ∷ VariantFieldsType Nil () a
+instance a_variantFieldsTypeSame ∷ (VariantFieldsType rl vo' a, Cons sym Unit vo' vo) ⇒ VariantFieldsType (Cons sym a rl) vo a
+else instance b_variantFieldsTypeDiff ∷ (VariantFieldsType rl vo a) ⇒ VariantFieldsType (Cons sym b rl) vo a
+else instance c_variantFieldsTypeNil ∷ VariantFieldsType Nil () a
 
 onMatch
   ∷ ∀ a rl r v

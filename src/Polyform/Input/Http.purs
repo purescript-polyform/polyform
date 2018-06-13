@@ -4,10 +4,9 @@ import Prelude
 
 import Data.Array (catMaybes, singleton)
 import Data.Maybe (Maybe, fromMaybe)
-import Data.Monoid (class Monoid)
 import Data.NonEmpty (NonEmpty)
-import Data.Profunctor (lmap)
-import Data.StrMap (StrMap, lookup)
+import Data.Profunctor (lcmap)
+import Foreign.Object (Object, lookup)
 import Data.Variant (Variant)
 import Polyform.Field.Html5 (IntInputErr, TextInputErr)
 import Polyform.Field.Html5 as Html5
@@ -21,7 +20,7 @@ import Polyform.Validation (V, Validation, hoistFn)
 -- | `?field=value`,
 -- | `?field=value1&field=value2`
 type Value = Array (Maybe String)
-type Query = StrMap Value
+type Query = Object Value
 
 type StringErr e = (scalar ∷ NonEmpty Array String, required ∷ Unit | e)
 type OptStringErr e = (scalar ∷ NonEmpty Array String | e)
@@ -77,7 +76,7 @@ fromFieldCoerce
   → Validation m e Value v
   → Form.Component.Component m form Query v'
 fromFieldCoerce coerce singleton field validation =
-  Form.Component.fromFieldCoerce coerce singleton field (lmap fieldQuery validation)
+  Form.Component.fromFieldCoerce coerce singleton field (lcmap fieldQuery validation)
  where
   fieldQuery query = fromMaybe [] (lookup field.name query)
 
@@ -89,5 +88,5 @@ fromField
   → { value ∷ V e v, name ∷ String | attrs }
   → Validation m e Value v
   → Form.Component.Component m form Query v
-fromField = fromFieldCoerce id
+fromField = fromFieldCoerce identity
 

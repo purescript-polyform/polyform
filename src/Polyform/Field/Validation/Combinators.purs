@@ -5,11 +5,11 @@ import Prelude
 import Data.Array (catMaybes, uncons)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
-import Data.Monoid (class Monoid)
 import Data.NonEmpty (NonEmpty(..))
 import Data.Variant (Variant, inj, on)
 import Polyform.Validation (V(..), Validation, hoistFnMV, hoistFnV, runValidation)
 import Type.Prelude (class IsSymbol, SProxy(SProxy))
+import Prim.Row (class Cons)
 
 -- | These helpers seems rather useful only
 -- | in case of field validation scenarios
@@ -32,7 +32,7 @@ check singleton f = hoistFnV $ \i →
 checkAndTag
   ∷ ∀ a e err e' m n
   . Monad m
-  ⇒ RowCons n a e' e
+  ⇒ Cons n a e' e
   ⇒ IsSymbol n
   ⇒ Monoid err
   ⇒ (Variant e → err)

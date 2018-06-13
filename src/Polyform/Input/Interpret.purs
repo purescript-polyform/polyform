@@ -4,7 +4,6 @@ import Prelude
 
 import Data.Either (either, note)
 import Data.Maybe (Maybe(..))
-import Data.Monoid (class Monoid)
 import Data.Profunctor (dimap)
 import Data.Profunctor.Choice (right)
 import Polyform.Form.Component (Component, fromField)
@@ -12,11 +11,12 @@ import Polyform.Input.Interpret.Validation (INT, OptIntF, OptStringF, STRING, in
 import Polyform.Validation (V, Validation)
 import Run (FProxy, Run)
 import Type.Prelude (class IsSymbol, SProxy)
+import Prim.Row (class Cons)
 
 intForm
   ∷ ∀ attrs e eff form q n ns ns' v
   . Monoid e
-  ⇒ RowCons n Unit ns ns'
+  ⇒ Cons n Unit ns ns'
   ⇒ IsSymbol n
   ⇒ ({ value ∷ V e v, name ∷ SProxy n | attrs } -> form)
   → { value :: V e v , name :: SProxy n | attrs }
@@ -53,11 +53,11 @@ optIntForm singleton field validation =
  where
   validation'
     = optInt field.name
-    >>> dimap (note Nothing) (either id Just) (right validation)
+    >>> dimap (note Nothing) (either identity Just) (right validation)
 
 stringForm
   ∷ ∀ attrs e eff form q n ns ns' v
-  . RowCons n Unit ns ns'
+  . Cons n Unit ns ns'
   ⇒ IsSymbol n
   ⇒ Semigroup e
   ⇒ ({ value ∷ V e v, name ∷ SProxy n | attrs } -> form)
@@ -95,4 +95,4 @@ optStringForm singleton field validation =
  where
   validation'
     = optString field.name
-    >>> dimap (note Nothing) (either id Just) (right validation)
+    >>> dimap (note Nothing) (either identity Just) (right validation)

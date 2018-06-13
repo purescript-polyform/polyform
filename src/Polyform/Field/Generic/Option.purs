@@ -8,13 +8,14 @@ import Data.Foldable (any)
 import Data.List (List, singleton, (:))
 import Data.Maybe (Maybe(..))
 import Data.Profunctor.Strong (second)
-import Data.Record (insert)
-import Data.StrMap (lookup, fromFoldable)
+import Record (insert)
+import Foreign.Object (lookup, fromFoldable)
 import Data.Tuple (Tuple(Tuple))
 import Partial.Unsafe (unsafeCrashWith)
 import Polyform.Field.Generic (class MultiChoice, class SingleChoice, choiceImpl, choicesImpl, multiChoiceParserImpl)
 import Polyform.Validation (V(Invalid, Valid), Validation, hoistFnV)
-import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
+import Type.Prelude (class IsSymbol, class Lacks, Proxy(..), SProxy(..), reflectSymbol)
+import Prim.Row (class Cons)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | "Custom sum" type (heavly inspired by (or ripped from) purescript-variant internals)
@@ -26,12 +27,14 @@ data Cons (s ∷ Symbol) tail
 infixr 8 type Cons as :-
 
 class DropOpt (s ∷ Symbol) opts opts' | s opts → opts'
-instance _a_headOptCons ∷ (IsSymbol s) ⇒ DropOpt s (s :- tail) tail
-instance _b_tailOptCons ∷ (IsSymbol s, DropOpt s tail tail') ⇒ DropOpt s (head :- tail) (head :- tail')
+instance _a_headOptCons ∷ (IsSymbol s)
+  ⇒ DropOpt s (s :- tail) tail
+else instance _b_tailOptCons ∷ (IsSymbol s, DropOpt s tail tail')
+  ⇒ DropOpt s (head :- tail) (head :- tail')
 
 class Elem (n ∷ Symbol) l
 instance _a_headOnList ∷ (IsSymbol n) ⇒ Elem n (n :- tail)
-instance _b_elemOnList ∷ (Elem n tail, IsSymbol n) ⇒ Elem n (head :- tail)
+else instance _b_elemOnList ∷ (Elem n tail, IsSymbol n) ⇒ Elem n (head :- tail)
 
 option
   ∷ ∀ opt opts
@@ -116,7 +119,7 @@ instance _a_optionsEnd
     value = reflectSymbol (SProxy ∷ SProxy name)
     o = option (SProxy ∷ SProxy name)
 
-instance _b_optionsRecurse
+else instance _b_optionsRecurse
   ∷ (IsSymbol name, SingleChoice (Option tail))
   ⇒ SingleChoice (Option (name :- tail)) where
 
@@ -157,7 +160,7 @@ choiceParser p =
     Nothing → Invalid s
 
 instance _a_choicesNil
-  ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ())
+  ∷ (IsSymbol name, Cons name Boolean () row, Lacks name ())
   ⇒ MultiChoice (Option (name :- Nil)) row where
 
   multiChoiceParserImpl proxy i =
@@ -174,8 +177,8 @@ instance _a_choicesNil
           }
       , remaining: filter (name /= _) i
       }
-instance _b_choicesRecurse
-  ∷ (IsSymbol name, MultiChoice (Option tail) br, RowCons name Boolean br row, RowLacks name br)
+else instance _b_choicesRecurse
+  ∷ (IsSymbol name, MultiChoice (Option tail) br, Cons name Boolean br row, Lacks name br)
   ⇒ MultiChoice (Option (name :- tail)) row where
 
   multiChoiceParserImpl proxy i =

@@ -8,10 +8,11 @@ import Data.Generic.Rep (class Generic, Constructor(..), NoArguments(..), Sum(..
 import Data.List (List, singleton)
 import Data.Map (fromFoldable, lookup)
 import Data.Maybe (Maybe(..))
-import Data.Record (insert)
+import Record (insert)
 import Data.Tuple (Tuple(Tuple))
 import Polyform.Validation (V(Invalid, Valid), Validation, hoistFnV)
-import Type.Prelude (class IsSymbol, class RowLacks, Proxy(..), SProxy(..), reflectSymbol)
+import Type.Prelude (class IsSymbol, Proxy(..), SProxy(..), reflectSymbol)
+import Prim.Row (class Cons, class Lacks)
 
 -- | This type class provides basic way to transform simple sum type
 -- | (constructors without args are only allowed) into: `Validation` and
@@ -81,7 +82,7 @@ class MultiChoice c (c' ∷ # Type) | c → c' where
       }
 
 instance multiChoiceConstructor
-  ∷ (IsSymbol name, RowCons name Boolean () row, RowLacks name ())
+  ∷ (IsSymbol name, Cons name Boolean () row, Lacks name ())
   ⇒ MultiChoice (Constructor name NoArguments) row where
 
   multiChoiceParserImpl proxy i =
@@ -99,7 +100,7 @@ instance multiChoiceConstructor
       }
 
 instance multiChoiceSum
-  ∷ (IsSymbol name, MultiChoice tail tailRow, RowCons name Boolean tailRow row, RowLacks name tailRow)
+  ∷ (IsSymbol name, MultiChoice tail tailRow, Cons name Boolean tailRow row, Lacks name tailRow)
   ⇒ MultiChoice (Sum (Constructor name NoArguments) tail) row where
 
   multiChoiceParserImpl proxy =

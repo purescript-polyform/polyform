@@ -2,49 +2,18 @@ module Test.Polyform.Input.Http where
 
 import Prelude
 
-import Control.Alt ((<|>))
-import Control.Monad.Aff (Aff)
-import Control.Monad.Aff.Console (log)
-import Control.Monad.Except (runExceptT, throwError)
-import Control.Monad.Free (Free, foldFree, liftF)
-import Control.Monad.Rec.Class (class MonadRec)
-import Data.Array (all, catMaybes, elem)
-import Data.Either (Either(..))
-import Data.Foreign (F)
-import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
-import Data.HTTP.Method (Method(..))
-import Data.Identity (Identity(..))
-import Data.List (List(..), (:))
+import Data.Array (all, elem)
 import Data.Maybe (Maybe(..))
-import Data.Monoid (mempty)
-import Data.Newtype (unwrap)
-import Data.NonEmpty (NonEmpty(..))
-import Data.Record (set)
-import Data.StrMap (StrMap, fromFoldable, lookup)
-import Data.Tuple (Tuple(..), snd)
-import Data.Tuple.Nested ((/\))
-import Data.Variant (class VariantEqs, Variant, inj)
-import Data.Variant.Internal (class VariantTags)
-import Debug.Trace (traceAnyA)
-import Network.HTTP.Affjax (AJAX, Affjax, AffjaxResponse, affjax, defaultRequest)
-import Polyform.Field.Generic (choiceParser, choices, multiChoiceParser)
-import Polyform.Field.Generic.Option (type (:-), Nil)
-import Polyform.Field.Generic.Option as Option
-import Polyform.Field.Html5 (textInputValidation)
-import Polyform.Field.Html5 as Html5
-import Polyform.Form.Component (Component(..), hoistFn, hoistFnMV, hoistFnV, runValidation)
+import Foreign.Object (fromFoldable, lookup)
+import Data.Tuple (Tuple(..))
+import Data.Variant (inj)
+import Polyform.Form.Component (Component, hoistFnMV, hoistFnV, runValidation)
 import Polyform.Input.Http as Http
-import Polyform.Input.Interpret (stringForm)
-import Polyform.Validation (V(..), Validation(..), isValid)
-import Run (FProxy(..))
+import Polyform.Validation (V(..), isValid)
 import Test.Unit (failure, test)
 import Test.Unit as Test.Unit
 import Test.Unit.Assert (assert, assertFalse, equal)
-import Text.Smolder.HTML.Attributes (maxlength)
-import Type.Prelude (Proxy(Proxy), SProxy(..), reflectSymbol)
-import Type.Row (class RowToList)
-import Unsafe.Coerce (unsafeCoerce)
+import Type.Prelude (SProxy(..))
 
 -- | Polyform provides only attributes of fields related to validation
 -- | (all fields are records with at least `name`, `value`).
@@ -162,7 +131,7 @@ signupForm
 
 -- | ... and here is another form component.
 loginForm =
-  ({email: _, password: _} <$> emailForm <*> (passwordForm id)) >>> hoistFnV authenticate
+  ({email: _, password: _} <$> emailForm <*> (passwordForm identity)) >>> hoistFnV authenticate
  where
   -- | This db lookup can also be performed in monadic context
   -- | the only difference would be `hoistFnMV` usage.
@@ -181,7 +150,7 @@ loginForm =
 --     Unknown → pure r
 --     NotUsed → pure r
 --     Used → Invalid (errorForm "Email already in use")
--- 
+--
 -- signupForm' ∷ Component EmailInUse Form Http.Query { password ∷ String, email ∷ String }
 -- signupForm'
 --   = ({email: _, password1: _, password2: _}
@@ -194,7 +163,7 @@ loginForm =
 --     if password1 == password2
 --       then pure { password: password1, email }
 --       else Invalid (errorForm "Passwords don't match")
--- 
+--
 -- validateSignupLocal
 --   ∷ forall m
 --   . MonadRec m
@@ -205,25 +174,25 @@ loginForm =
 --       , email :: String
 --       })
 -- validateSignupLocal query = foldFree interpretLocal $ runValidation signupForm' query
--- 
+--
 -- validateSignupRemote
 --   ∷ ∀ eff
 --   . Http.Query
 --   → Aff ( ajax :: AJAX | eff ) (V Form { password :: String , email :: String })
 -- validateSignupRemote query = foldFree interpretRemote $ runValidation signupForm' query
--- 
--- 
+--
+--
 -- -- | We can use this `Boolean` value
 -- -- | when rendering a field to show a throbber etc.
 -- type CheckedEmailValue = Tuple Boolean String
--- 
+--
 -- -- | We restrict ourselfs to HTTP input here
 -- -- | but this error row can be easily parametrized
 -- -- | and field could be reused for different types
 -- -- | of inputs (this strategy is used for fields
 -- -- | defined in `Field.Html5`)
 -- type CheckedEmailErr = Variant (Http.StringErr (isUsed ∷ String))
--- 
+--
 -- -- | We could use helpers like `Html5.TextInputBase` or functions
 -- -- | from `Field.Input`or `Input.Http` here but I want to show
 -- -- | that there is no "magic" behind the curtain.
@@ -234,7 +203,7 @@ loginForm =
 --   { name ∷ String
 --   , value ∷ Either CheckedEmailErr CheckedEmailValue
 --   }
--- 
+--
 -- -- | It is also worth to point out that
 -- -- | `value` attribute from our field
 -- -- | DOES NOT HAVE TO BE THE SAME as
@@ -259,7 +228,7 @@ loginForm =
 --     -- | If we want to easily compose with them
 --     -- | we should use it too.
 --     Used → Left (inj (SProxy ∷ SProxy "isUsed") addr)
--- 
+--
 -- -- | Let's extend our validator so it works on `Http.Value ~ (Array (Maybe String)`.
 -- -- | Basically we are preprocessing `Value` into single `String`.
 -- checkedEmailInputValidationHttp
@@ -291,7 +260,7 @@ loginForm =
 --   -- | `AltRight` (standard approach - return first `Right`
 --   -- | if encountered).
 --   >>> checkedEmailInputValidation
--- 
+--
 -- -- | Now we are fully armed - we have:
 -- -- |   - field representation
 -- -- |   - field validation
@@ -309,16 +278,16 @@ loginForm =
 --   coerce (Tuple _ v) = v
 --   fieldForm constructor record =
 --     Tuple [] [constructor record]
--- 
+--
 -- data EmailUsage = Used | NotUsed | Unknown
--- 
+--
 -- data EmailInUseF a = EmailInUseF String (EmailUsage → a)
 -- derive instance functorEmailInUseF ∷ Functor EmailInUseF
--- 
+--
 -- type EmailInUse = Free EmailInUseF
--- 
+--
 -- email addr = liftF (EmailInUseF addr id)
--- 
+--
 -- interpretLocal (EmailInUseF email k) =
 --   pure $ k Unknown
 -- interpretRemote (EmailInUseF email k) = do
@@ -326,7 +295,7 @@ loginForm =
 --   (r ∷ AffjaxResponse String) ← affjax $ defaultRequest { url = "http://google.com", method = Left GET }
 --   -- | Process response and inform about results ;-)
 --   pure $ k Used
--- 
+--
 -- signupForm'' ∷ Component EmailInUse Form Http.Query { password ∷ String, email ∷ String }
 -- signupForm''
 --   = ({email: _, password1: _, password2: _}
@@ -339,7 +308,7 @@ loginForm =
 --     if password1 == password2
 --       then pure { password: password1, email }
 --       else Invalid (errorForm "Passwords don't match")
--- 
+--
 -- validateSignupLocal'
 --   ∷ forall m
 --   . MonadRec m
@@ -350,14 +319,14 @@ loginForm =
 --       , email :: String
 --       })
 -- validateSignupLocal' query = foldFree interpretLocal $ runValidation signupForm'' query
--- 
+--
 -- validateSignupRemote'
 --   ∷ ∀ eff
 --   . Http.Query
 --   → Aff ( ajax :: AJAX | eff ) (V Form { password :: String , email :: String })
 -- validateSignupRemote' query = foldFree interpretRemote $ runValidation signupForm'' query
--- 
--- 
+--
+--
 value ∷ Field → _
 value (EmailInput r) = r.value
 value (PasswordInput r) = r.value

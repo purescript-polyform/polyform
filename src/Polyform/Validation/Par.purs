@@ -5,7 +5,6 @@ import Prelude
 import Control.Alt (class Alt, (<|>))
 import Control.Parallel (class Parallel)
 import Control.Parallel as Parallel
-import Data.Monoid (class Monoid)
 import Data.Newtype (class Newtype)
 import Polyform.Validation (Validation(..))
 

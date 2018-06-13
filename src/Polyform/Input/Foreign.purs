@@ -8,8 +8,8 @@ import Data.Array as Array
 import Data.Bifunctor as Bifunctor
 import Data.Either (Either(..))
 import Data.Foldable (fold)
-import Data.Foreign (Foreign, MultipleErrors, readArray, readInt, readString)
-import Data.Foreign.Index ((!))
+import Foreign (Foreign, MultipleErrors, readArray, readInt, readString)
+import Foreign.Index ((!))
 import Data.Traversable (sequence)
 import Data.Variant (Variant, inj)
 import Polyform.Validation (V(Valid, Invalid), Validation, fromEither, hoistFnMV, hoistFnV, lmapValidation, runValidation)

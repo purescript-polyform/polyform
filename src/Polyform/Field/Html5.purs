@@ -10,6 +10,7 @@ import Polyform.Field (Input)
 import Polyform.Field.Validation.Combinators (check, checkAndTag)
 import Polyform.Validation (Validation)
 import Type.Prelude (class IsSymbol, SProxy(SProxy))
+import Prim.Row (class Cons)
 
 check'
   ∷ ∀ a m
@@ -21,7 +22,7 @@ check' = check singleton
 checkAndTag'
   ∷ ∀ a e e' m n
   . Monad m
-  ⇒ RowCons n a e' e
+  ⇒ Cons n a e' e
   ⇒ IsSymbol n
   ⇒ SProxy n
   → (a -> Boolean)
