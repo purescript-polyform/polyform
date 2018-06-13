@@ -3,7 +3,6 @@ module Polyform.Form.Component where
 import Prelude
 
 import Control.Alt (class Alt, (<|>))
-import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Polyform.Validation (V(..), Validation(..))
@@ -41,7 +40,7 @@ instance semigroupoidComponent ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Comp
     Component { default: r1.default <> r2.default, validation: r2.validation <<< r1.validation }
 
 instance categoryComponent ∷ (Monad m, Monoid e) ⇒ Category (Component m e) where
-  id = Component { validation: id, default: mempty }
+  identity = Component { validation: identity, default: mempty }
 
 instance profunctorComponent ∷ (Monad m, Monoid e) ⇒ Profunctor (Component m e) where
   dimap l r c = hoistFn l >>> c >>> hoistFn r
@@ -87,7 +86,7 @@ fromField
   → Record (value ∷ V e v | attrs)
   → Validation m e q v
   → Component m form q v
-fromField = fromFieldCoerce id
+fromField = fromFieldCoerce identity
 
 -- | Longer version of previous one which
 -- | allows coersion of field level value

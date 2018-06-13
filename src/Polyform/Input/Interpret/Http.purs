@@ -6,7 +6,7 @@ import Data.Array (catMaybes, singleton)
 import Data.Functor.Variant (VariantF)
 import Data.Maybe (Maybe, fromMaybe)
 import Data.NonEmpty (NonEmpty)
-import Data.StrMap (StrMap, lookup)
+import Foreign.Object (Object, lookup)
 import Data.Variant (Variant)
 import Data.Variant.Internal (VariantRep(..))
 import Polyform.Field.Validation.Combinators (int, required, scalar)
@@ -22,7 +22,7 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | `?field`, `?field=`, `?field=value`,
 -- | `?field=value1&field=value2`
 type Value = Array (Maybe String)
-type Query = StrMap Value
+type Query = Object Value
 
 variantTag ∷ ∀ v. Variant v → String
 variantTag v =
@@ -77,7 +77,7 @@ onField :: forall t139 t145 t146 t147 t154 t155 t156.
                                              )
                                           )
                                        )
-                                       (StrMap (Array (Maybe String)))
+                                       (Object (Array (Maybe String)))
                                     )
                       , int :: FProxy
                                  (IntF (Variant t145)
@@ -90,7 +90,7 @@ onField :: forall t139 t145 t146 t147 t154 t155 t156.
                                           )
                                        )
                                     )
-                                    (StrMap (Array (Maybe String)))
+                                    (Object (Array (Maybe String)))
                                  )
                       | t139
                       )
@@ -110,7 +110,7 @@ handle :: forall t103 t111 t112 t120 t121 t122.
                                           )
                                        )
                                     )
-                                    (StrMap (Array (Maybe String)))
+                                    (Object (Array (Maybe String)))
                                  )
                    , int :: FProxy
                               (IntF (Variant t111)
@@ -123,7 +123,7 @@ handle :: forall t103 t111 t112 t120 t121 t122.
                                        )
                                     )
                                  )
-                                 (StrMap (Array (Maybe String)))
+                                 (Object (Array (Maybe String)))
                               )
                    )
                    t103

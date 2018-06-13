@@ -6,7 +6,6 @@ import Control.Alt (class Alt, (<|>))
 import Control.Apply (lift2)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..))
-import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
@@ -117,7 +116,7 @@ instance semigroupoidValidation ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Val
         Invalid e → pure (Invalid e))
 
 instance categoryValidation ∷ (Monad m, Monoid e) ⇒ Category (Validation m e) where
-  id = Validation $ pure <<< pure
+  identity = Validation $ pure <<< pure
 
 instance profunctorValidation ∷ (Monad m, Monoid e) ⇒ Profunctor (Validation m e) where
   dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
