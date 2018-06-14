@@ -324,3 +324,7 @@ You have to use `sequential` and `parallel` from `Polyform.Validation.Par` as I'
 ## API Documentation
 
 Module documentation is [published on Pursuit](http://pursuit.purescript.org/packages/purescript-polyform).
+
+## Credits
+
+@thomashoneyman helped me a lot to develop and document this library. Thanks!
