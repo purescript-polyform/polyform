@@ -2,6 +2,10 @@
 
 An attempt to build simple, composable validation toolkit.
 
+## Warning
+
+Please be prepared for major API update as 1.0 release is on the way. In this new incernation main players of this library are going to be renamed and all pieces beside core validation types (new one based on `purescript-validation` `V` are going to be added too) are going to be extracted to separate contrib libraries.
+
 ## Objectives
 
   * Be completely render backend agnostic (form can be rendered as HTML but also as for example... HTTP query).
