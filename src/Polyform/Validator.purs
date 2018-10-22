@@ -3,13 +3,16 @@ module Polyform.Validator where
 import Prelude
 
 import Control.Alt (class Alt)
+import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
+import Data.Either (Either(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
+import Data.Profunctor.Choice (class Choice)
 import Data.Validation.Semigroup (V, invalid, unV)
 
 newtype Validator m r a b = Validator (a → m (V r b))
-derive instance newtypeVaildation ∷ Newtype (Validator m r a b) _
+derive instance newtypeValidator ∷ Newtype (Validator m r a b) _
 derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r a)
 
 instance applyValidator ∷ (Semigroup r, Monad m) ⇒ Apply (Validator m r a) where
@@ -21,13 +24,16 @@ instance applyValidator ∷ (Semigroup r, Monad m) ⇒ Apply (Validator m r a) w
 instance applicativeValidator ∷ (Monoid r, Monad m) ⇒ Applicative (Validator m r a) where
   pure = Validator <<< const <<< pure <<< pure
 
-instance altValidator ∷ (Monoid e, Monad m) ⇒ Alt (Validator m e a) where
+instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e a) where
   alt (Validator v1) (Validator v2) = Validator \a → do
     res ← v1 a
     unV
       (\_ → v2 a)
       (pure <<< pure)
       res
+
+instance plusValidator ∷ (Monad m, Monoid r) ⇒ Plus (Validator m r a) where
+  empty = Validator <<< const <<< pure $ invalid mempty
 
 instance semigroupValidator ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validator m e a b) where
   append (Validator v1) (Validator v2) = Validator (\a → v1 a <> v2 a)
@@ -53,16 +59,17 @@ instance categoryValidator ∷ (Monad m, Monoid e) ⇒ Category (Validator m e) 
 instance profunctorValidator ∷ (Monad m, Monoid e) ⇒ Profunctor (Validator m e) where
   dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
 
--- instance choiceValidator ∷ (Monad m, Monoid r) ⇒ Choice (Validator m r) where
---   left v = Validator (case _ of
---     Left i → map Left <$> runValidator v i
---     Right r → pure (pure $ mempty (Right r)))
---
---   right v = Validator (case _ of
---     Right i → map Right <$> runValidator v i
---     Left l → pure (pure $ mempty (Left l)))
--- ask ∷ ∀ a r m. Monad m ⇒ Monoid r ⇒ Validator m r a a
--- ask = Validator (\a → pure (pure $ mempty a))
+instance choiceValidator ∷ (Monad m, Monoid r) ⇒ Choice (Validator m r) where
+  left v = Validator (case _ of
+    Left i → map Left <$> runValidator v i
+    Right r → pure (pure $ Right r))
+
+  right v = Validator (case _ of
+    Right i → map Right <$> runValidator v i
+    Left l → pure (pure $ Left l))
+
+ask ∷ ∀ a r m. Monad m ⇒ Monoid r ⇒ Validator m r a a
+ask = Validator (\a → pure (pure a))
 
 runValidator ∷ ∀ a b r m. Validator m r a b → (a → m (V r b))
 runValidator = unwrap

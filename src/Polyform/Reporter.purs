@@ -3,7 +3,9 @@ module Polyform.Reporter where
 import Prelude
 
 import Control.Alt (class Alt, (<|>))
+import Control.Alternative (class Alternative, empty)
 import Control.Apply (lift2)
+import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -44,8 +46,8 @@ instance applicativeR ∷ (Monoid e) ⇒ Applicative (R e) where
 
 -- | This instance uses first valid value:
 -- |
--- | pure (Success r1 a1) <|> pure (Failure r2) = Success (r1 <> r2) a1
--- | pure (Success r1 a1) <|> pure (Success r2 a2) = Success (r1 <> r2) a1
+-- | pure (Success r1 a) <|> pure (Failure r2) = Success r1 a
+-- | pure (Success r1 a1) <|> pure (Success r2 a2) = Success r1 a1
 -- | pure (Failure r1) <|> pure (Failure r2) = Failure (r1 <> r2)
 -- |
 -- | If you need "dual" strategy just use apply which "prefers" invalid results:
@@ -54,13 +56,17 @@ instance applicativeR ∷ (Monoid e) ⇒ Applicative (R e) where
 -- | pure (Failure r1) *> pure (Success r2 a2) = Failure (r1 <> r2)
 -- | pure (Success r1 a1) *> pure (Success r2 a2) = Success (r1 <> r2) a2
 -- |
--- | If you find any not accumulative instance useful please
+-- | If you find any other instance useful please provide an example,
 -- | add a newtype wrapper and provide a PR with related tests.
 instance altR ∷ (Semigroup r) ⇒ Alt (R r) where
-  alt (Success r1 a) (Success r2 _) = Success (r1 <> r2) a
-  alt (Success r1 a) (Failure r2) = Success (r1 <> r2) a
-  alt (Failure r1) (Success r2 a) = Success (r1 <> r2) a
+  alt (Success r1 a) _ = Success r1 a
+  alt _ (Success r2 a) = Success r2 a
   alt (Failure r1) (Failure r2) = Failure (r1 <> r2)
+
+instance plusR ∷ (Monoid r) ⇒ Plus (R r) where
+  empty = Failure mempty
+
+instance alternativeR ∷ (Monoid r) ⇒ Alternative (R r)
 
 -- | Defaul `Semigroup` instance appends valid and invalid
 -- | parts of our `R`.
@@ -100,6 +106,9 @@ instance altReporter ∷ (Monoid r, Monad m) ⇒ Alt (Reporter m r a) where
     v1' ← unwrap v1 a
     v2' ← unwrap v2 a
     pure $ v1' <|> v2'
+
+instance plusReporter ∷ (Monad m, Monoid r) ⇒ Plus (Reporter m r a) where
+  empty = Reporter <<< const <<< pure $ empty
 
 instance semigroupReporter ∷ (Semigroup (m (R r b))) ⇒ Semigroup (Reporter m r a b) where
   append (Reporter v1) (Reporter v2) = Reporter (\a → v1 a <> v2 a)

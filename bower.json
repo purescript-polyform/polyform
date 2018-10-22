@@ -15,7 +15,8 @@
     "purescript-invariant": "^4.0.0",
     "purescript-run": "^2.0.0",
     "purescript-foreign": "^5.0.0",
-    "purescript-foreign-object": "^1.0.0"
+    "purescript-foreign-object": "^1.0.0",
+    "purescript-validation": "^4.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0",
