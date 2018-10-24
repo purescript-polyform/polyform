@@ -8,21 +8,21 @@ import Control.Parallel as Parallel
 import Data.Newtype (class Newtype)
 import Polyform.Reporter (Reporter(..))
 
-newtype ParReporter m r a b = ParReporter (Reporter m r a b)
-derive instance newtypeVaildation ∷ Newtype (ParReporter m r a b) _
-derive instance functorParReporter ∷ (Functor m) ⇒ Functor (ParReporter m r a)
+newtype Par m r a b = Par (Reporter m r a b)
+derive instance newtypeVaildation ∷ Newtype (Par m r a b) _
+derive instance functorPar ∷ (Functor m) ⇒ Functor (Par m r a)
 
-instance applyParReporter ∷ (Monad m, Parallel f m, Semigroup r) ⇒ Apply (ParReporter m r a) where
-  apply (ParReporter (Reporter mf)) (ParReporter (Reporter ma)) =
-    ParReporter $ Reporter \i →
+instance applyPar ∷ (Monad m, Parallel f m, Semigroup r) ⇒ Apply (Par m r a) where
+  apply (Par (Reporter mf)) (Par (Reporter ma)) =
+    Par $ Reporter \i →
       Parallel.sequential $ (<*>) <$> Parallel.parallel (mf i) <*> Parallel.parallel (ma i)
 
-instance applicativeParReporter ∷ (Monad m, Parallel f m, Monoid r) ⇒ Applicative (ParReporter m r a) where
-  pure = ParReporter <<< pure
+instance applicativePar ∷ (Monad m, Parallel f m, Monoid r) ⇒ Applicative (Par m r a) where
+  pure = Par <<< pure
 
-instance altParReporter ∷ (Monad m, Parallel f m, Monoid r) ⇒ Alt (ParReporter m r a) where
-  alt (ParReporter (Reporter mv1)) (ParReporter (Reporter mv2)) =
-    ParReporter $ Reporter \i →
+instance altPar ∷ (Monad m, Parallel f m, Monoid r) ⇒ Alt (Par m r a) where
+  alt (Par (Reporter mv1)) (Par (Reporter mv2)) =
+    Par $ Reporter \i →
       Parallel.sequential $ ((<|>) <$> Parallel.parallel (mv1 i) <*> Parallel.parallel (mv2 i))
 
 -- | As we are not able to provide `Parallel` instance currently
@@ -31,12 +31,12 @@ instance altParReporter ∷ (Monad m, Parallel f m, Monoid r) ⇒ Alt (ParReport
 parallel
   ∷ ∀ a b r m
   . Reporter m r a b
-  → ParReporter m r a b
-parallel = ParReporter
+  → Par m r a b
+parallel = Par
 
 sequential
   ∷ ∀ a b r m
-  . ParReporter m r a b
+  . Par m r a b
   → Reporter m r a b
-sequential (ParReporter v) = v
+sequential (Par v) = v
 
