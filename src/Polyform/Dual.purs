@@ -14,29 +14,29 @@ newtype DualD p i o' o = DualD
 
 derive instance newtypeDualD ∷ Newtype (DualD p i o' o) _
 
-instance functorDualD ∷ (Functor (p i), Functor m) ⇒ Functor (DualD p i o) where
+instance functorDualD ∷ (Functor (p i)) ⇒ Functor (DualD p i o) where
   map f (DualD r) = DualD
     { parser: map f r.parser
     , serializer: r.serializer
     }
 
-instance applyDualD ∷ (Functor (DualD p i o'), Apply (p i), Semigroup i) ⇒ Apply (DualD p i o') where
+instance applyDualD ∷ (Apply (p i), Semigroup i) ⇒ Apply (DualD p i o') where
   apply (DualD rf) (DualD ra) = DualD
     { parser: rf.parser <*> ra.parser
     , serializer: rf.serializer <> ra.serializer
     }
 
-instance applicativeDualD ∷ (Functor (DualD p i o'), Applicative (p i), Monoid i) ⇒ Applicative (DualD p i o') where
+instance applicativeDualD ∷ (Applicative (p i), Monoid i) ⇒ Applicative (DualD p i o') where
   pure a = DualD { parser: pure a, serializer: const mempty }
 
-instance altDualD ∷ (Functor (DualD p i o'), Alt (p i)) ⇒ Alt (DualD p i o') where
+instance altDualD ∷ (Alt (p i)) ⇒ Alt (DualD p i o') where
   alt (DualD v1) (DualD v2) =
     DualD
       { parser: v1.parser <|> v2.parser
       , serializer: v1.serializer
       }
 
-instance plusDualD ∷ (Functor (DualD p i o'), Plus (p i), Alt (p i), Monoid i) ⇒ Plus (DualD p i o') where
+instance plusDualD ∷ (Plus (p i), Alt (p i), Monoid i) ⇒ Plus (DualD p i o') where
   empty = DualD { parser: empty, serializer: const mempty }
 
 instance profunctorDualD ∷ (Functor (p i), Profunctor p) ⇒ Profunctor (DualD p i) where
