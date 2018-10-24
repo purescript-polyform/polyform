@@ -11,6 +11,9 @@ import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
 import Data.Validation.Semigroup (V, invalid, unV)
 
+valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
+valid = pure
+
 newtype Validator m r a b = Validator (a → m (V r b))
 derive instance newtypeValidator ∷ Newtype (Validator m r a b) _
 derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r a)
