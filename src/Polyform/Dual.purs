@@ -4,10 +4,8 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Alternative (class Plus, empty)
-import Data.Functor.Contravariant (class Contravariant, cmap)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor, lcmap)
-import Polyform.Validator (Validator)
 
 newtype DualD p i o' o = DualD
   { parser ∷ p i o
