@@ -7,6 +7,8 @@ import Control.Alternative (class Plus, empty)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor, lcmap)
 
+-- | __D__ from diverging as `o'` can be different from `o`.
+-- | They join in `Dual` type which wraps this below.
 newtype DualD p i o' o = DualD
   { parser ∷ p i o
   , serializer ∷ o' → i
@@ -70,16 +72,14 @@ instance categoryDual ∷ (Category p) ⇒ Category (Dual p) where
 -- |     <$> _.email1 >- emailDual
 -- |     <*> _.email2 >- emailDual
 -- |     <*> _.age >- ageDual)
--- |   >>> checkEmails
 -- |
--- | checkEmails = hoistFnV f s
--- |   where
--- |   f r = if r.email1 != r.email2
--- |    then
--- |      errorForm "Emails don't match"
--- |    else
--- |      pure { email: r.email1, age: r.age }
--- |   s r = { email1: r.email1, email2: r.email, age: r.age }
+-- | So in the above example we can turn let say `Dual p String Email` into
+-- |
+-- |  `DualD p String { email1: Email } Email`
+-- |
+-- | using `_.email1 >- emailDual`. And `apply` from above example
+-- | "joins" these types again.
+-- | These to steps can be handled by some generic layer.
 -- |
 
 infixl 5 diverge as >-
