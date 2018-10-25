@@ -8,7 +8,8 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor, lcmap)
 
 -- | __D__ from diverging as `o'` can be different from `o`.
--- | They join in `Dual` type which wraps this below.
+-- | They join in `Dual` type which wraps `DualD` a few
+-- | lines below.
 newtype DualD p i o' o = DualD
   { parser ∷ p i o
   , serializer ∷ o' → i
