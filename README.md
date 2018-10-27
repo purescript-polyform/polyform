@@ -16,7 +16,10 @@ If you want to generate real modules just run: `npm run test` and check `./test/
 ### There is no M**** here!
 
 The whole library is an extension over well known `Applicative` validation strategy which gives us the ability to collect all errors (from a single "step") not only first one like it is in case of monadic approach to validation. `Applicative` also gives us parallelism "for free". It should not be a surprise that half of the library is built on top of the `V` type from `purescript-validation`. Another half is built on top of really similar type `R` (aka `Report`) defined here.
-Beside `Applicative` instance we have also `Category` instances at our disposal which is useful to combine validation steps into chains. Here is a simple example of a chain of some ready to use validators taken from `purescript-polyform-validators` which demonstrates this idea:
+
+I think that even more interesting situation is when we have both `Applicative` and  `Category` instances. The second one can somewhat replace missing `Monad` and we can build up on results from previous steps. All types defined in this have both of them.
+
+Here we have a simple example of a chain which contains some ready to use validators taken from `purescript-polyform-validators` which demonstrates this idea:
 
   ```purescript
   import Polyform.Validators.Affjax (affjax, json, status)
@@ -33,8 +36,8 @@ Beside `Applicative` instance we have also `Category` instances at our disposal 
       <$> field "planet" (string >>> hoistFnV \c → c in ["PL"...])
   ```
 
-You can see that with a little help from `purescript-variant` we are able to easily build modular validation solution - we are composing validators for different layers with consistent error handling. In this case we get a single function from request to a final value which processes the whole request stack.
-Of course we could use multiple shortcuts like `affjaxJson` but this is not the purpose of this example...
+You can see that with a little help from `purescript-variant` we are able to construct modular validation solution - we are composing validators for different layers with consistent error handling. In this case we get a single function from request to a final value which processes the whole request stack.
+Of course we could introduce multiple shortcuts to this chain (like predefined `affjaxJson`) but this is not the purpose of this example...
 
 Let's go back to the basics and look at the types provided by this library. We will see that we are playing with nothing more here then just functions...
 
