@@ -3,6 +3,7 @@ module Polyform.Validator where
 import Prelude
 
 import Control.Alt (class Alt)
+import Control.Alternative (class Alternative)
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..))
@@ -14,47 +15,41 @@ import Data.Validation.Semigroup (V, invalid, unV)
 valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
 valid = pure
 
-newtype Validator m r a b = Validator (a → m (V r b))
-derive instance newtypeValidator ∷ Newtype (Validator m r a b) _
-derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r a)
+newtype Validator m e i o = Validator (i → m (V e o))
+derive instance newtypeValidator ∷ Newtype (Validator m r i o) _
+derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r i)
 
-instance applyValidator ∷ (Semigroup r, Monad m) ⇒ Apply (Validator m r a) where
+instance applyValidator ∷ (Semigroup r, Monad m) ⇒ Apply (Validator m r i) where
   apply vf va = Validator $ \i → do
     vf' ← unwrap vf i
     va' ← unwrap va i
     pure $ vf' <*> va'
 
-instance applicativeValidator ∷ (Monoid r, Monad m) ⇒ Applicative (Validator m r a) where
+instance applicativeValidator ∷ (Monoid r, Monad m) ⇒ Applicative (Validator m r i) where
   pure = Validator <<< const <<< pure <<< pure
 
-instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e a) where
-  alt (Validator v1) (Validator v2) = Validator \a → do
-    res ← v1 a
+instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e i) where
+  alt (Validator v1) (Validator v2) = Validator \i → do
+    res ← v1 i
     unV
-      (\_ → v2 a)
+      (\_ → v2 i)
       (pure <<< pure)
       res
 
-instance plusValidator ∷ (Monad m, Monoid r) ⇒ Plus (Validator m r a) where
+instance plusValidator ∷ (Monad m, Monoid e) ⇒ Plus (Validator m e i) where
   empty = Validator <<< const <<< pure $ invalid mempty
 
-instance semigroupValidator ∷ (Semigroup (m (V e b))) ⇒ Semigroup (Validator m e a b) where
-  append (Validator v1) (Validator v2) = Validator (\a → v1 a <> v2 a)
+instance semigroupValidator ∷ (Apply m, Semigroup e, Semigroup o) ⇒ Semigroup (Validator m e i o) where
+  append (Validator v1) (Validator v2) = Validator (\i → (<>) <$> v1 i <*> v2 i)
 
-instance monoidValidator ∷ (Applicative m, Monoid e, Monoid b, Semigroup (m (V e b))) ⇒ Monoid (Validator m e a b) where
+instance monoidValidator ∷ (Applicative m, Monoid e, Monoid o) ⇒ Monoid (Validator m e i o) where
   mempty = Validator <<< const <<< pure $ mempty
 
 instance semigroupoidValidator ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Validator m e) where
   compose (Validator v2) (Validator v1) =
-    Validator $ \a → do
-      res ← v1 a
-      flip (unV (pure <<< invalid)) res $
-        \b → do
-          res' ← v2 b
-          unV
-            (pure <<< invalid)
-            (pure <<< pure)
-            res'
+    Validator $ \i → do
+      res ← v1 i
+      unV (pure <<< invalid) v2 res
 
 instance categoryValidator ∷ (Monad m, Monoid e) ⇒ Category (Validator m e) where
   identity = Validator $ pure <<< pure
@@ -71,41 +66,41 @@ instance choiceValidator ∷ (Monad m, Monoid r) ⇒ Choice (Validator m r) wher
     Right i → map Right <$> runValidator v i
     Left l → pure (pure $ Left l))
 
-ask ∷ ∀ a r m. Monad m ⇒ Monoid r ⇒ Validator m r a a
-ask = Validator (\a → pure (pure a))
+ask ∷ ∀ i m r. Monad m ⇒ Monoid r ⇒ Validator m r i i
+ask = Validator (\i → pure (pure i))
 
-runValidator ∷ ∀ a b r m. Validator m r a b → (a → m (V r b))
+runValidator ∷ ∀ i m o r. Validator m r i o → (i → m (V r o))
 runValidator = unwrap
 
-hoistFn ∷ ∀ a b m r. Monad m ⇒ Monoid r ⇒ (a → b) → Validator m r a b
+hoistFn ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → o) → Validator m r i o
 hoistFn f = Validator $ f >>> pure >>> pure
 
-hoistFnV ∷ ∀ a b m r. Monad m ⇒ Monoid r ⇒ (a → V r b) → Validator m r a b
+hoistFnV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → V r o) → Validator m r i o
 hoistFnV f = Validator $ f >>> pure
 
-hoistFnMV ∷ ∀ a b m r. Monad m ⇒ Monoid r ⇒ (a → m (V r b)) → Validator m r a b
+hoistFnMV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (V r o)) → Validator m r i o
 hoistFnMV f = Validator f
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
-newtype BifunctorValidator m a e b = BifunctorValidator (Validator m e a b)
-derive instance newtypeBifunctorValidator ∷ Newtype (BifunctorValidator m a e b) _
+newtype BifunctorValidator m i e o = BifunctorValidator (Validator m e i o)
+derive instance newtypeBifunctorValidator ∷ Newtype (BifunctorValidator m i e o) _
 
-instance bifunctorBifunctorValidator ∷ Monad m ⇒ Bifunctor (BifunctorValidator m a) where
-  bimap l r (BifunctorValidator (Validator f)) = BifunctorValidator $ Validator $ \a → do
-    v ← f a
+instance bifunctorBifunctorValidator ∷ Monad m ⇒ Bifunctor (BifunctorValidator m i) where
+  bimap l r (BifunctorValidator (Validator f)) = BifunctorValidator $ Validator $ \i → do
+    v ← f i
     pure $ bimap l r v
 
-bimapValidator ∷ ∀ a b b' e e' m
+bimapValidator ∷ ∀ i e e' m o o'
   . (Monad m)
   ⇒ (e → e')
-  → (b → b')
-  → Validator m e a b
-  → Validator m e' a b'
+  → (o → o')
+  → Validator m e i o
+  → Validator m e' i o'
 bimapValidator l r = unwrap <<< bimap l r <<< BifunctorValidator
 
-lmapValidator ∷ ∀ a b m e e'. Monad m ⇒ (e → e') → Validator m e a b → Validator m e' a b
+lmapValidator ∷ ∀ i e e' m o. Monad m ⇒ (e → e') → Validator m e i o → Validator m e' i o
 lmapValidator l = unwrap <<< lmap l <<< BifunctorValidator
 
-rmapValidator ∷ ∀ a b b' m r. Monad m ⇒ (b → b') → Validator m r a b → Validator m r a b'
+rmapValidator ∷ ∀ i o o' m r. Monad m ⇒ (o → o') → Validator m r i o → Validator m r i o'
 rmapValidator l = unwrap <<< rmap l <<< BifunctorValidator

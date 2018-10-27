@@ -22,7 +22,8 @@
     "purescript-psci-support": "^4.0.0",
     "purescript-debug": "^4.0.0",
     "purescript-test-unit": "^14.0.0",
-    "purescript-affjax": "^6.0.0"
+    "purescript-affjax": "^6.0.0",
+    "purescript-quickcheck-laws": "^4.0.0"
   },
   "license": "BSD-3-Clause",
   "name": "purescript-polyform",
