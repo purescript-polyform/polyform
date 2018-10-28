@@ -8,24 +8,28 @@ All examples in this cookbook are somewhat verbose because they are transformed 
 On the other hand they are complete and we can be sure that they are up to date.
 If you want to generate real modules just run: `npm run test` and check `./test/Cookbook` directory.
 
-* Simple validators
+
+* REST API client from scratch - here we are building simple chain of validators so we are able to fetch data from 
+
+
+* API client + server side data serializer
 
 
 ## Overview
 
-### There is no M**** here!
+### There is no `M****` here!
 
 The whole library is an extension over well known `Applicative` validation strategy which gives us the ability to collect all errors (from a single "step") not only first one like it is in case of monadic approach to validation. `Applicative` also gives us parallelism "for free". It should not be a surprise that half of the library is built on top of the `V` type from `purescript-validation`. Another half is built on top of really similar type `R` (aka `Report`) defined here.
 
-I think that even more interesting situation is when we have both `Applicative` and  `Category` instances. The second one can somewhat replace missing `Monad` and we can build up on results from previous steps. All types defined in this have both of them.
+I think that even more interesting situation is when we have both `Applicative` and  `Category` instances. The second one can somewhat replace missing `Monad` and we can build up on the results from previous steps. All validators and parsers types have both of them.
 
 Here we have a simple example of a chain which contains some ready to use validators taken from `purescript-polyform-validators` which demonstrates this idea:
 
   ```purescript
-  import Polyform.Validators.Affjax (affjax, json, status)
-  import Polyform.Validators.Json (field, int, string)
+  import Test.Cookbook.Validators.Affjax (affjax, json, status)
+  import Test.Cookbook.Validators.Json (field, int, string)
 
-  getUser ∷ Validation
+  -- getUser ∷ Validation Aff (Variant
   getUser
     = affjax "http://api.example.com/user/1"
     >>> status (eq 200)
@@ -64,8 +68,19 @@ results in `Left e1`.
 If we take `V` into account its `Applicative` instance requires that our `error` type has a `Monoid` instance so it can combine errors during applying a function. So this:
 
 ```purescript
-{ fullName: _, age: _ } <$> Invalid [e1] <*> Left [e2]
+{ fullName: _, age: _ } <$> Invalid [e1] <*> Invalid [e2]
+```
+results in `Invalid [e1, e2]`. Please check ["Purescript by Example"](https://leanpub.com/purescript/read#leanpub-auto-applicative-validation) and [purescript-validation](/purescript/purescript-validation) for more info.
+
+There is no magic. Appy which hold laws can be simply implemented like:
+```purescript
+instance applyV ∷ (Semigroup e) ⇒ Apply (V e) where
+  apply (Valid f) (Valid a) = Valid (f a)
+  apply (Invalid e1) (Invalid e2) = Invalid (e1 <> e2)
+  apply i@(Invalid e1) _ = i
+  apply _ i = i
 ```
 
-results in `Invalid [e1, e2]`. Please check ["Purescript by Example"](https://leanpub.com/purescript/read#leanpub-auto-applicative-validation) and [purescript-validation](/purescript/purescript-validation) for more info.
+and aggregate errors.
+
 
