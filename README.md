@@ -2,20 +2,9 @@
 
 An attempt to build simple, composable validation toolkit.
 
-## Cookbook
+## Overview.
 
-All examples in this cookbook are somewhat verbose because they are transformed into PureScript modules which we run as a part of the test suite.
-On the other hand they are complete and we can be sure that they are up to date.
-If you want to generate real modules just run: `npm run test` and check `./test/Cookbook` directory.
-
-
-* REST API client from scratch - here we are building simple chain of validators so we are able to fetch data from 
-
-
-* API client + server side data serializer
-
-
-## Overview. There is no `M****` here!
+### There is no `M****` here!
 
 The whole library is an extension over well known `Applicative` validation strategy which gives us the ability to collect all errors (from a single "step") not only first one like it is in case of monadic approach to validation. `Applicative` also gives us parallelism "for free". It should not be a surprise that half of the library is built on top of the `V` type from `purescript-validation`. Another half is built on top of really similar type `R` (aka `Report`) defined here.
 
@@ -42,6 +31,7 @@ You can see that with a little help from `purescript-variant` we are able to con
 Of course we could introduce multiple shortcuts to this chain (like predefined `affjaxJson`) but this is not the purpose of this example...
 
 Let's go back to the basics and look at the types provided by this library. We will see that we are playing with nothing more here then just functions...
+
 
 
 ## Basic Types
@@ -93,3 +83,20 @@ As you can see `Validator` is a function from input `i` into output `o`. Validat
 
 
 ### Module `Polyform.Reporter`
+
+
+
+
+## Cookbook
+
+All examples in this cookbook are somewhat verbose because they are transformed into PureScript modules which we run as a part of the test suite.
+On the other hand they are complete and we can be sure that they are up to date.
+If you want to generate real modules just run: `npm run test` and check `./test/Cookbook` directory.
+
+
+* REST API client from scratch - here we are building simple chain of validators so we are able to fetch data from 
+
+
+* API client + server side data serializer
+
+
