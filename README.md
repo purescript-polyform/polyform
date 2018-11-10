@@ -15,9 +15,7 @@ If you want to generate real modules just run: `npm run test` and check `./test/
 * API client + server side data serializer
 
 
-## Overview
-
-### There is no `M****` here!
+## Overview. There is no `M****` here!
 
 The whole library is an extension over well known `Applicative` validation strategy which gives us the ability to collect all errors (from a single "step") not only first one like it is in case of monadic approach to validation. `Applicative` also gives us parallelism "for free". It should not be a surprise that half of the library is built on top of the `V` type from `purescript-validation`. Another half is built on top of really similar type `R` (aka `Report`) defined here.
 
@@ -46,9 +44,11 @@ Of course we could introduce multiple shortcuts to this chain (like predefined `
 Let's go back to the basics and look at the types provided by this library. We will see that we are playing with nothing more here then just functions...
 
 
-### Basic Types
+## Basic Types
 
-#### `Polyform.Validator`
+### Module `Polyform.Validator`
+
+#### `Data.Validation.Semigroup.V`
 
 This type uses `V` from `purescript-validation` so let's start by explaining what special about `V`. `V` is really similar to `Either` (to be honest current implementation wraps `Either` inside but we use the old definition here for clarity):
 
@@ -72,7 +72,7 @@ If we take `V` into account its `Applicative` instance requires that our `error`
 ```
 results in `Invalid [e1, e2]`. Please check ["Purescript by Example"](https://leanpub.com/purescript/read#leanpub-auto-applicative-validation) and [purescript-validation](/purescript/purescript-validation) for more info.
 
-There is no magic. Appy which hold laws can be simply implemented like:
+There is no magic. Appy which hold the laws can be simply implemented like:
 ```purescript
 instance applyV ∷ (Semigroup e) ⇒ Apply (V e) where
   apply (Valid f) (Valid a) = Valid (f a)
@@ -81,6 +81,15 @@ instance applyV ∷ (Semigroup e) ⇒ Apply (V e) where
   apply _ i = i
 ```
 
-and aggregate errors.
+#### `Polyform.Validator.Validator`
+
+Now we can discuss main type of this module which is built on top of the above `V` type:
+
+```purescript
+newtype Validator m e i o = Validator (i → m (V e o))
+```
+
+As you can see `Validator` is a function from input `i` into output `o`. Validation is executed in some monadic context `m` and it can possibly fail and return an error value `e` instead of `o`.
 
 
+### Module `Polyform.Reporter`

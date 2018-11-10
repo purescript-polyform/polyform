@@ -44,11 +44,7 @@ instance applyR ∷ (Semigroup r) ⇒ Apply (R r) where
 instance applicativeR ∷ (Monoid e) ⇒ Applicative (R e) where
   pure a = Success mempty a
 
--- | This instance uses first valid value:
--- |
--- | pure (Success r1 a) <|> pure (Failure r2) = Success r1 a
--- | pure (Success r1 a1) <|> pure (Success r2 a2) = Success r1 a1
--- | pure (Failure r1) <|> pure (Failure r2) = Failure (r1 <> r2)
+-- | This instance uses first valid value and accumulates all values.
 -- |
 -- | If you need "dual" strategy just use apply which "prefers" invalid results:
 -- |
@@ -56,8 +52,9 @@ instance applicativeR ∷ (Monoid e) ⇒ Applicative (R e) where
 -- | pure (Failure r1) *> pure (Success r2 a2) = Failure (r1 <> r2)
 -- | pure (Success r1 a1) *> pure (Success r2 a2) = Success (r1 <> r2) a2
 instance altR ∷ (Semigroup r) ⇒ Alt (R r) where
-  alt (Success r1 a) _ = Success r1 a
-  alt _ (Success r2 a) = Success r2 a
+  alt (Success r1 a) (Success r2 _) = Success (r1 <> r2) a
+  alt (Success r1 a) (Failure r2) = Success (r1 <> r2) a
+  alt (Failure r1) (Success r2 a) = Success (r1 <> r2) a
   alt (Failure r1) (Failure r2) = Failure (r1 <> r2)
 
 instance plusR ∷ (Monoid r) ⇒ Plus (R r) where
@@ -65,7 +62,7 @@ instance plusR ∷ (Monoid r) ⇒ Plus (R r) where
 
 instance alternativeR ∷ (Monoid r) ⇒ Alternative (R r)
 
--- | Defaul `Semigroup` instance appends valid and invalid
+-- | Default `Semigroup` instance appends valid and invalid
 -- | parts of our `R`.
 instance semigroupR ∷ (Semigroup r, Semigroup a) ⇒ Semigroup (R r a) where
   append = lift2 append

@@ -62,14 +62,29 @@ instance semigroupoidValidator ∷ (Monad m, Monoid e) ⇒ Semigroupoid (Validat
             res')
         res
 
--- instance profunctorValidator ∷ (Monad m, Monoid e) ⇒ Profunctor (Validator m e) where
---   dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
+instance profunctorValidator ∷ (Monad m, Monoid e) ⇒ Profunctor (Validator m e) where
+  dimap l r v = (hoistFn' l) >>> v >>> (hoistFn' r)
 
--- hoistFn ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → o) → Validator m r i o
--- hoistFn f = Validator $ f >>> pure >>> pure
--- 
--- hoistFnV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → V r o) → Validator m r i o
--- hoistFnV f = Validator $ f >>> pure
--- 
--- hoistFnMV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (V r o)) → Validator m r i o
--- hoistFnMV f = Validator f
+-- | Two versions of hoisting:
+-- | * first consumes whole input (requires Monoid)
+-- | * second copies whole input
+-- |
+-- | I'm not sure if they both can be useful... we will see ;-)
+hoistFn ∷ ∀ e i m o. Monoid i ⇒ Monad m ⇒ Monoid e ⇒ (i → o) → Validator m e i o
+hoistFn f = Validator $ f >>> { result: _, i: mempty } >>> pure >>> pure
+
+hoistFnV ∷ ∀ e i m o. Monoid i ⇒ Monad m ⇒ (i → V e o) → Validator m e i o
+hoistFnV f = Validator $ f >>> map { result: _, i: mempty } >>> pure
+
+hoistFnMV ∷ ∀ e i m o. Monad m ⇒ Monoid i ⇒ (i → m (V e o)) → Validator m e i o
+hoistFnMV f = Validator $ f >>> map (map { result: _, i: mempty })
+
+
+hoistFn' ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → o) → Validator m e i o
+hoistFn' f = Validator $ (\i → { result: f i, i }) >>> pure >>> pure
+
+hoistFnV' ∷ ∀ e i m o. Monad m ⇒ (i → V e o) → Validator m e i o
+hoistFnV' f = Validator $ (\i → map { result: _, i: i } (f i)) >>> pure
+
+hoistFnMV' ∷ ∀ e i m o. Monad m ⇒ (i → m (V e o)) → Validator m e i o
+hoistFnMV' f = Validator $ \i → map (map { result: _, i }) (f i)
