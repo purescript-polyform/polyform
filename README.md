@@ -86,7 +86,6 @@ As you can see `Validator` is a function from input `i` into output `o`. Validat
 
 
 
-
 ## Cookbook
 
 All examples in this cookbook are somewhat verbose because they are transformed into PureScript modules which we run as a part of the test suite.

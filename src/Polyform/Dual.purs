@@ -52,6 +52,13 @@ newtype Dual p i o =
   Dual (DualD p i o o)
 derive instance newtypeDual ∷ Newtype (Dual p i o) _
 
+dual ∷ ∀ i o p
+  . { parser ∷ p i o
+    , serializer ∷ o → i
+    }
+  → Dual p i o
+dual = Dual <<< DualD
+
 instance semigroupoidDual ∷ (Semigroupoid p) ⇒ Semigroupoid (Dual p) where
   compose (Dual (DualD r2)) (Dual (DualD r1)) =
     Dual <<< DualD $
