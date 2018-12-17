@@ -6,7 +6,7 @@ import Control.Alt (class Alt)
 import Control.Plus (class Plus)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
-import Data.Validation.Semigroup (V, invalid, isValid, unV)
+import Data.Validation.Semigroup (V, invalid, unV)
 import Polyform.Validator (valid)
 
 -- | It seems that by giving more power to this type over input transformation
@@ -78,7 +78,6 @@ hoistFnV f = Validator $ f >>> map { result: _, i: mempty } >>> pure
 
 hoistFnMV ∷ ∀ e i m o. Monad m ⇒ Monoid i ⇒ (i → m (V e o)) → Validator m e i o
 hoistFnMV f = Validator $ f >>> map (map { result: _, i: mempty })
-
 
 hoistFn' ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → o) → Validator m e i o
 hoistFn' f = Validator $ (\i → { result: f i, i }) >>> pure >>> pure

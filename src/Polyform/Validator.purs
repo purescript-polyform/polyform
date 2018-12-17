@@ -3,10 +3,9 @@ module Polyform.Validator where
 import Prelude
 
 import Control.Alt (class Alt)
-import Control.Alternative (class Alternative)
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
-import Data.Either (Either(..))
+import Data.Either (Either(..), either)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
@@ -77,6 +76,9 @@ hoistFn f = Validator $ f >>> pure >>> pure
 
 hoistFnV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → V r o) → Validator m r i o
 hoistFnV f = Validator $ f >>> pure
+
+hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Validator m e i o
+hoistFnEither f = hoistFnV $ f >>> either invalid pure
 
 hoistFnMV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (V r o)) → Validator m r i o
 hoistFnMV f = Validator f

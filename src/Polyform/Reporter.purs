@@ -153,6 +153,9 @@ hoistFnR f = Reporter $ f >>> pure
 hoistFnMR ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (R r o)) → Reporter m r i o
 hoistFnMR f = Reporter f
 
+hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Reporter m e i o
+hoistFnEither f = hoistFnR $ f >>> fromEither
+
 -- | Provides access to validation result
 -- | so you can `bimap` over `r` and `b` type in resulting `R r b`.
 newtype BifunctorReporter m i r o = BifunctorReporter (Reporter m r i o)
