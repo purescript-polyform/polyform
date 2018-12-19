@@ -77,11 +77,11 @@ hoistFn f = Validator $ f >>> pure >>> pure
 hoistFnV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → V r o) → Validator m r i o
 hoistFnV f = Validator $ f >>> pure
 
-hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Validator m e i o
-hoistFnEither f = hoistFnV $ f >>> either invalid pure
-
 hoistFnMV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (V r o)) → Validator m r i o
 hoistFnMV f = Validator f
+
+hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Validator m e i o
+hoistFnEither f = hoistFnV $ f >>> either invalid pure
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
