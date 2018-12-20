@@ -10,7 +10,6 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
 import Data.Validation.Semigroup (V, invalid, unV)
-import Polyform.Reporter (Reporter(..), toV)
 
 valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
 valid = pure
@@ -83,9 +82,6 @@ hoistFnMV f = Validator f
 
 hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Validator m e i o
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
-
-hoistReporter ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ Reporter m e i o → Validator m e i o
-hoistReporter (Reporter f) = Validator (f >>> map toV)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.

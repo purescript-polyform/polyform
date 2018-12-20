@@ -12,6 +12,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
 import Data.Validation.Semigroup (V, invalid, unV)
+import Polyform.Validator (Validator(..))
 
 -- | This `R` can be seen more as validation "reporter"
 -- | then only failure / success carrier.
@@ -80,6 +81,10 @@ fromEither ∷ ∀ a r. (Monoid r) ⇒ Either r a → R r a
 fromEither (Left r) = Failure r
 fromEither (Right a) = Success mempty a
 
+fromEitherWith ∷ ∀ a r. (Monoid r) ⇒ (a → r) → Either r a → R r a
+fromEitherWith _ (Left r) = Failure r
+fromEitherWith f (Right a) = Success (f a) a
+
 -- | Loosing report of failure value.
 toEither ∷ ∀ a r. R r a → Either r a
 toEither (Failure r) = Left r
@@ -88,6 +93,9 @@ toEither (Success _ a) = Right a
 -- | Building `R` with possibly empty report for failure.
 fromV ∷ ∀ a r. Monoid r ⇒ V r a → R r a
 fromV = unV Failure (Success mempty)
+
+fromVWith ∷ ∀ a r. (a → r) → V r a → R r a
+fromVWith f = unV Failure (\a → Success (f a) a)
 
 -- | Loosing report of failure value.
 toV ∷ ∀ a r. Semigroup r ⇒ R r a → V r a
@@ -167,6 +175,20 @@ hoistFnMR f = Reporter f
 
 hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Reporter m e i o
 hoistFnEither f = hoistFnR $ f >>> fromEither
+
+hoistFnEitherWith ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (o → e) → (i → Either e o) → Reporter m e i o
+hoistFnEitherWith f g = hoistFnR $ g >>> fromEitherWith f
+
+hoistToValidator ∷ ∀ e i m. Monad m ⇒ Monoid e ⇒ Reporter m e i ~> Validator m e i
+hoistToValidator (Reporter f) = Validator (f >>> map toV)
+
+-- | Building `Reporter` from `Validator` with possibly empty failure report.
+hoistValidator ∷ ∀ e i m. Monad m ⇒ Monoid e ⇒ Validator m e i ~> Reporter m e i
+hoistValidator (Validator r) = Reporter (r >>> map fromV)
+
+-- | Building `Reporter` from `Validator` by creating report from value.
+hoistValidatorWith ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (o → e) → Validator m e i o → Reporter m e i o
+hoistValidatorWith f (Validator r) = Reporter (r >>> map (fromVWith f))
 
 -- | Provides access to validation result so you can
 -- | `bimap` over `r` and `b` type in resulting `R r b`.
