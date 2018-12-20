@@ -11,6 +11,7 @@ import Data.Either (Either(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
+import Data.Validation.Semigroup (V, invalid, unV)
 
 -- | This `R` can be seen more as validation "reporter"
 -- | then only failure / success carrier.
@@ -74,13 +75,24 @@ isSuccess ∷ ∀ a r. R r a → Boolean
 isSuccess (Success _ _) = true
 isSuccess _ = false
 
+-- | Building `R` with possibly empty report for failure.
 fromEither ∷ ∀ a r. (Monoid r) ⇒ Either r a → R r a
 fromEither (Left r) = Failure r
 fromEither (Right a) = Success mempty a
 
+-- | Loosing report of failure value.
 toEither ∷ ∀ a r. R r a → Either r a
 toEither (Failure r) = Left r
 toEither (Success _ a) = Right a
+
+-- | Building `R` with possibly empty report for failure.
+fromV ∷ ∀ a r. Monoid r ⇒ V r a → R r a
+fromV = unV Failure (Success mempty)
+
+-- | Loosing report of failure value.
+toV ∷ ∀ a r. Semigroup r ⇒ R r a → V r a
+toV (Failure r) = invalid r
+toV (Success _ a) = pure a
 
 newtype Reporter m r i o = Reporter (i → m (R r o))
 derive instance newtypeRaildation ∷ Newtype (Reporter m r i b) _
@@ -156,8 +168,8 @@ hoistFnMR f = Reporter f
 hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Reporter m e i o
 hoistFnEither f = hoistFnR $ f >>> fromEither
 
--- | Provides access to validation result
--- | so you can `bimap` over `r` and `b` type in resulting `R r b`.
+-- | Provides access to validation result so you can
+-- | `bimap` over `r` and `b` type in resulting `R r b`.
 newtype BifunctorReporter m i r o = BifunctorReporter (Reporter m r i o)
 derive instance newtypeBifunctorReporter ∷ Newtype (BifunctorReporter m i r o) _
 
