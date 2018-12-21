@@ -99,6 +99,9 @@ fromV = unV Failure (Success mempty)
 fromVWith ∷ ∀ a r. (a → r) → V r a → R r a
 fromVWith f = unV Failure (\a → Success (f a) a)
 
+fromVWith' ∷ ∀ a e r. (e → r) → (a → r) → V e a → R r a
+fromVWith' f g = unV (Failure <<< f) (\a → Success (g a) a)
+
 -- | Loosing report of failure value.
 toV ∷ ∀ a r. Semigroup r ⇒ R r a → V r a
 toV (Failure r) = invalid r
@@ -194,6 +197,10 @@ hoistValidator (Validator r) = Reporter (r >>> map fromV)
 -- | Building `Reporter` from `Validator` by creating report from value.
 hoistValidatorWith ∷ ∀ e i m o. Functor m ⇒ (o → e) → Validator m e i o → Reporter m e i o
 hoistValidatorWith f (Validator r) = Reporter (r >>> map (fromVWith f))
+
+-- | Building `Reporter` from `Validator` by creating report from error and from value.
+hoistValidatorWith' ∷ ∀ e i m o r. Functor m ⇒ (e → r) → (o → r) → Validator m e i o → Reporter m r i o
+hoistValidatorWith' f g (Validator r) = Reporter (r >>> map (fromVWith' f g))
 
 -- | Provides access to validation result so you can
 -- | `bimap` over `r` and `b` type in resulting `R r b`.
