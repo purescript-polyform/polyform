@@ -59,6 +59,12 @@ dual ∷ ∀ i o p
   → Dual p i o
 dual = Dual <<< DualD
 
+parser ∷ ∀ i o p. Dual p i o → p i o
+parser (Dual (DualD { parser: p } )) = p
+
+serializer ∷ ∀ i o p. Dual p i o → (o → i)
+serializer (Dual (DualD { serializer: s })) = s
+
 instance semigroupoidDual ∷ (Semigroupoid p) ⇒ Semigroupoid (Dual p) where
   compose (Dual (DualD r2)) (Dual (DualD r1)) =
     Dual <<< DualD $
