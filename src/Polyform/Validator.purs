@@ -66,7 +66,7 @@ instance choiceValidator ∷ (Monad m, Monoid r) ⇒ Choice (Validator m r) wher
     Left l → pure (pure $ Left l))
 
 ask ∷ ∀ i m r. Monad m ⇒ Monoid r ⇒ Validator m r i i
-ask = Validator (\i → pure (pure i))
+ask = hoistFn identity
 
 runValidator ∷ ∀ i m o r. Validator m r i o → (i → m (V r o))
 runValidator = unwrap

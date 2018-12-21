@@ -81,7 +81,7 @@ fromEither ∷ ∀ a r. (Monoid r) ⇒ Either r a → R r a
 fromEither (Left r) = Failure r
 fromEither (Right a) = Success mempty a
 
-fromEitherWith ∷ ∀ a r. (Monoid r) ⇒ (a → r) → Either r a → R r a
+fromEitherWith ∷ ∀ a r. (a → r) → Either r a → R r a
 fromEitherWith _ (Left r) = Failure r
 fromEitherWith f (Right a) = Success (f a) a
 
@@ -161,33 +161,33 @@ instance choiceReporter ∷ (Monad m, Monoid r) ⇒ Choice (Reporter m r) where
 runReporter ∷ ∀ i o m r. Reporter m r i o → (i → m (R r o))
 runReporter = unwrap
 
-ask ∷ ∀ i m r. Monad m ⇒ Monoid r ⇒ Reporter m r i i
-ask = Reporter (\i → pure (Success mempty i))
+ask ∷ ∀ i m r. Applicative m ⇒ Monoid r ⇒ Reporter m r i i
+ask = hoistFn identity
 
-hoistFn ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → o) → Reporter m r i o
+hoistFn ∷ ∀ i m o r. Applicative m ⇒ Monoid r ⇒ (i → o) → Reporter m r i o
 hoistFn f = Reporter $ f >>> pure >>> pure
 
-hoistFnR ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → R r o) → Reporter m r i o
+hoistFnR ∷ ∀ i m o r. Applicative m ⇒ (i → R r o) → Reporter m r i o
 hoistFnR f = Reporter $ f >>> pure
 
-hoistFnMR ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (R r o)) → Reporter m r i o
+hoistFnMR ∷ ∀ i m o r. (i → m (R r o)) → Reporter m r i o
 hoistFnMR f = Reporter f
 
-hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Reporter m e i o
+hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Monoid e ⇒ (i → Either e o) → Reporter m e i o
 hoistFnEither f = hoistFnR $ f >>> fromEither
 
-hoistFnEitherWith ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (o → e) → (i → Either e o) → Reporter m e i o
+hoistFnEitherWith ∷ ∀ e i m o. Applicative m ⇒ (o → e) → (i → Either e o) → Reporter m e i o
 hoistFnEitherWith f g = hoistFnR $ g >>> fromEitherWith f
 
-hoistToValidator ∷ ∀ e i m. Monad m ⇒ Monoid e ⇒ Reporter m e i ~> Validator m e i
+hoistToValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Reporter m e i ~> Validator m e i
 hoistToValidator (Reporter f) = Validator (f >>> map toV)
 
 -- | Building `Reporter` from `Validator` with possibly empty failure report.
-hoistValidator ∷ ∀ e i m. Monad m ⇒ Monoid e ⇒ Validator m e i ~> Reporter m e i
+hoistValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Validator m e i ~> Reporter m e i
 hoistValidator (Validator r) = Reporter (r >>> map fromV)
 
 -- | Building `Reporter` from `Validator` by creating report from value.
-hoistValidatorWith ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (o → e) → Validator m e i o → Reporter m e i o
+hoistValidatorWith ∷ ∀ e i m o. Functor m ⇒ (o → e) → Validator m e i o → Reporter m e i o
 hoistValidatorWith f (Validator r) = Reporter (r >>> map (fromVWith f))
 
 -- | Provides access to validation result so you can
