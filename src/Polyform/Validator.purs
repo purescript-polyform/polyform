@@ -9,6 +9,8 @@ import Data.Either (Either(..), either)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
+import Data.Profunctor.Strong (class Strong)
+import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 
 valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
@@ -24,7 +26,7 @@ instance applyValidator ∷ (Semigroup r, Monad m) ⇒ Apply (Validator m r i) w
     va' ← unwrap va i
     pure $ vf' <*> va'
 
-instance applicativeValidator ∷ (Monoid r, Monad m) ⇒ Applicative (Validator m r i) where
+instance applicativeValidator ∷ (Semigroup r, Monad m) ⇒ Applicative (Validator m r i) where
   pure = Validator <<< const <<< pure <<< pure
 
 instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e i) where
@@ -50,13 +52,13 @@ instance semigroupoidValidator ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Vali
       res ← v1 i
       unV (pure <<< invalid) v2 res
 
-instance categoryValidator ∷ (Monad m, Monoid e) ⇒ Category (Validator m e) where
+instance categoryValidator ∷ (Monad m, Semigroup e) ⇒ Category (Validator m e) where
   identity = Validator $ pure <<< pure
 
-instance profunctorValidator ∷ (Monad m, Monoid e) ⇒ Profunctor (Validator m e) where
+instance profunctorValidator ∷ (Monad m, Semigroup e) ⇒ Profunctor (Validator m e) where
   dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
 
-instance choiceValidator ∷ (Monad m, Monoid r) ⇒ Choice (Validator m r) where
+instance choiceValidator ∷ (Monad m, Semigroup r) ⇒ Choice (Validator m r) where
   left v = Validator (case _ of
     Left i → map Left <$> runValidator v i
     Right r → pure (pure $ Right r))
@@ -65,22 +67,26 @@ instance choiceValidator ∷ (Monad m, Monoid r) ⇒ Choice (Validator m r) wher
     Right i → map Right <$> runValidator v i
     Left l → pure (pure $ Left l))
 
-ask ∷ ∀ i m r. Monad m ⇒ Monoid r ⇒ Validator m r i i
+instance strongValidator ∷ (Monad m, Semigroup e) ⇒ Strong (Validator m e) where
+  first v = Validator (\(Tuple f s) → map (\f' → Tuple f' s) <$> runValidator v f)
+  second v = Validator (\(Tuple f s) → map (\s' → Tuple f s') <$> runValidator v s)
+
+ask ∷ ∀ i m e. Monad m ⇒ Semigroup e ⇒ Validator m e i i
 ask = hoistFn identity
 
-runValidator ∷ ∀ i m o r. Validator m r i o → (i → m (V r o))
+runValidator ∷ ∀ i m o e. Validator m e i o → (i → m (V e o))
 runValidator = unwrap
 
-hoistFn ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → o) → Validator m r i o
+hoistFn ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → o) → Validator m e i o
 hoistFn f = Validator $ f >>> pure >>> pure
 
-hoistFnV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → V r o) → Validator m r i o
+hoistFnV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → V e o) → Validator m e i o
 hoistFnV f = Validator $ f >>> pure
 
-hoistFnMV ∷ ∀ i m o r. Monad m ⇒ Monoid r ⇒ (i → m (V r o)) → Validator m r i o
+hoistFnMV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m (V e o)) → Validator m e i o
 hoistFnMV f = Validator f
 
-hoistFnEither ∷ ∀ e i m o. Monad m ⇒ Monoid e ⇒ (i → Either e o) → Validator m e i o
+hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
 
 -- | Provides access to validation result

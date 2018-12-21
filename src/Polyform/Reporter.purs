@@ -11,6 +11,8 @@ import Data.Either (Either(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
+import Data.Profunctor.Strong (class Strong)
+import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import Polyform.Validator (Validator(..))
 
@@ -115,7 +117,7 @@ instance applyReporter ∷ (Semigroup r, Monad m) ⇒ Apply (Reporter m r i) whe
 instance applicativeReporter ∷ (Monoid r, Monad m) ⇒ Applicative (Reporter m r i) where
   pure = Reporter <<< const <<< pure <<< pure
 
-instance altReporter ∷ (Monoid r, Monad m) ⇒ Alt (Reporter m r i) where
+instance altReporter ∷ (Monad m, Semigroup r) ⇒ Alt (Reporter m r i) where
   alt v1 v2 = Reporter \i → do
     v1' ← unwrap v1 i
     v2' ← unwrap v2 i
@@ -148,7 +150,6 @@ instance categoryReporter ∷ (Monad m, Monoid r) ⇒ Category (Reporter m r) wh
 instance profunctorReporter ∷ (Monad m, Monoid r) ⇒ Profunctor (Reporter m r) where
   dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
 
--- XXX: Provide Strong instance too
 instance choiceReporter ∷ (Monad m, Monoid r) ⇒ Choice (Reporter m r) where
   left v = Reporter (case _ of
     Left i → map Left <$> runReporter v i
@@ -157,6 +158,10 @@ instance choiceReporter ∷ (Monad m, Monoid r) ⇒ Choice (Reporter m r) where
   right v = Reporter (case _ of
     Right i → map Right <$> runReporter v i
     Left l → pure (Success mempty (Left l)))
+
+instance strongReporter ∷ (Monad m, Monoid e) ⇒ Strong (Reporter m e) where
+  first v = Reporter (\(Tuple f s) → map (\f' → Tuple f' s) <$> runReporter v f)
+  second v = Reporter (\(Tuple f s) → map (\s' → Tuple f s') <$> runReporter v s)
 
 runReporter ∷ ∀ i o m r. Reporter m r i o → (i → m (R r o))
 runReporter = unwrap
