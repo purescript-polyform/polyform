@@ -93,14 +93,14 @@ toEither (Failure r) = Left r
 toEither (Success _ a) = Right a
 
 -- | Building `R` with possibly empty report for failure.
+fromVWith ∷ ∀ a e r. (e → r) → (a → r) → V e a → R r a
+fromVWith f g = unV (Failure <<< f) (\a → Success (g a) a)
+
+fromVWith' ∷ ∀ a r. (a → r) → V r a → R r a
+fromVWith' f = fromVWith identity f
+
 fromV ∷ ∀ a r. Monoid r ⇒ V r a → R r a
-fromV = unV Failure (Success mempty)
-
-fromVWith ∷ ∀ a r. (a → r) → V r a → R r a
-fromVWith f = unV Failure (\a → Success (f a) a)
-
-fromVWith' ∷ ∀ a e r. (e → r) → (a → r) → V e a → R r a
-fromVWith' f g = unV (Failure <<< f) (\a → Success (g a) a)
+fromV = fromVWith' (const $ mempty)
 
 -- | Loosing report of failure value.
 toV ∷ ∀ a r. Semigroup r ⇒ R r a → V r a
@@ -194,13 +194,13 @@ hoistToValidator (Reporter f) = Validator (f >>> map toV)
 hoistValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Validator m e i ~> Reporter m e i
 hoistValidator (Validator r) = Reporter (r >>> map fromV)
 
--- | Building `Reporter` from `Validator` by creating report from value.
-hoistValidatorWith ∷ ∀ e i m o. Functor m ⇒ (o → e) → Validator m e i o → Reporter m e i o
-hoistValidatorWith f (Validator r) = Reporter (r >>> map (fromVWith f))
-
 -- | Building `Reporter` from `Validator` by creating report from error and from value.
-hoistValidatorWith' ∷ ∀ e i m o r. Functor m ⇒ (e → r) → (o → r) → Validator m e i o → Reporter m r i o
-hoistValidatorWith' f g (Validator r) = Reporter (r >>> map (fromVWith' f g))
+hoistValidatorWith ∷ ∀ e i m o r. Functor m ⇒ (e → r) → (o → r) → Validator m e i o → Reporter m r i o
+hoistValidatorWith f g (Validator r) = Reporter (r >>> map (fromVWith f g))
+
+-- | Building `Reporter` from `Validator` by creating report from value.
+hoistValidatorWith' ∷ ∀ e i m o. Functor m ⇒ (o → e) → Validator m e i o → Reporter m e i o
+hoistValidatorWith' f (Validator r) = Reporter (r >>> map (fromVWith' f))
 
 -- | Provides access to validation result so you can
 -- | `bimap` over `r` and `b` type in resulting `R r b`.

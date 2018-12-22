@@ -76,8 +76,8 @@ instance categoryDual ∷ (Category p) ⇒ Category (Dual p) where
   identity = Dual $ DualD { parser: identity, serializer: identity }
 
 -- | This function provides a way to diverge component serialization
--- | from validation so we are able to "divide for a moment `o` type"
--- | and join them later by using `Applicative` composition.
+-- | from parsing so we are able to "divide for a moment `o` type" and
+-- | join them later by using `Applicative` composition.
 -- |
 -- | Quick example:
 -- |
@@ -91,11 +91,9 @@ instance categoryDual ∷ (Category p) ⇒ Category (Dual p) where
 -- |
 -- |  `DualD p String { email1: Email } Email`
 -- |
--- | using `_.email1 >- emailDual`. And `apply` from above example
+-- | using `_.email1 >- emailDual` and `apply` + `Dual` from above example
 -- | "joins" these types again.
--- | These to steps can be handled by some generic layer.
--- |
-
+-- | Of course these two steps can be handled by some generic layer.
 infixl 5 diverge as >-
 
 diverge
