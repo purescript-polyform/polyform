@@ -78,6 +78,9 @@ isSuccess ∷ ∀ a r. R r a → Boolean
 isSuccess (Success _ _) = true
 isSuccess _ = false
 
+isFailure ∷ ∀ a r. R a r → Boolean
+isFailure = not <<< isSuccess
+
 -- | Building `R` with possibly empty report for failure.
 fromEither ∷ ∀ a r. (Monoid r) ⇒ Either r a → R r a
 fromEither (Left r) = Failure r
