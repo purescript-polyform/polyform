@@ -8,7 +8,7 @@ An attempt to build simple, composable validation toolkit.
 
 The whole library is an extension over well known `Applicative` validation strategy which gives us the ability to collect all errors (from a single "step") not only first one like it is in case of monadic approach to validation. `Applicative` also gives us parallelism "for free". It should not be a surprise that half of the library is built on top of the `V` type from `purescript-validation`. Another half is built on top of really similar type `R` (aka `Report`) defined here.
 
-I think that even more interesting situation is when we have both `Applicative` and  `Category` instances. The second one can somewhat replace missing `Monad` and we can build up on the results from previous steps. All validators and parsers types have both of them.
+I think that hugely undervalued class in the context of validation is `Category` (and `Semigroupoid`). This library explores extensively types which provide both `Applicative` and  `Category` instances. `Category` in the context of validation can somewhat replace missing `Monad` - we can stack validators and build up some results by combining and validating parital results from previous steps. All validators and parsers types have both of them.
 
 Here we have a simple example of a chain which contains some ready to use validators taken from `purescript-polyform-validators` which demonstrates this idea:
 
@@ -21,10 +21,10 @@ Here we have a simple example of a chain which contains some ready to use valida
     = affjax "http://api.example.com/user/1"
     >>> status (eq 200)
     >>> json
-    >>> { fullName: _, age: _, country: _ }
+    >>> { fullName: _, age: _, planet: _ }
       <$> field "full_name" string
-      <$> field "age" int
-      <$> field "planet" (string >>> hoistFnV \c → c in ["PL"...])
+      <*> field "age" int
+      <*> field "planet" (string >>> hoistFnV \c → c in ["Earth", "Mars", "Venus"])
   ```
 
 You can see that with a little help from `purescript-variant` we are able to construct modular validation solution - we are composing validators for different layers with consistent error handling. In this case we get a single function from request to a final value which processes the whole request stack.
@@ -40,13 +40,13 @@ Let's go back to the basics and look at the types provided by this library. We w
 
 #### `Data.Validation.Semigroup.V`
 
-This type uses `V` from `purescript-validation` so let's start by explaining what special about `V`. `V` is really similar to `Either` (to be honest current implementation wraps `Either` inside but we use the old definition here for clarity):
+This type uses `V` from `purescript-validation` so let's start by explaining what special about `V`. `V` is really similar ("isomorphic") to `Either` (to be honest current library implementation just wraps `Either` but we use the old definition here for clarity):
 
 ```purescript
 data V e a = Invalid e | Valid a
 ```
 
-The main difference from `Either` is that it doesn't have a `Monad` instance. It doesn't implement it so it can have different `Applicative` instance then `Either` (because `Applicative` has to be "consistent" with `Monad` if it exists).
+The main difference from `Either` is that it doesn't have a `Monad` instance. It doesn't implement it so it can have different `Applicative` instance than `Either` (because `Applicative` has to be "consistent" with `Monad` if it exists).
 `Either` stops evaluation of the first error, so for example this:
 
 ```purescript
@@ -62,7 +62,7 @@ If we take `V` into account its `Applicative` instance requires that our `error`
 ```
 results in `Invalid [e1, e2]`. Please check ["Purescript by Example"](https://leanpub.com/purescript/read#leanpub-auto-applicative-validation) and [purescript-validation](/purescript/purescript-validation) for more info.
 
-There is no magic. Appy which hold the laws can be simply implemented like:
+There is no magic here. `Apply` which hold the laws can be simply implemented like this:
 ```purescript
 instance applyV ∷ (Semigroup e) ⇒ Apply (V e) where
   apply (Valid f) (Valid a) = Valid (f a)
