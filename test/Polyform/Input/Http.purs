@@ -336,13 +336,13 @@ suite = do
   Test.Unit.suite "validation" $ do
     Test.Unit.suite "of required fields" $ do
       test "fails on empty query" do
-      v ← runValidation loginForm mempty
-      case v of
-        Valid _ _ → failure "valid!"
-        Invalid (Tuple err fields) → do
-          assert
-            "with type \"required\""
-            (all (_ == Invalid [(inj (SProxy ∷ SProxy "required") unit)]) <<< map value $ fields)
+        v ← runValidation loginForm mempty
+        case v of
+          Valid _ _ → failure "valid!"
+          Invalid (Tuple err fields) → do
+            assert
+              "with type \"required\""
+              (all (_ == Invalid [(inj (SProxy ∷ SProxy "required") unit)]) <<< map value $ fields)
 
     Test.Unit.suite "on the form level" $ do
       test "succeeds when form condition is fulfilled" $ do
