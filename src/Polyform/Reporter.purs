@@ -16,13 +16,12 @@ import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 import Polyform.Validator (Validator(..))
 
--- | This `R` can be seen more as validation "reporter"
--- | then only failure / success carrier.
--- | Sometimes you want to collect the whole report of a validatio.
+-- | This `R` can be seen more as a validation "report".
+-- | Sometimes you want to collect the whole report of a validation
 -- | instead of just validated value or error.
 -- | For example when you are building a HTML form you want to
 -- | display fields which were validated successfuly alongside with fields
--- | which validation failed.
+-- | for which validation failed.
 data R r a = Failure r | Success r a
 derive instance eqR ∷ (Eq r, Eq a) ⇒ Eq (R r a)
 derive instance ordR ∷ (Ord r, Ord a) ⇒ Ord (R r a)
@@ -36,9 +35,6 @@ instance bifunctorR ∷ Bifunctor R where
   bimap f _ (Failure r) = Failure (f r)
   bimap f g (Success r a) = Success (f r) (g a)
 
--- | All these `R` instances are quite borring as they just
--- | `append` underling report but it seems that they are really
--- | useful in practice.
 instance applyR ∷ (Semigroup r) ⇒ Apply (R r) where
   apply (Success r1 f) (Success r2 a) = Success (r1 <> r2) (f a)
   apply (Failure r1) (Success r2 _) = Failure (r1 <> r2)
@@ -48,7 +44,7 @@ instance applyR ∷ (Semigroup r) ⇒ Apply (R r) where
 instance applicativeR ∷ (Monoid e) ⇒ Applicative (R e) where
   pure a = Success mempty a
 
--- | This instance uses first valid value and accumulates all values.
+-- | This instance uses first valid value and accumulates all reports.
 -- |
 -- | If you need "dual" strategy just use apply which "prefers" invalid results:
 -- |
