@@ -10,91 +10,71 @@ import Data.Profunctor (class Profunctor, lcmap)
 -- | __D__ from diverging as `o'` can be different from `o`.
 -- | They join in `Dual` type which wraps `DualD` a few
 -- | lines below.
-newtype DualD p i o' o = DualD
-  { parser ∷ p i o
-  , serializer ∷ o' → i
-  }
-
-derive instance newtypeDualD ∷ Newtype (DualD p i o' o) _
+data DualD p i o' o = DualD (p i o) (o' → i)
 
 instance functorDualD ∷ (Functor (p i)) ⇒ Functor (DualD p i o) where
-  map f (DualD r) = DualD
-    { parser: map f r.parser
-    , serializer: r.serializer
-    }
+  map f (DualD prs ser) = DualD (map f prs) ser
 
 instance applyDualD ∷ (Apply (p i), Semigroup i) ⇒ Apply (DualD p i o') where
-  apply (DualD rf) (DualD ra) = DualD
-    { parser: rf.parser <*> ra.parser
-    , serializer: rf.serializer <> ra.serializer
-    }
+  apply (DualD fprs fser) (DualD prs ser) = DualD (fprs <*> prs) (fser <> ser)
 
 instance applicativeDualD ∷ (Applicative (p i), Monoid i) ⇒ Applicative (DualD p i o') where
-  pure a = DualD { parser: pure a, serializer: const mempty }
+  pure a = DualD (pure a) (const mempty)
 
 instance altDualD ∷ (Alt (p i)) ⇒ Alt (DualD p i o') where
-  alt (DualD v1) (DualD v2) =
-    DualD
-      { parser: v1.parser <|> v2.parser
-      , serializer: v1.serializer
-      }
+  alt (DualD prs1 ser1) (DualD prs2 _) =
+    DualD (prs1 <|> prs2) ser1
 
 instance plusDualD ∷ (Plus (p i), Alt (p i), Monoid i) ⇒ Plus (DualD p i o') where
-  empty = DualD { parser: empty, serializer: const mempty }
+  empty = DualD empty (const mempty)
 
 instance profunctorDualD ∷ (Functor (p i), Profunctor p) ⇒ Profunctor (DualD p i) where
-  dimap l r (DualD d) = DualD
-      { serializer: lcmap l d.serializer
-      , parser: map r d.parser
-      }
+  dimap l r (DualD prs ser) = DualD (map r prs) (lcmap l ser)
 
 newtype Dual p i o =
   Dual (DualD p i o o)
 derive instance newtypeDual ∷ Newtype (Dual p i o) _
 
 dual ∷ ∀ i o p
-  . { parser ∷ p i o
-    , serializer ∷ o → i
-    }
+  . (p i o)
+  → (o → i)
   → Dual p i o
-dual = Dual <<< DualD
+dual prs = Dual <<< DualD prs
 
 parser ∷ ∀ i o p. Dual p i o → p i o
-parser (Dual (DualD { parser: p } )) = p
+parser (Dual (DualD prs _)) = prs
 
 serializer ∷ ∀ i o p. Dual p i o → (o → i)
-serializer (Dual (DualD { serializer: s })) = s
+serializer (Dual (DualD _ ser)) = ser
 
 instance semigroupoidDual ∷ (Semigroupoid p) ⇒ Semigroupoid (Dual p) where
-  compose (Dual (DualD r2)) (Dual (DualD r1)) =
-    Dual <<< DualD $
-      { serializer: r1.serializer <<< r2.serializer
-      , parser: r2.parser <<< r1.parser
-      }
+  compose (Dual (DualD prs2 ser2)) (Dual (DualD prs1 ser1)) =
+    dual (prs2 <<< prs1) (ser1 <<< ser2)
 
 instance categoryDual ∷ (Category p) ⇒ Category (Dual p) where
-  identity = Dual $ DualD { parser: identity, serializer: identity }
+  identity = dual identity identity
 
--- | This function provides a way to diverge component serialization
--- | from parsing so we are able to "divide for a moment `o` type" and
--- | join them later by using `Applicative` composition.
--- |
--- | Quick example:
--- |
--- | profile = Dual $
--- |   ( { email1: _, email2: _, age: _}
--- |     <$> _.email1 >- emailDual
--- |     <*> _.email2 >- emailDual
--- |     <*> _.age >- ageDual)
--- |
--- | So in the above example we can turn let say `Dual p String Email` into
--- |
--- |  `DualD p String { email1: Email } Email`
--- |
--- | using `_.email1 >- emailDual` and `apply` + `Dual` from above example
--- | "joins" these types again.
--- | Of course these two steps can be handled by some generic layer.
-infixl 5 diverge as >-
+-- -- | This function provides a way to diverge component serialization
+-- -- | from parsing so we are able to "divide for a moment `o` type" and
+-- -- | join them later by using `Applicative` composition.
+-- -- | Lets use the same symbol as in codecs for similar operation.
+-- -- |
+-- -- | Quick example:
+-- -- |
+-- -- | profile = Dual $
+-- -- |   ( { email1: _, email2: _, age: _}
+-- -- |     <$> _.email1 ~ emailDual
+-- -- |     <*> _.email2 ~ emailDual
+-- -- |     <*> _.age ~ ageDual)
+-- -- |
+-- -- | So in the above example we can turn let say `Dual p String Email` into
+-- -- |
+-- -- |  `DualD p String { email1: Email } Email`
+-- -- |
+-- -- | using `_.email1 ~ emailDual` and `apply` + `Dual` from above example
+-- -- | "joins" these types again.
+-- -- | Of course these two steps can be handled by some generic layer.
+-- infixl 5 diverge as ~
 
 diverge
   ∷ ∀ i o o' p

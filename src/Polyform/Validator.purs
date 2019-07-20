@@ -77,6 +77,8 @@ ask = hoistFn identity
 runValidator ∷ ∀ i m o e. Validator m e i o → (i → m (V e o))
 runValidator = unwrap
 
+-- | These hoists set is used to lift functions into Validator
+
 hoistFn ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → o) → Validator m e i o
 hoistFn f = Validator $ f >>> pure >>> pure
 
@@ -88,6 +90,10 @@ hoistFnMV f = Validator f
 
 hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
+
+-- | This hoist is used to change undreling Monad / Applicative
+hoistValidatorM ∷ ∀ e i n m o. (m ~> n) → Validator m e i o → Validator n e i o
+hoistValidatorM n (Validator v) = Validator (map n v)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
