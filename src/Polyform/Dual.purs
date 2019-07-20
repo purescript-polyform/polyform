@@ -74,7 +74,7 @@ instance categoryDual ∷ (Category p) ⇒ Category (Dual p) where
 -- -- | using `_.email1 ~ emailDual` and `apply` + `Dual` from above example
 -- -- | "joins" these types again.
 -- -- | Of course these two steps can be handled by some generic layer.
--- infixl 5 diverge as ~
+infixl 5 diverge as ~
 
 diverge
   ∷ ∀ i o o' p

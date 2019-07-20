@@ -6,7 +6,10 @@
     "output"
   ],
   "dependencies": {
-    "purescript-variant": "^6.0.1"
+    "purescript-variant": "^6.0.1",
+    "purescript-profunctor": "^4.0.0",
+    "purescript-validation": "^4.2.0",
+    "purescript-typelevel-prelude": "^5.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "",
