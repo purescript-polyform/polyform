@@ -85,6 +85,9 @@ hoistFn f = Validator $ f >>> pure >>> pure
 hoistFnV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → V e o) → Validator m e i o
 hoistFnV f = Validator $ f >>> pure
 
+hoistFnM ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m o) → Validator m e i o
+hoistFnM f = Validator (map valid <$> f)
+
 hoistFnMV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m (V e o)) → Validator m e i o
 hoistFnMV f = Validator f
 

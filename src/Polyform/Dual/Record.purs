@@ -1,4 +1,4 @@
-module Dual.Record where
+module Polyform.Dual.Record where
 
 import Prelude
 
