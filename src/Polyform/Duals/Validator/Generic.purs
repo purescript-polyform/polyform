@@ -16,7 +16,8 @@ sum ∷ ∀ a m e i rep r
   ⇒ Semigroup e
   ⇒ Generic a rep
   ⇒ GDualSum (Validator m e) i rep r
-  ⇒ { | r }
+  ⇒ (∀ x s. IsSymbol s ⇒ SProxy s → Dual (Validator m e) i x → Dual (Validator m e) i x)
+  → { | r }
   → Dual (Validator m e) i a
 sum = Dual.Generic.sum
 
@@ -28,5 +29,5 @@ variant ∷ ∀ e i d dl m v
   ⇒ (∀ a s. IsSymbol s ⇒ SProxy s → Dual (Validator m e) i a → Dual (Validator m e) i a)
   → { | d }
   → Dual (Validator m e) i (Variant v)
-variant pre = Dual.Generic.variant pre
+variant = Dual.Generic.variant
 
