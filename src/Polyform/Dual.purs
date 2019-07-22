@@ -47,6 +47,11 @@ parser (Dual (DualD prs _)) = prs
 serializer ∷ ∀ i o p. Dual p i o → (o → i)
 serializer (Dual (DualD _ ser)) = ser
 
+hoist ∷ ∀ i o p q. (p i ~> q i) → Dual p i o → Dual q i o
+hoist f (Dual (DualD prs ser)) = dual prs' ser
+  where
+    prs' = f prs
+
 instance semigroupoidDual ∷ (Semigroupoid p) ⇒ Semigroupoid (Dual p) where
   compose (Dual (DualD prs2 ser2)) (Dual (DualD prs1 ser1)) =
     dual (prs2 <<< prs1) (ser1 <<< ser2)

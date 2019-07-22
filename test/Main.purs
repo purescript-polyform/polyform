@@ -3,21 +3,20 @@ module Test.Main where
 import Prelude
 
 import Control.Alt (class Alt)
-import Control.Alternative (class Alternative)
 import Control.Plus (class Plus)
 import Data.Array (all)
 import Data.Either (Either)
 import Data.Enum (class Enum, enumFromTo)
-import Data.Identity (Identity(..))
+import Data.Identity (Identity)
 import Data.Validation.Semigroup (V)
 import Effect (Effect)
 import Polyform.Validator (Validator(..))
 import Test.QuickCheck (class Arbitrary, class Coarbitrary, arbitrary)
 import Test.QuickCheck.Gen (Gen)
-import Test.QuickCheck.Laws (A, B, C, checkLaws)
+import Test.QuickCheck.Laws (A, B, checkLaws)
 import Test.QuickCheck.Laws.Control as Control
 import Test.QuickCheck.Laws.Data as Data
-import Type.Proxy (Proxy(..), Proxy2(..), Proxy3(..))
+import Type.Proxy (Proxy2(..), Proxy3(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 
@@ -54,14 +53,13 @@ derive newtype instance semigroupoidAValidator ∷ (Monoid e) ⇒ Semigroupoid (
 
 checkArray ∷ Effect Unit
 checkArray = checkLaws "Validator" do
-  -- Data.checkEq prxValidator
   -- Data.checkOrd prxArray
   Data.checkFunctor prx2Validator
   Control.checkApply prx2Validator
   Control.checkAlt prx2Validator
   Control.checkSemigroupoid prx3Validator
   -- Control.checkAlternative prx2Validator
-  -- Control.checkApplicative prx2Array
+  Control.checkApplicative prx2Validator
   -- Control.checkBind prx2Array
   -- Control.checkMonad prx2Array
   -- Data.checkSemigroup prxArray

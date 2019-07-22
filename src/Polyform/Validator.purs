@@ -3,6 +3,8 @@ module Polyform.Validator where
 import Prelude
 
 import Control.Alt (class Alt)
+import Control.Monad.Trans.Class (class MonadTrans)
+import Control.Monad.Trans.Class (lift) as Trans.Class
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..), either)
@@ -94,9 +96,12 @@ hoistFnMV f = Validator f
 hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
 
--- | This hoist is used to change undreling Monad / Applicative
-hoistValidatorM ∷ ∀ e i n m o. (m ~> n) → Validator m e i o → Validator n e i o
-hoistValidatorM n (Validator v) = Validator (map n v)
+-- | Apply underling modad to underling `Applicative`
+hoist ∷ ∀ e i n m o. (m ~> n) → Validator m e i o → Validator n e i o
+hoist n (Validator v) = Validator (map n v)
+
+lift ∷ ∀ e i o m t. MonadTrans t ⇒ Monad m ⇒ Validator m e i o → Validator (t m) e i o
+lift (Validator v) = Validator (map Trans.Class.lift v)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
