@@ -19,7 +19,6 @@ import Test.QuickCheck.Laws.Data as Data
 import Type.Proxy (Proxy2(..), Proxy3(..))
 import Unsafe.Coerce (unsafeCoerce)
 
-
 newtype AValidator e i o = AValidator (Validator Identity e i o)
 instance eqAValidator ∷ (Eq o, Eq e, Bounded i, Enum i) ⇒ Eq (AValidator e i o) where
   eq (AValidator (Validator v1)) (AValidator (Validator v2)) =

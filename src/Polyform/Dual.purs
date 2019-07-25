@@ -4,8 +4,9 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Alternative (class Plus, empty)
+import Data.Functor.Invariant (class Invariant)
 import Data.Newtype (class Newtype, unwrap)
-import Data.Profunctor (class Profunctor, lcmap)
+import Data.Profunctor (class Profunctor, dimap, lcmap)
 
 -- | __D__ from diverging as `o'` can be different from `o`.
 -- | They join in `Dual` type which wraps `DualD` a few
@@ -28,12 +29,15 @@ instance altDualD ∷ (Alt (p i)) ⇒ Alt (DualD p i o') where
 instance plusDualD ∷ (Plus (p i), Alt (p i), Monoid i) ⇒ Plus (DualD p i o') where
   empty = DualD empty (const mempty)
 
-instance profunctorDualD ∷ (Functor (p i), Profunctor p) ⇒ Profunctor (DualD p i) where
-  dimap l r (DualD prs ser) = DualD (map r prs) (lcmap l ser)
+instance profunctorDualD ∷ (Functor (p i)) ⇒ Profunctor (DualD p i) where
+  dimap l r (DualD prs ser) = DualD (map r prs) (l >>> ser)
 
 newtype Dual p i o =
   Dual (DualD p i o o)
 derive instance newtypeDual ∷ Newtype (Dual p i o) _
+
+instance invariantFunctor ∷ Functor (p i) ⇒ Invariant (Dual p i) where
+  imap f g (Dual d) = Dual (dimap g f d)
 
 dual ∷ ∀ i o p
   . (p i o)

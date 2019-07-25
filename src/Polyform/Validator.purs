@@ -22,13 +22,13 @@ newtype Validator m e i o = Validator (i → m (V e o))
 derive instance newtypeValidator ∷ Newtype (Validator m r i o) _
 derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r i)
 
-instance applyValidator ∷ (Semigroup r, Monad m) ⇒ Apply (Validator m r i) where
-  apply vf va = Validator $ \i → do
+instance applyValidator ∷ (Semigroup r, Applicative m) ⇒ Apply (Validator m r i) where
+  apply vf va = Validator $ \i → ado
     vf' ← unwrap vf i
     va' ← unwrap va i
-    pure $ vf' <*> va'
+    in vf' <*> va'
 
-instance applicativeValidator ∷ (Semigroup r, Monad m) ⇒ Applicative (Validator m r i) where
+instance applicativeValidator ∷ (Semigroup r, Applicative m) ⇒ Applicative (Validator m r i) where
   pure = Validator <<< const <<< pure <<< pure
 
 instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e i) where
