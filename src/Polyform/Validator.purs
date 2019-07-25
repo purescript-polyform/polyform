@@ -8,6 +8,7 @@ import Control.Monad.Trans.Class (lift) as Trans.Class
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
 import Data.Either (Either(..), either)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
@@ -121,8 +122,13 @@ bimapValidator ∷ ∀ i e e' m o o'
   → Validator m e' i o'
 bimapValidator l r = unwrap <<< bimap l r <<< BifunctorValidator
 
-lmapValidator ∷ ∀ i e e' m o. Monad m ⇒ (e → e') → Validator m e i o → Validator m e' i o
+lmapValidator ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Validator m e i o → Validator m e' i o
 lmapValidator l = unwrap <<< lmap l <<< BifunctorValidator
 
-rmapValidator ∷ ∀ i o o' m r. Monad m ⇒ (o → o') → Validator m r i o → Validator m r i o'
+rmapValidator ∷ ∀ e i o o' m. Monad m ⇒ (o → o') → Validator m e i o → Validator m e i o'
 rmapValidator l = unwrap <<< rmap l <<< BifunctorValidator
+
+optional ∷ ∀ e i o m. Monad m ⇒ Semigroup e ⇒ Validator m e i o → Validator m e i (Maybe o)
+optional v = hoistFnMV \i → do
+  r ← runValidator v i
+  pure $ unV (const $ pure Nothing) (pure <<< Just) r

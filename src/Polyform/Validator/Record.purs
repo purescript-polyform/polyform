@@ -17,21 +17,19 @@ instance semigroupoidBuilder ∷ (Semigroup i, Semigroup e, Monad m) ⇒ Semigro
 instance categoryBuilder ∷ (Monoid i, Semigroup e, Monad m) ⇒ Category (Builder m e i) where
   identity = Builder $ pure identity
 
-insert ∷ ∀ a e i i' o o' n m
-  . Row.Cons n a i i'
-  ⇒ Row.Lacks n i
-  ⇒ Row.Cons n a o o'
+insert ∷ ∀ a e i o o' n m
+  . Row.Cons n a o o'
   ⇒ Row.Lacks n o
   ⇒ IsSymbol n
   ⇒ Functor m
   ⇒ SProxy n
-  → Validator m e { | i'} a
-  → Builder m e { | i'} ({ | o}) ({ | o'})
+  → Validator m e i a
+  → Builder m e i ({ | o}) ({ | o'})
 insert l v = Builder $ (Record.Builder.insert l <$> v)
 
-build ∷ ∀ e m o
+build ∷ ∀ e i m o
   . Functor m
-  ⇒ Builder m e { |o} {} { |o}
-  → Validator m e { | o} { | o}
+  ⇒ Builder m e i {} { |o}
+  → Validator m e i { | o}
 build (Builder v) = (flip Record.Builder.build {} <$> v)
 
