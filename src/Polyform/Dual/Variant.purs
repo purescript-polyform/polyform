@@ -38,7 +38,7 @@ on prefix label d (Dual (DualD restPrs restSer)) =
 case_ ∷ ∀ i p. Applicative (p i) ⇒ Dual p i (Variant ())
 case_ = dual prs ser
   where
-    prs = unsafeCrashWith ("Duals.Json.case_: trying to parse empty Variant from: ")
-    ser i = unsafeCrashWith ("Duals.Jso.case_: trying to serialize empty Variant: " <> unsafeStringify i)
+    prs = unsafeCrashWith ("Dual.Variant.case_: trying to parse empty Variant")
+    ser i = unsafeCrashWith ("Dual.Variant.case_: serializing empty Variant: " <> unsafeStringify i)
 
 
