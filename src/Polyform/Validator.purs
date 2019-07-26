@@ -8,100 +8,85 @@ import Control.Monad.Trans.Class (class MonadTrans)
 import Control.Monad.Trans.Class (lift) as Trans.Class
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
-import Data.Either (Either(..), either)
+import Data.Either (Either, either)
+import Data.Functor.Compose (Compose(..), bihoistCompose)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
 import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (class Strong)
-import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V(..), invalid, unV)
 
-newtype Validator m e i o = Validator (i → m (V e o))
+newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
 derive instance newtypeValidator ∷ Newtype (Validator m r i o) _
-derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r i)
-
-instance applyValidator ∷ (Semigroup r, Applicative m) ⇒ Apply (Validator m r i) where
-  apply vf va = Validator $ \i → ado
-    vf' ← unwrap vf i
-    va' ← unwrap va i
-    in vf' <*> va'
-
-instance applicativeValidator ∷ (Semigroup r, Applicative m) ⇒ Applicative (Validator m r i) where
-  pure = Validator <<< const <<< pure <<< pure
+derive newtype instance functorValidator ∷ (Applicative m, Semigroup e) ⇒ Functor (Validator m e i)
+derive newtype instance applyValidator ∷ (Applicative m, Semigroup e) ⇒ Apply (Validator m e i)
+derive newtype instance applicativeValidator ∷ (Applicative m, Semigroup e) ⇒ Applicative (Validator m e i)
+derive newtype instance profunctorValidator ∷ Functor m ⇒ Profunctor (Validator m e)
+derive newtype instance choiceValidator ∷ (Semigroup e, Applicative m) ⇒ Choice (Validator m e)
+derive newtype instance strongValidator ∷ (Monad m, Semigroup e) ⇒ Strong (Validator m e)
 
 instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e i) where
-  alt (Validator v1) (Validator v2) = Validator \i → do
-    res ← v1 i
+  alt (Validator (Star v1)) (Validator (Star v2)) = Validator $ Star \i → Compose do
+    let
+      Compose res = v1 i
+    res' ← res
     unV
-      (\_ → v2 i)
+      (\_ → let Compose m = v2 i in m)
       (pure <<< pure)
-      res
-
+      res'
 instance plusValidator ∷ (Monad m, Monoid e) ⇒ Plus (Validator m e i) where
-  empty = Validator <<< const <<< pure $ invalid mempty
+  empty = Validator <<< Star <<< const <<< Compose <<< pure $ invalid mempty
 
 instance semigroupValidator ∷ (Apply m, Semigroup e, Semigroup o) ⇒ Semigroup (Validator m e i o) where
-  append (Validator v1) (Validator v2) = Validator (\i → (<>) <$> v1 i <*> v2 i)
+  append (Validator v1) (Validator v2) = Validator ((<>) <$> v1 <*> v2)
 
 instance monoidValidator ∷ (Applicative m, Monoid e, Monoid o) ⇒ Monoid (Validator m e i o) where
-  mempty = Validator <<< const <<< pure $ mempty
+  mempty = Validator <<< Star <<< const <<< Compose <<< pure $ mempty
 
 instance semigroupoidValidator ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Validator m e) where
-  compose (Validator v2) (Validator v1) =
-    Validator $ \i → do
-      res ← v1 i
-      unV (pure <<< invalid) v2 res
+  compose (Validator (Star v2)) (Validator (Star v1)) =
+    Validator $ Star $ \i → Compose do
+      let
+        Compose res = v1 i
+      res' ← res
+      unV (pure <<< invalid) (\b → let Compose b' = v2 b in b') res'
 
 instance categoryValidator ∷ (Monad m, Semigroup e) ⇒ Category (Validator m e) where
-  identity = Validator $ pure <<< pure
-
-instance profunctorValidator ∷ (Monad m, Semigroup e) ⇒ Profunctor (Validator m e) where
-  dimap l r v = (hoistFn l) >>> v >>> (hoistFn r)
-
-instance choiceValidator ∷ (Monad m, Semigroup r) ⇒ Choice (Validator m r) where
-  left v = Validator (case _ of
-    Left i → map Left <$> runValidator v i
-    Right r → pure (pure $ Right r))
-
-  right v = Validator (case _ of
-    Right i → map Right <$> runValidator v i
-    Left l → pure (pure $ Left l))
-
-instance strongValidator ∷ (Monad m, Semigroup e) ⇒ Strong (Validator m e) where
-  first v = Validator (\(Tuple f s) → map (\f' → Tuple f' s) <$> runValidator v f)
-  second v = Validator (\(Tuple f s) → map (\s' → Tuple f s') <$> runValidator v s)
+  identity = Validator <<< Star $ Compose <<< pure <<< pure
 
 ask ∷ ∀ i m e. Monad m ⇒ Semigroup e ⇒ Validator m e i i
 ask = hoistFn identity
 
 runValidator ∷ ∀ i m o e. Validator m e i o → (i → m (V e o))
-runValidator = unwrap
+runValidator = map unwrap <<< unwrap <<< unwrap
 
 -- | These hoists set is used to lift functions into Validator
 
 hoistFn ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → o) → Validator m e i o
-hoistFn f = Validator $ f >>> pure >>> pure
+hoistFn f = Validator $ Star $ f >>> pure >>> pure >>> Compose
 
 hoistFnV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → V e o) → Validator m e i o
-hoistFnV f = Validator $ f >>> pure
+hoistFnV f = Validator $ Star $ f >>> pure >>> Compose
 
 hoistFnM ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m o) → Validator m e i o
-hoistFnM f = Validator (map valid <$> f)
+hoistFnM f = Validator $ Star (map Compose $ map valid <$> f)
 
 hoistFnMV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m (V e o)) → Validator m e i o
-hoistFnMV f = Validator f
+hoistFnMV f = Validator $ Star $ map Compose f
 
 hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
 
--- | Apply underling modad to underling `Applicative`
-hoist ∷ ∀ e i n m o. (m ~> n) → Validator m e i o → Validator n e i o
-hoist n (Validator v) = Validator (map n v)
+hoist ∷ ∀ e i n m o. Functor m ⇒ (m ~> n) → Validator m e i o → Validator n e i o
+hoist n (Validator (Star v)) = Validator $ Star (map (bihoistCompose n identity) v)
 
 lift ∷ ∀ e i o m t. MonadTrans t ⇒ Monad m ⇒ Validator m e i o → Validator (t m) e i o
-lift (Validator v) = Validator (map Trans.Class.lift v)
+lift = hoist Trans.Class.lift
+
+starExcept ∷ ∀ e i o m. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o
+starExcept (Validator (Star f)) = Star (ExceptT <<< map unwrap <<< unwrap <<< f)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
@@ -109,9 +94,10 @@ newtype BifunctorValidator m i e o = BifunctorValidator (Validator m e i o)
 derive instance newtypeBifunctorValidator ∷ Newtype (BifunctorValidator m i e o) _
 
 instance bifunctorBifunctorValidator ∷ Monad m ⇒ Bifunctor (BifunctorValidator m i) where
-  bimap l r (BifunctorValidator (Validator f)) = BifunctorValidator $ Validator $ \i → do
-    v ← f i
-    pure $ bimap l r v
+  bimap l r (BifunctorValidator (Validator (Star f))) = BifunctorValidator $ Validator $ Star $ \i → Compose do
+    let
+      Compose v = f i
+    map (bimap l r) v
 
 bimapValidator ∷ ∀ i e e' m o o'
   . (Monad m)
@@ -136,8 +122,8 @@ valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
 valid = pure
 
 toStarExceptT ∷ ∀ e i m o. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o
-toStarExceptT (Validator f) = Star (map (map unwrap >>> ExceptT) f )
+toStarExceptT (Validator (Star f)) = Star (map (unwrap >>> map unwrap >>> ExceptT) f)
 
 fromStarExceptT ∷ ∀ e i m o. Functor m ⇒ Star (ExceptT e m) i o → Validator m e i o
-fromStarExceptT (Star f) = Validator (map (unwrap >>> map V) f)
+fromStarExceptT (Star f) = Validator $ Star (map (unwrap >>> map V >>> Compose) f)
 

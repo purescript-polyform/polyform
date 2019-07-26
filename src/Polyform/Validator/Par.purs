@@ -7,6 +7,7 @@ import Control.Parallel (class Parallel)
 import Control.Parallel as Parallel
 import Control.Plus (class Plus, empty)
 import Data.Newtype (class Newtype)
+import Data.Profunctor.Star (Star(..))
 import Data.Validation.Semigroup (unV)
 import Polyform.Validator (Validator(..))
 
@@ -15,8 +16,8 @@ derive instance newtypeVaildation ∷ Newtype (Par m e i o) _
 derive instance functorPar ∷ (Functor m) ⇒ Functor (Par m e i)
 
 instance applyPar ∷ (Monad m, Parallel f m, Semigroup e) ⇒ Apply (Par m e i) where
-  apply (Par (Validator mf)) (Par (Validator ma)) =
-    Par $ Validator \i →
+  apply (Par (Validator (Star mf))) (Par (Validator (Star ma))) =
+    Par $ Validator $ Star \i →
       Parallel.sequential $ (<*>) <$> Parallel.parallel (mf i) <*> Parallel.parallel (ma i)
 
 instance applicativePar ∷ (Monad m, Parallel f m, Monoid e) ⇒ Applicative (Par m e i) where
@@ -35,7 +36,7 @@ instance plusPar ∷ (Monad m, Monoid e, Parallel f m) ⇒ Plus (Par m e i) wher
   empty = Par empty
 
 instance semigroupPar ∷ (Parallel f m, Semigroup e, Semigroup o) ⇒ Semigroup (Par m e i o) where
-  append (Par (Validator v1)) (Par (Validator v2)) =
+  append (Par (Validator (Star v1))) (Par (Validator (Star v2))) =
     Par $ Validator (\i → Parallel.sequential $ (<>) <$> Parallel.parallel (v1 i) <*> Parallel.parallel (v2 i))
 
 instance monoidPar ∷ (Applicative m, Monoid e, Monoid o, Parallel f m) ⇒ Monoid (Par m e i o) where
