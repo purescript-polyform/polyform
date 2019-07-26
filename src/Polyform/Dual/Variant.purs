@@ -13,20 +13,23 @@ import Prim.Row (class Cons) as Row
 import Prim.Row (class Union)
 import Type.Prelude (class IsSymbol)
 
+-- |`prefix` can be used to encode tagging of a given option.
+-- | Please take a look at `Polyform.Duals.Json.on` example
+-- | from `polyform-validators`.
 on ∷ ∀ a i l lr p r r'
   . Union r lr r'
   ⇒ IsSymbol l
   ⇒ Row.Cons l a () lr
   ⇒ Row.Cons l a r r'
   ⇒ Alt (p i)
-  ⇒ (∀ a' s. SProxy s → Dual p i a' → Dual p i a')
+  ⇒ (∀ a' s. IsSymbol s ⇒ SProxy s → Dual p i a' → Dual p i a')
   → SProxy l
   → Dual p i a
   → Dual p i (Variant r)
   → Dual p i (Variant r')
-on pre label d (Dual (DualD restPrs restSer)) =
+on prefix label d (Dual (DualD restPrs restSer)) =
   let
-    Dual (DualD prs ser) = pre label d
+    Dual (DualD prs ser) = prefix label d
   in
     dual
       (inj label <$> prs <|> (Variant.expand <$> restPrs))
