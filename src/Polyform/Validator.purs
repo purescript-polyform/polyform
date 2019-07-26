@@ -16,9 +16,6 @@ import Data.Profunctor.Strong (class Strong)
 import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V, invalid, unV)
 
-valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
-valid = pure
-
 newtype Validator m e i o = Validator (i → m (V e o))
 derive instance newtypeValidator ∷ Newtype (Validator m r i o) _
 derive instance functorValidator ∷ (Functor m) ⇒ Functor (Validator m r i)
@@ -132,3 +129,7 @@ optional ∷ ∀ e i o m. Monad m ⇒ Semigroup e ⇒ Validator m e i o → Vali
 optional v = hoistFnMV \i → do
   r ← runValidator v i
   pure $ unV (const $ pure Nothing) (pure <<< Just) r
+
+valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
+valid = pure
+

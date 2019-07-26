@@ -5,7 +5,7 @@ import Prelude
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Validation.Semigroup (V)
 import Polyform.Dual (Dual(..), DualD(..), dual, parser, serializer) as Dual
-import Polyform.Validator (Validator)
+import Polyform.Validator (Validator, lmapValidator)
 import Polyform.Validator as Validator
 import Polyform.Validator.Par as Validator.Par
 
@@ -33,3 +33,5 @@ hoist nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs' ser
 
 newtype Par m r a b = Dual (Validator.Par.Par m r a b)
 
+lmapDual ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Dual m e i o → Dual m e' i o
+lmapDual f (Dual.Dual (Dual.DualD prs ser)) = Dual.dual (lmapValidator f prs) ser

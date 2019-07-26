@@ -1,14 +1,15 @@
 module Polyform.Dual.Generic.Sum where
 
-import Prelude
+import Prelude hiding (unit)
 
 import Control.Alt (class Alt)
 import Control.Alternative ((<|>))
-import Data.Generic.Rep (class Generic, Argument(..), Constructor(..), NoArguments, Product, Sum(..), from, to)
+import Data.Generic.Rep (class Generic, Argument(..), Constructor(..), NoArguments(..), Product, Sum(..), from, to)
 import Data.Newtype (unwrap, wrap)
 import Data.Profunctor (class Profunctor, dimap)
 import Data.Symbol (SProxy(..))
 import Polyform.Dual (Dual(..), DualD(..), dual)
+import Prelude (unit) as Prelude
 import Prim.Row (class Cons) as Row
 import Record (get) as Record
 import Type.Prelude (class IsSymbol)
@@ -80,3 +81,14 @@ sum ∷ ∀ a i p rep r
   → Dual p i a
 sum pre = wrap <<< dimap from to <<< unwrap <<< gDual pre
 
+noArgs :: ∀ p i. Applicative (p i) ⇒ Monoid i ⇒ Dual p i NoArguments
+noArgs = Dual (pure NoArguments)
+
+noArgs' ∷ ∀ p i. Applicative (p i) ⇒ i → Dual p i NoArguments
+noArgs' i = dual (pure NoArguments) (const i)
+
+unit ∷ ∀ p i. Applicative (p i) ⇒ Monoid i ⇒ Dual p i Unit
+unit = Dual (pure Prelude.unit)
+
+unit' ∷ ∀ p i. Applicative (p i) ⇒ i → Dual p i Unit
+unit' i = dual (pure Prelude.unit) (const i)
