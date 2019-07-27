@@ -9,7 +9,7 @@ import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor, dimap, lcmap)
 
 -- | __D__ from diverging as `o'` can be different from `o`.
--- | They join in `Dual` type which wraps `DualD` a few
+-- | They "join" in `Dual` type which wraps `DualD` a few
 -- | lines below.
 data DualD p i o' o = DualD (p i o) (o' → i)
 
@@ -32,8 +32,7 @@ instance plusDualD ∷ (Plus (p i), Alt (p i), Monoid i) ⇒ Plus (DualD p i o')
 instance profunctorDualD ∷ (Functor (p i)) ⇒ Profunctor (DualD p i) where
   dimap l r (DualD prs ser) = DualD (map r prs) (l >>> ser)
 
-newtype Dual p i o =
-  Dual (DualD p i o o)
+newtype Dual p i o = Dual (DualD p i o o)
 derive instance newtypeDual ∷ Newtype (Dual p i o) _
 
 instance invariantFunctor ∷ Functor (p i) ⇒ Invariant (Dual p i) where

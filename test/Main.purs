@@ -7,8 +7,10 @@ import Control.Plus (class Plus)
 import Data.Array (all)
 import Data.Either (Either)
 import Data.Enum (class Enum, enumFromTo)
+import Data.Functor.Compose (Compose(..))
 import Data.Identity (Identity)
-import Data.Validation.Semigroup (V)
+import Data.Profunctor.Star (Star(..))
+import Data.Validation.Semigroup (V(..))
 import Effect (Effect)
 import Polyform.Validator (Validator(..))
 import Test.QuickCheck (class Arbitrary, class Coarbitrary, arbitrary)
@@ -21,7 +23,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 newtype AValidator e i o = AValidator (Validator Identity e i o)
 instance eqAValidator ∷ (Eq o, Eq e, Bounded i, Enum i) ⇒ Eq (AValidator e i o) where
-  eq (AValidator (Validator v1)) (AValidator (Validator v2)) =
+  eq (AValidator (Validator (Star v1))) (AValidator (Validator (Star v2))) =
     let
       arr = (enumFromTo bottom top ∷ Array i)
     in
@@ -37,9 +39,9 @@ instance arbitraryA ∷ (Arbitrary e, Coarbitrary i, Arbitrary o) ⇒ Arbitrary 
     let
       gf = arbitrary ∷ Gen (i → Identity (Either e o))
     in
-      (AValidator <<< Validator <<< map (map fromEither)) <$> gf
+      AValidator <<< Validator <<< Star <<< map (Compose <<< (map V)) <$> gf
 
-derive newtype instance functorAValidator ∷ Functor (AValidator e i)
+derive newtype instance functorAValidator ∷ (Semigroup e) ⇒ Functor (AValidator e i)
 derive newtype instance applyAValidator ∷ (Monoid e) ⇒ Apply (AValidator e i)
 derive newtype instance applicativeAValidator ∷ (Monoid e) ⇒ Applicative (AValidator e i)
 derive newtype instance altAValidator ∷ (Monoid e) ⇒ Alt (AValidator e i)

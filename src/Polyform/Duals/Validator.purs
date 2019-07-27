@@ -26,7 +26,7 @@ runSerializerM = map pure <<< Dual.serializer
 newtypeDual ∷ ∀ a e m n. Monad m ⇒ Semigroup e ⇒ Newtype n a ⇒ Dual m e a n
 newtypeDual = Dual.dual (Validator.hoistFn wrap) unwrap
 
-hoist ∷ ∀ e i o m m'. (m ~> m') → Dual m e i o → Dual m' e i o
+hoist ∷ ∀ e i o m m'. Functor m ⇒ (m ~> m') → Dual m e i o → Dual m' e i o
 hoist nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs' ser
   where
     prs' = Validator.hoist nt prs

@@ -21,14 +21,16 @@ insert ∷ ∀ a e i o o' n m
   . Row.Cons n a o o'
   ⇒ Row.Lacks n o
   ⇒ IsSymbol n
-  ⇒ Functor m
+  ⇒ Semigroup e
+  ⇒ Applicative m
   ⇒ SProxy n
   → Validator m e i a
   → Builder m e i ({ | o}) ({ | o'})
 insert l v = Builder $ (Record.Builder.insert l <$> v)
 
 build ∷ ∀ e i m o
-  . Functor m
+  . Applicative m
+  ⇒ Semigroup e
   ⇒ Builder m e i {} { |o}
   → Validator m e i { | o}
 build (Builder v) = (flip Record.Builder.build {} <$> v)
