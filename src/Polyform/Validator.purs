@@ -3,6 +3,7 @@ module Polyform.Validator where
 import Prelude
 
 import Control.Alt (class Alt)
+import Control.Monad.Except (ExceptT(..))
 import Control.Monad.Trans.Class (class MonadTrans)
 import Control.Monad.Trans.Class (lift) as Trans.Class
 import Control.Plus (class Plus)
@@ -12,9 +13,10 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
+import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (class Strong)
 import Data.Tuple (Tuple(..))
-import Data.Validation.Semigroup (V, invalid, unV)
+import Data.Validation.Semigroup (V(..), invalid, unV)
 
 newtype Validator m e i o = Validator (i → m (V e o))
 derive instance newtypeValidator ∷ Newtype (Validator m r i o) _
@@ -132,4 +134,10 @@ optional v = hoistFnMV \i → do
 
 valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
 valid = pure
+
+toStarExceptT ∷ ∀ e i m o. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o
+toStarExceptT (Validator f) = Star (map (map unwrap >>> ExceptT) f )
+
+fromStarExceptT ∷ ∀ e i m o. Functor m ⇒ Star (ExceptT e m) i o → Validator m e i o
+fromStarExceptT (Star f) = Validator (map (unwrap >>> map V) f)
 
