@@ -15,9 +15,10 @@ import Effect (Effect)
 import Polyform.Validator (Validator(..))
 import Test.QuickCheck (class Arbitrary, class Coarbitrary, arbitrary)
 import Test.QuickCheck.Gen (Gen)
-import Test.QuickCheck.Laws (A, B, checkLaws)
+import Test.QuickCheck.Laws (A, B, C, checkLaws)
 import Test.QuickCheck.Laws.Control as Control
 import Test.QuickCheck.Laws.Data as Data
+import Type.Prelude (Proxy(..))
 import Type.Proxy (Proxy2(..), Proxy3(..))
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -47,10 +48,11 @@ derive newtype instance applicativeAValidator ∷ (Monoid e) ⇒ Applicative (AV
 derive newtype instance altAValidator ∷ (Monoid e) ⇒ Alt (AValidator e i)
 derive newtype instance plusAValidator ∷ (Monoid e) ⇒ Plus (AValidator e i)
 derive newtype instance semigroupoidAValidator ∷ (Monoid e) ⇒ Semigroupoid (AValidator e)
+derive newtype instance semigroupValidator ∷ (Semigroup o, Monoid e) ⇒ Semigroup (AValidator e i o)
+derive newtype instance monoidValidator ∷ (Monoid o, Monoid e) ⇒ Monoid (AValidator e i o)
 
 -- | check is going to fail on this
--- instance alternativeValidator ∷ (Monad m, Monoid e) ⇒ Alternative (Validator m e i)
--- derive newtype instance alternativeAValidator ∷ (Monoid e) ⇒ Alternative (AValidator e i)
+-- instance alternativeAValidator ∷ (Monoid e) ⇒ Alternative (AValidator e i)
 
 checkArray ∷ Effect Unit
 checkArray = checkLaws "Validator" do
@@ -59,17 +61,18 @@ checkArray = checkLaws "Validator" do
   Control.checkApply prx2Validator
   Control.checkAlt prx2Validator
   Control.checkSemigroupoid prx3Validator
+  -- | This failes
   -- Control.checkAlternative prx2Validator
   Control.checkApplicative prx2Validator
-  -- Control.checkBind prx2Array
+  Control.checkPlus prx2Validator
+  -- Control.checkBind prx2Validator
   -- Control.checkMonad prx2Array
-  -- Data.checkSemigroup prxArray
-  -- Data.checkMonoid prxArray
-  -- Control.checkPlus prx2Array
+  Data.checkSemigroup prxValidator
+  Data.checkMonoid prxValidator
   -- Control.checkMonadZero prx2Array
   -- Control.checkMonadPlus prx2Array
   where
-  -- prxValidator = Proxy ∷ Proxy (AValidator A B C)
+  prxValidator = Proxy ∷ Proxy (AValidator A B C)
   prx2Validator = Proxy2 ∷ Proxy2 (AValidator A B)
   prx3Validator = Proxy3 ∷ Proxy3 (AValidator A)
 

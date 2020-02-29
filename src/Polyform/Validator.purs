@@ -8,7 +8,7 @@ import Control.Monad.Trans.Class (class MonadTrans)
 import Control.Monad.Trans.Class (lift) as Trans.Class
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
-import Data.Either (Either, either)
+import Data.Either (Either(..), either)
 import Data.Functor.Compose (Compose(..), bihoistCompose)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -30,12 +30,15 @@ derive newtype instance strongValidator ∷ (Monad m, Semigroup e) ⇒ Strong (V
 instance altValidator ∷ (Semigroup e, Monad m) ⇒ Alt (Validator m e i) where
   alt (Validator (Star v1)) (Validator (Star v2)) = Validator $ Star \i → Compose do
     let
-      Compose res = v1 i
-    res' ← res
-    unV
-      (\_ → let Compose m = v2 i in m)
-      (pure <<< pure)
-      res'
+      Compose r1 = v1 i
+    r1 >>= case _ of
+      V (Right o1) → pure $ pure o1
+      V (Left e1) → do
+        let Compose r2 = v2 i
+        r2 >>= case _ of
+          V (Right o2) → pure $ pure o2
+          V (Left e2) → pure $ invalid $ e1 <> e2
+
 instance plusValidator ∷ (Monad m, Monoid e) ⇒ Plus (Validator m e i) where
   empty = Validator <<< Star <<< const <<< Compose <<< pure $ invalid mempty
 
@@ -73,7 +76,7 @@ hoistFnV f = Validator $ Star $ f >>> pure >>> Compose
 hoistFnM ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m o) → Validator m e i o
 hoistFnM f = Validator $ Star (map Compose $ map valid <$> f)
 
-hoistFnMV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m (V e o)) → Validator m e i o
+hoistFnMV ∷ ∀ e i m o. (i → m (V e o)) → Validator m e i o
 hoistFnMV f = Validator $ Star $ map Compose f
 
 hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
@@ -84,9 +87,6 @@ hoist n (Validator (Star v)) = Validator $ Star (map (bihoistCompose n identity)
 
 lift ∷ ∀ e i o m t. MonadTrans t ⇒ Monad m ⇒ Validator m e i o → Validator (t m) e i o
 lift = hoist Trans.Class.lift
-
-starExcept ∷ ∀ e i o m. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o
-starExcept (Validator (Star f)) = Star (ExceptT <<< map unwrap <<< unwrap <<< f)
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
@@ -123,6 +123,11 @@ valid = pure
 
 toStarExceptT ∷ ∀ e i m o. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o
 toStarExceptT (Validator (Star f)) = Star (map (unwrap >>> map unwrap >>> ExceptT) f)
+
+-- | It is often the case that after successfull chain of validation we want
+-- | to drop to "non semigroup" error representation like `Variant` etc.
+lmapToStarExceptT ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Validator m e i o → Star (ExceptT e' m) i o
+lmapToStarExceptT withE = toStarExceptT <<< lmapValidator withE
 
 fromStarExceptT ∷ ∀ e i m o. Functor m ⇒ Star (ExceptT e m) i o → Validator m e i o
 fromStarExceptT (Star f) = Validator $ Star (map (unwrap >>> map V >>> Compose) f)
