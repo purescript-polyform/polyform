@@ -36,4 +36,4 @@ newtype Dual p i o = Dual (DualD p i o o)
 
 ## Name
 
- `polyform` initialy was intended to provide some basic mechanism for html form validation. It was polyomrphic on the form type hence the name. After the last rewrite the name has no sens any more, but you now - "naming is the..."
+ `polyform` initialy was intended to provide some basic mechanism for html form validation. It was polyomrphic on the form type hence the name. After the last rewrite this name has probably no sens any more, but you now - "naming is the..."
