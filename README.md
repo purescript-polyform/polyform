@@ -1,6 +1,6 @@
 # purescript-polyform
 
-Validation toolkit plus alternative codec type formulation build on top.
+Validation toolkit plus alternative codec type formulation.
 
 Sorry for this sparse docs. I hope to extend them soon. Till then it is just better to look at the real world examples (json duals etc.) in `purescript-polyform-validators`.
 
