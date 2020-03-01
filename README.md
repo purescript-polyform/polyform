@@ -2,7 +2,7 @@
 
 Validation toolkit plus alternative codec type formulation.
 
-Sorry for this sparse docs. I hope to extend them soon. Till then it is just better to look at the real world examples (json duals etc.) in `purescript-polyform-validators`.
+Sorry for this sparse docs. I hope to extend them soon. Till then it is just better to take a look at the real world examples (json duals etc.) in the `lambdaterms/purescript-polyform-validators` repo.
 
 ## Core types
 
