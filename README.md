@@ -6,9 +6,10 @@ Sorry for this sparse docs. I hope to extend them soon. Till then it is just bet
 
 ## Core types
 
-### Validator
+### `Validator`
 
-It provides an `Applicative` instance which allow compose muptiple validators in a similar the `Reader` spirit. There is also `Category` instance which allows you to build validation chains.
+It provides an `Applicative` instance which allow composition in the `Reader` spirit - all `Validators` "work" on the same input. It is accumulative because it is build on top of `V`.
+There is also a `Category` instance which allows you to build validation chains combining this applicative steps.
 
 ```
 newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
