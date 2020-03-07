@@ -30,6 +30,6 @@
         "purescript-debug": "^v4.0.0",
         "purescript-psci-support": "^v4.0.0",
         "purescript-quickcheck-laws": "^v5.1.0",
-        "purescript-test-unit": "^v15.0.0",
+        "purescript-test-unit": "^v15.0.0"
     }
 }
