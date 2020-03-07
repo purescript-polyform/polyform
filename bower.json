@@ -1,26 +1,35 @@
 {
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "bower_components",
-    "output"
-  ],
-  "dependencies": {
-    "purescript-variant": "^6.0.1",
-    "purescript-profunctor": "^4.0.0",
-    "purescript-validation": "^4.2.0",
-    "purescript-typelevel-prelude": "^5.0.0"
-  },
-  "devDependencies": {
-    "purescript-psci-support": "",
-    "purescript-debug": "",
-    "purescript-test-unit": "",
-    "purescript-quickcheck-laws": ""
-  },
-  "license": "BSD-3-Clause",
-  "name": "purescript-polyform",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/paluh/purescript-polyform.git"
-  }
+    "name": "purescript-polyform",
+    "license": [
+        "BSD-3-Clause"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/paluh/purescript-polyform.git"
+    },
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "output"
+    ],
+    "dependencies": {
+        "purescript-foreign": "^v5.0.0",
+        "purescript-foreign-object": "^v2.0.3",
+        "purescript-generics-rep": "^v6.1.1",
+        "purescript-invariant": "^v4.1.0",
+        "purescript-newtype": "^v3.0.0",
+        "purescript-ordered-collections": "^v1.6.1",
+        "purescript-profunctor": "^v4.1.0",
+        "purescript-run": "^v3.0.1",
+        "purescript-transformers": "^v4.2.0",
+        "purescript-validation": "^v4.2.0",
+        "purescript-variant": "^v6.0.1"
+    },
+    "devDependencies": {
+        "purescript-debug": "^v4.0.0",
+        "purescript-psci-support": "^v4.0.0",
+        "purescript-quickcheck-laws": "^v5.1.0",
+        "purescript-test-unit": "^v15.0.0",
+    }
 }
