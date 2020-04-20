@@ -1,8 +1,8 @@
 # purescript-polyform
 
-Validation toolkit plus alternative codec type formulation.
+Validation toolkit with a bit different codec type formulation called `Dual`.
 
-Sorry for this sparse docs. I hope to extend them soon. Till then it is just better to take a look at the real world examples (json duals etc.) in the `lambdaterms/purescript-polyform-validators` repo.
+Sorry for these sparse docs. I hope to extend them soon. Till then it is just better to take a look at the real world examples (json duals, urlencode validators etc.) in the `lambdaterms/purescript-polyform-validators` repo.
 
 ## Core types
 
