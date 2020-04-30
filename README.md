@@ -13,7 +13,6 @@ There is also a `Category` instance which allows you to build validation chains 
 
 ```
 newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
-
 ```
 
 ### `Exceptor`
