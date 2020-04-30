@@ -8,7 +8,7 @@ Sorry for these sparse docs. I hope to extend them soon. Till then it is just be
 
 ### `Validator`
 
-It provides an `Applicative` instance which allow composition in the `Reader` spirit - all `Validators` "work" on the same input. It is accumulative because it is build on top of `V`.
+It provides an `Applicative` instance which allow composition in the `Reader` spirit - all `Validators` "work" on the same input. It is accumulative because it is built on top of the `V` type from `purescript-validation`.
 There is also a `Category` instance which allows you to build validation chains combining this applicative steps.
 
 ```
