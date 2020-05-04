@@ -11,7 +11,7 @@ Sorry for these sparse docs. I hope to extend them soon. Till then it is just be
 This type provides an `Applicative` instance which allow composition in the `Reader` spirit - all `Validators` "work" on the same input. It is accumulative because it is built on top of the `V` type from `purescript-validation`.
 There is also a `Category` instance which allows you to build validation chains combining this applicative steps.
 
-```
+``` purescript
 newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
 ```
 
@@ -20,7 +20,7 @@ newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
 This type is nearly `Star (Except e m)` but there is no `Semigroup e` constraint in its `Alt` instance (consistent with `Either`).
 
 
-```
+``` purescript
 newtype Exceptor m e i o = Exceptor (Star (ExceptT e m) i o)
 ```
 
@@ -28,7 +28,7 @@ newtype Exceptor m e i o = Exceptor (Star (ExceptT e m) i o)
 
 Reporter is built on top the `R` type which seems a bit redundant type (isomorphic to just `Tuple r (Maybe a)`):
 
-```
+``` purescript
 data R r a = Failure r | Success r a
 ```
 
@@ -38,7 +38,7 @@ When this type can be useful? When we consider for example HTML form rendering w
 
 Of course we want to also use our favorite type `Star`. We wrap it in a `Reporter` newtype and provide some additional instances like `Alt` or `Category`:
 
-```
+``` purescript
 newtype Reporter m e i o = Reporter (Star (Compose m (R e)) i o)
 ```
 
