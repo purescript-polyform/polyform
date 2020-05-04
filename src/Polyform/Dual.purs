@@ -51,6 +51,9 @@ parser (Dual (DualD prs _)) = prs
 serializer ∷ ∀ i o p. Dual p i o → (o → i)
 serializer (Dual (DualD _ ser)) = ser
 
+pureDual ∷ ∀ i o p. Applicative (p i) ⇒ Monoid i ⇒ o → Dual p i o
+pureDual o = Dual (pure o)
+
 hoist ∷ ∀ i o p q. (p i ~> q i) → Dual p i o → Dual q i o
 hoist f (Dual (DualD prs ser)) = dual prs' ser
   where
@@ -93,3 +96,5 @@ diverge
   → Dual p i o
   → DualD p i o' o
 diverge f = lcmap f <<< unwrap
+
+

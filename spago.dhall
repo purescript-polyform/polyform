@@ -10,6 +10,7 @@
     , "invariant"
     , "newtype"
     , "ordered-collections"
+    , "parsing"
     , "psci-support"
     , "profunctor"
     , "quickcheck-laws"

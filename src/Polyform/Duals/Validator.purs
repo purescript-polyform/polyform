@@ -11,7 +11,7 @@ import Polyform.Validator.Par as Validator.Par
 
 type Dual m e i o = Dual.Dual (Validator m e) i o
 
-type DualD m e i o' o = Dual.DualD (Validator m e) i o o'
+type DualD m e i o' o = Dual.DualD (Validator m e) i o' o
 
 runValidator ∷ ∀ e i o m. Monad m ⇒ Dual.Dual (Validator m e) i o → (i → m (V e o))
 runValidator = Validator.runValidator <<< Dual.parser

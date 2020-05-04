@@ -8,7 +8,7 @@ import Control.Monad.Trans.Class (class MonadTrans)
 import Control.Monad.Trans.Class (lift) as Trans.Class
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
-import Data.Either (Either(..), either)
+import Data.Either (Either(..), either, note)
 import Data.Functor.Compose (Compose(..), bihoistCompose)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype, unwrap)
@@ -81,6 +81,9 @@ hoistFnMV f = Validator $ Star $ map Compose f
 
 hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
+
+hoistFnMaybe ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ e → (i → Maybe o) → Validator m e i o
+hoistFnMaybe msg f = hoistFnEither $ f >>> note msg
 
 hoist ∷ ∀ e i n m o. Functor m ⇒ (m ~> n) → Validator m e i o → Validator n e i o
 hoist n (Validator (Star v)) = Validator $ Star (map (bihoistCompose n identity) v)
