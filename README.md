@@ -24,6 +24,24 @@ This type is nearly `Star (Except e m)` but there is no `Semigroup e` constraint
 newtype Exceptor m e i o = Exceptor (Star (ExceptT e m) i o)
 ```
 
+### `Reporter`
+
+Reporter is built on top the `R` type which seems a bit redundant type (isomorphic to just `Tuple r (Maybe a)`):
+
+```
+data R r a = Failure r | Success r a
+```
+
+This type takes the idea of accumulating errors from the `V` type (from `purescript-validation`) to the boring limit. We can think of `r` value as not only the error representation but as the overall validation "report". These values are accumulated by all interesting instances (`Functor`, `Applicative`) of the `R` type.
+
+When this type can be useful? When we consider for example HTML form rendering we can find that when form validation fails we want to present not only invalid parts of the form. In such a case we want to rerender the whole form. It is convenient to have already validated values in such a case and be able to provide some info based on this partially correct state.
+
+Of course we want to also use our favorite type `Star`. We wrap it in a `Reporter` newtype and provide some additional instances like `Alt` or `Category`:
+
+```
+newtype Reporter m e i o = Reporter (Star (Compose m (R e)) i o)
+```
+
 ### `Dual`
 
 ```purescript
