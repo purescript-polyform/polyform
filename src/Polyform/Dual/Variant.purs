@@ -16,15 +16,15 @@ import Unsafe.Coerce (unsafeCoerce)
 -- |`prefix` can be used to encode tagging of a given option.
 -- | Please take a look at `Polyform.Duals.Json.on` example
 -- | from `polyform-validators`.
-on ∷ ∀ a i l p r r'
+on ∷ ∀ a i l p r r' s
   . IsSymbol l
   ⇒ Row.Cons l a r r'
   ⇒ Alt (p i)
-  ⇒ (∀ a' s. IsSymbol s ⇒ SProxy s → Dual p i a' → Dual p i a')
+  ⇒ (∀ a' k. IsSymbol k ⇒ SProxy k → Dual p s i a' → Dual p s i a')
   → SProxy l
-  → Dual p i a
-  → Dual p i (Variant r)
-  → Dual p i (Variant r')
+  → Dual p s i a
+  → Dual p s i (Variant r)
+  → Dual p s i (Variant r')
 on prefix label d (Dual (DualD restPrs restSer)) =
   let
     Dual (DualD prs ser) = prefix label d
@@ -38,7 +38,7 @@ on prefix label d (Dual (DualD restPrs restSer)) =
       (inj label <$> prs <|> ((expandCase <$> restPrs )))
       (restSer # Variant.on label ser)
 
-case_ ∷ ∀ i p. Applicative (p i) ⇒ Dual p i (Variant ())
+case_ ∷ ∀ i p s. Applicative (p i) ⇒ Dual p s i (Variant ())
 case_ = dual prs ser
   where
     prs = unsafeCoerce (\_ → unsafeCrashWith ("Dual.Variant.case_: trying to parse empty Variant"))

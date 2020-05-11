@@ -14,62 +14,62 @@ import Prim.RowList (class RowToList, Cons, Nil, kind RowList)
 import Record (delete, get) as Record
 import Type.Prelude (class IsSymbol, RLProxy(..))
 
-class GDualVariant p i (dl ∷ RowList) (d ∷ # Type) (v ∷ # Type) | dl → d p i v where
+class GDualVariant p s i (dl ∷ RowList) (d ∷ # Type) (v ∷ # Type) | dl → d p s i v where
   gDualV
     ∷ Alt (p i)
     ⇒ Functor (p i)
     ⇒ RLProxy dl
-    → (∀ a s. IsSymbol s ⇒ SProxy s → Dual p i a → Dual p i a)
+    → (∀ a l. IsSymbol l ⇒ SProxy l → Dual p s i a → Dual p s i a)
     → { | d }
-    → Dual p i (Variant v)
+    → Dual p s i (Variant v)
 
 instance gDualVariantLast ∷
-  ( IsSymbol s
-  , Row.Cons s a () v
-  , Row.Cons s (Dual p i a) () d
-  ) ⇒ GDualVariant p i (Cons s (Dual p i a) Nil) d v where
+  ( IsSymbol l
+  , Row.Cons l a () v
+  , Row.Cons l (Dual p s i a) () d
+  ) ⇒ GDualVariant p s i (Cons l (Dual p s i a) Nil) d v where
   gDualV _ pre duals = d
     where
-      _s = SProxy ∷ SProxy s
+      _l = SProxy ∷ SProxy l
 
-      Dual (DualD fieldPrs fieldSer) = pre _s (Record.get _s duals)
-      prs = (inj _s <$> fieldPrs)
-      ser = case_ # on _s fieldSer
+      Dual (DualD fieldPrs fieldSer) = pre _l (Record.get _l duals)
+      prs = (inj _l <$> fieldPrs)
+      ser = case_ # on _l fieldSer
 
       d = dual prs ser
 
 else instance gDualVariantCons ∷
-  ( IsSymbol s
-  , Row.Cons s a () x
+  ( IsSymbol l
+  , Row.Cons l a () x
   , Union vt x v
-  , Row.Cons s a vt v
-  , Row.Lacks s dt
-  , Row.Cons s (Dual p i a) dt d
-  , GDualVariant p i dlt dt vt
-  ) ⇒ GDualVariant p i (Cons s (Dual p i a) dlt) d v where
+  , Row.Cons l a vt v
+  , Row.Lacks l dt
+  , Row.Cons l (Dual p s i a) dt d
+  , GDualVariant p s i dlt dt vt
+  ) ⇒ GDualVariant p s i (Cons l (Dual p s i a) dlt) d v where
   gDualV _ pre duals = d
     where
-      _s = SProxy ∷ SProxy s
+      _l = SProxy ∷ SProxy l
 
       duals' ∷ { | dt }
-      duals' = Record.delete _s duals
+      duals' = Record.delete _l duals
       Dual (DualD prs ser) = gDualV (RLProxy ∷ RLProxy dlt) pre duals'
-      Dual (DualD fieldPrs fieldSer) = pre _s (Record.get _s duals)
+      Dual (DualD fieldPrs fieldSer) = pre _l (Record.get _l duals)
 
-      prs' = (inj _s <$> fieldPrs) <|> (Variant.expand <$> prs)
-      ser' = ser # on _s fieldSer
+      prs' = (inj _l <$> fieldPrs) <|> (Variant.expand <$> prs)
+      ser' = ser # on _l fieldSer
 
       d = dual prs' ser'
 
 variant
-  ∷ ∀ d dl p i v
+  ∷ ∀ d dl p i v s
   . RowToList d dl
   ⇒ Alt (p i)
   ⇒ Functor (p i)
-  ⇒ GDualVariant p i dl d v
-  ⇒ (∀ a s. IsSymbol s ⇒ SProxy s → Dual p i a → Dual p i a)
+  ⇒ GDualVariant p s i dl d v
+  ⇒ (∀ a l. IsSymbol l ⇒ SProxy l → Dual p s i a → Dual p s i a)
   → { | d }
-  → Dual p i (Variant v)
+  → Dual p s i (Variant v)
 variant pre duals =
   gDualV (RLProxy ∷ RLProxy dl) pre duals
 
