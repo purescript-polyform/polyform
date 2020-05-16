@@ -13,14 +13,13 @@ import Data.Profunctor (class Profunctor, dimap, lcmap)
 -- | lines below.
 data DualD p s i o o' = DualD (p i o') (o → s i)
 
-instance functorDualD ∷ (Functor (p i)) ⇒ Functor (DualD p s i o) where
-  map f (DualD prs ser) = DualD (map f prs) ser
+derive instance functorDualD ∷ (Functor (p i)) ⇒ Functor (DualD p s i o)
 
-instance applyDualD ∷ (Apply (p i), Semigroup (s i)) ⇒ Apply (DualD p s i o') where
-  apply (DualD fprs fser) (DualD prs ser) = DualD (fprs <*> prs) (fser <> ser)
+instance applyDualD ∷ (Apply (p i), Applicative s, Semigroup i) ⇒ Apply (DualD p s i o') where
+  apply (DualD fprs fser) (DualD prs ser) = DualD (fprs <*> prs) (\i → (<>) <$> fser i <*> ser i)
 
-instance applicativeDualD ∷ (Applicative (p i), Monoid (s i)) ⇒ Applicative (DualD p s i o') where
-  pure a = DualD (pure a) (const mempty)
+instance applicativeDualD ∷ (Applicative (p i), Applicative s, Monoid i) ⇒ Applicative (DualD p s i o') where
+  pure a = DualD (pure a) (const $ pure mempty)
 
 instance altDualD ∷ (Alt (p i)) ⇒ Alt (DualD p s i o') where
   alt (DualD prs1 ser1) (DualD prs2 _) =
@@ -45,13 +44,16 @@ dual ∷ ∀ i o p s
   → Dual p s i o
 dual prs = Dual <<< DualD prs
 
+dual' ∷ ∀ i p s. Applicative s ⇒ p i i → Dual p s i i
+dual' prs = dual prs pure
+
 parser ∷ ∀ i o p s. Dual p s i o → p i o
 parser (Dual (DualD prs _)) = prs
 
 serializer ∷ ∀ i o p s. Dual p s i o → (o → s i)
 serializer (Dual (DualD _ ser)) = ser
 
-pureDual ∷ ∀ i o p s. Applicative (p i) ⇒ Monoid (s i) ⇒ o → Dual p s i o
+pureDual ∷ ∀ i o p s. Applicative (p i) ⇒ Applicative s ⇒ Monoid i ⇒ o → Dual p s i o
 pureDual o = Dual (pure o)
 
 hoist ∷ ∀ i o p q s. (p i ~> q i) → Dual p s i o → Dual q s i o

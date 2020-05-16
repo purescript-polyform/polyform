@@ -81,13 +81,13 @@ sum ∷ ∀ a i p rep r s
   → Dual p s i a
 sum pre = wrap <<< dimap from to <<< unwrap <<< gDual pre
 
-noArgs :: ∀ i p s. Applicative (p i) ⇒ Monoid (s i) ⇒ Dual p s i NoArguments
+noArgs :: ∀ i p s. Applicative (p i) ⇒ Applicative s ⇒ Monoid i ⇒ Dual p s i NoArguments
 noArgs = Dual (pure NoArguments)
 
 noArgs' ∷ ∀ i p s. Applicative (p i) ⇒ Applicative s ⇒ i → Dual p s i NoArguments
 noArgs' i = dual (pure NoArguments) (const $ pure i)
 
-unit ∷ ∀ i p s. Applicative (p i) ⇒ Monoid (s i) ⇒ Dual p s i Unit
+unit ∷ ∀ i p s. Applicative (p i) ⇒ Applicative s ⇒ Monoid i ⇒ Dual p s i Unit
 unit = Dual (pure Prelude.unit)
 
 unit' ∷ ∀ i p s. Applicative (p i) ⇒ Applicative s ⇒ i → Dual p s i Unit

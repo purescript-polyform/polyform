@@ -6,19 +6,23 @@ import Control.Alt (class Alt, (<|>))
 import Control.Alternative (class Alternative, empty)
 import Control.Apply (lift2)
 import Control.Plus (class Plus)
-import Data.Bifunctor (class Bifunctor, bimap, lmap, rmap)
+import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.Either (Either(..))
 import Data.Eq (class Eq1)
-import Data.Functor.Compose (Compose(..))
+import Data.Functor.Compose (Compose(..), bihoistCompose)
 import Data.Newtype (class Newtype, un, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
-import Data.Profunctor.Star (Star(..))
+import Data.Profunctor.Star (Star(..), hoistStar)
 import Data.Profunctor.Strong (class Strong)
-import Data.Validation.Semigroup (V, invalid, unV)
+import Data.Tuple (Tuple(..))
+import Data.Validation.Semigroup (V(..), invalid, unV)
 import Polyform.Validator (Validator(..))
 
 -- | This `R` can be seen more as a validation "report".
+-- | It is isomoprhic to (Tuple r (Maybe a)) and probably
+-- | could be migrated to this representation...
+-- |
 -- | Sometimes you want to collect the whole report of a validation
 -- | instead of just validated value or error.
 -- | For example when you are building a HTML form you want to
@@ -116,7 +120,7 @@ toV (Success _ a) = pure a
 
 newtype Reporter m r i o = Reporter (Star (Compose m (R r)) i o)
 derive instance newtypeReporter ∷ Newtype (Reporter m r i b) _
-derive newtype instance functorReporter ∷ (Applicative m, Semigroup e) ⇒ Functor (Reporter m e i)
+derive newtype instance functorReporter ∷ (Functor m) ⇒ Functor (Reporter m e i)
 derive newtype instance applyReporter ∷ (Applicative m, Semigroup e) ⇒ Apply (Reporter m e i)
 derive newtype instance applicativeReporter ∷ (Applicative m, Monoid e) ⇒ Applicative (Reporter m e i)
 derive newtype instance profunctorReporter ∷ Functor m ⇒ Profunctor (Reporter m e)
@@ -159,6 +163,17 @@ runReporter (Reporter (Star f)) = f >>> (un Compose)
 ask ∷ ∀ i m r. Applicative m ⇒ Monoid r ⇒ Reporter m r i i
 ask = hoistFn identity
 
+hoist ∷ ∀ e i m m'. Functor m ⇒ (m ~> m') → Reporter m e i ~> Reporter m' e i
+hoist nt (Reporter r) = Reporter (hoistStar (bihoistCompose nt identity) r)
+
+-- | Building `Reporter` from `Validator` with possibly empty failure report.
+hoistValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Validator m e i ~> Reporter m e i
+hoistValidator (Validator (Star r)) = Reporter (Star (r >>> un Compose >>> map fromV >>> Compose))
+
+hoistToValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Reporter m e i ~> Validator m e i
+hoistToValidator (Reporter (Star f)) = Validator (Star (f >>> un Compose >>> map toV >>> Compose))
+
+
 hoistFn ∷ ∀ e i m o. Applicative m ⇒ Monoid e ⇒ (i → o) → Reporter m e i o
 hoistFn f = Reporter $ Star $ f >>> pure >>> pure >>> Compose
 
@@ -171,23 +186,31 @@ hoistFnMR f = Reporter $ Star $ map Compose f
 hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Monoid e ⇒ (i → Either e o) → Reporter m e i o
 hoistFnEither f = hoistFnR $ f >>> fromEither
 
-hoistFnEitherWith ∷ ∀ e i m o. Semigroup e ⇒ Applicative m ⇒ (o → e) → (i → Either e o) → Reporter m e i o
-hoistFnEitherWith f g = hoistFnR $ g >>> fromEitherWith f
 
-hoistToValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Reporter m e i ~> Validator m e i
-hoistToValidator (Reporter (Star f)) = Validator (Star (f >>> un Compose >>> map toV >>> Compose))
+-- | Builders which look under the hood
+fromFnEitherWith ∷ ∀ e i m o. Semigroup e ⇒ Applicative m ⇒ (o → e) → (i → Either e o) → Reporter m e i o
+fromFnEitherWith f g = hoistFnR $ g >>> fromEitherWith f
 
--- | Building `Reporter` from `Validator` with possibly empty failure report.
-hoistValidator ∷ ∀ e i m. Functor m ⇒ Monoid e ⇒ Validator m e i ~> Reporter m e i
-hoistValidator (Validator (Star r)) = Reporter (Star (r >>> un Compose >>> map fromV >>> Compose))
+-- | Building `Reporter` from `Validator` by creating report from error and from value using also an input.
+fromValidatorWith ∷ ∀ e i m o r. Functor m ⇒ (Tuple i e → r) → (Tuple i o → r) → Validator m e i o → Reporter m r i o
+fromValidatorWith f g (Validator (Star r)) = Reporter $ Star $ \i →
+  (r >>> un Compose >>> map (fromVWith (f <<< Tuple i) (g <<< Tuple i)) >>> Compose $ i)
 
--- | Building `Reporter` from `Validator` by creating report from error and from value.
-hoistValidatorWith ∷ ∀ e i m o r. Functor m ⇒ (e → r) → (o → r) → Validator m e i o → Reporter m r i o
-hoistValidatorWith f g (Validator (Star r)) = Reporter (Star (r >>> un Compose >>> map (fromVWith f g) >>> Compose))
+-- | Building `Reporter` from `Validator` by creating report from error but leaving error/report type untouched.
+fromValidatorWith' ∷ ∀ e i m o. Functor m ⇒ (Tuple i o → e) → Validator m e i o → Reporter m e i o
+fromValidatorWith' f (Validator (Star r)) = Reporter $ Star $ \i →
+  (r >>> un Compose >>> map (fromVWith' (f <<< Tuple i)) >>> Compose $ i)
 
--- | Building `Reporter` from `Validator` by creating report from value.
-hoistValidatorWith' ∷ ∀ e i m o. Functor m ⇒ (o → e) → Validator m e i o → Reporter m e i o
-hoistValidatorWith' f (Validator (Star r)) = Reporter (Star (r >>> un Compose >>> map (fromVWith' f) >>> Compose))
+fromValidatorWithM ∷ ∀ e i m o r. Monad m ⇒ (Tuple i e → m r) → (Tuple i o → m r) → Validator m e i o → Reporter m r i o
+fromValidatorWithM f g (Validator (Star s)) = Reporter $ Star $ \i → Compose do
+  r ← un Compose (s i)
+  case r of
+    V (Right o) → do
+      e' ← g (Tuple i o)
+      pure (Success e' o)
+    V (Left e) → do
+      e' ← f (Tuple i e)
+      pure (Failure e')
 
 -- | Provides access to validation result so you can
 -- | `bimap` over `r` and `b` type in resulting `R r b`.
@@ -210,5 +233,5 @@ bimapReporter l r = unwrap <<< bimap l r <<< BifunctorReporter
 lmapReporter ∷ ∀ i m o r r'. Monad m ⇒ (r → r') → Reporter m r i o → Reporter m r' i o
 lmapReporter l = unwrap <<< lmap l <<< BifunctorReporter
 
-rmapReporter ∷ ∀ i m o o' r. Monad m ⇒ (o → o') → Reporter m r i o → Reporter m r i o'
-rmapReporter l = unwrap <<< rmap l <<< BifunctorReporter
+rmapReporter ∷ ∀ i m o o' r. Functor m ⇒ (o → o') → Reporter m r i o → Reporter m r i o'
+rmapReporter = map

@@ -26,11 +26,13 @@ newtype Exceptor m e i o = Exceptor (Star (ExceptT e m) i o)
 
 ### `Reporter`
 
-Reporter is built on top the `R` type which seems a bit redundant type (isomorphic to just `Tuple r (Maybe a)`):
+Reporter is built on top the `R` type which seems a bit redundant type:
 
 ``` purescript
 data R r a = Failure r | Success r a
 ```
+
+This type is isomorphic to `Tuple r (Maybe a)` - probably I should use this representation underneath (together with `Compose`) to reuse some instances but I've decided to provide it as is for now.
 
 This type takes the idea of accumulating errors from the `V` type (from `purescript-validation`) to the boring limit. We can think of `r` value as not only the error representation but as the overall validation "report". These values are accumulated by all interesting instances (`Functor`, `Applicative`) of the `R` type.
 

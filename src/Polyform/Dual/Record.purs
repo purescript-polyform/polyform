@@ -2,6 +2,7 @@ module Polyform.Dual.Record where
 
 import Prelude
 
+import Control.Apply (lift2)
 import Polyform.Dual (Dual(..), DualD(..), dual)
 import Prim.Row (class Cons, class Lacks) as Row
 import Record (get) as Record
@@ -11,15 +12,15 @@ import Type.Prelude (class IsSymbol, SProxy)
 
 newtype Builder p s i ser prs prs' = Builder (DualD p s i ser (Record.Builder prs prs'))
 
-instance semigroupoidProductBuilder ∷ (Semigroup (s i), Applicative (p i)) ⇒ Semigroupoid (Builder p s i ser) where
+instance semigroupoidProductBuilder ∷ (Semigroup i, Applicative s, Applicative (p i)) ⇒ Semigroupoid (Builder p s i ser) where
   compose (Builder (DualD prs2 ser2)) (Builder (DualD prs1 ser1)) = Builder $ DualD
     ((<<<) <$> prs2 <*> prs1)
-    ((<>) <$> ser1 <*> ser2)
+    (lift2 (<>) <$> ser1 <*> ser2)
 
-instance categoryProductBuilder ∷ (Monoid (s i), Applicative (p i)) ⇒ Category (Builder p s i ser) where
+instance categoryProductBuilder ∷ (Monoid i, Applicative s, Applicative (p i)) ⇒ Category (Builder p s i ser) where
   identity = Builder $ DualD
     (pure identity)
-    (const mempty)
+    (const $ pure mempty)
 
 insert ∷ ∀ i n o p prs prs' s ser ser'
   . Row.Cons n o ser ser'

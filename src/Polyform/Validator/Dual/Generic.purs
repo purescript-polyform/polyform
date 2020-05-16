@@ -1,4 +1,4 @@
-module Polyform.Duals.Validator.Generic where
+module Polyform.Validator.Dual.Generic where
 
 import Prelude
 
