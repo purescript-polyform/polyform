@@ -41,18 +41,18 @@ hoist mnt snt = hoistParser mnt <<< hoistSerializer snt
 
 fromSmartConstructor ∷ ∀ a e m n s. Monad m ⇒ Semigroup e ⇒ Applicative s ⇒ Newtype n a ⇒ (a → Maybe n) → (a → e) → Dual m s e a n
 fromSmartConstructor constructor e = Dual.dual
-  (Validator.hoistFnMaybe constructor e)
+  (Validator.hoistFnMaybe e constructor)
   (unwrap >>> pure)
 
 -- | Using not so smart constructor
 fromNewtype ∷ ∀ a e m n s. Monad m ⇒ Semigroup e ⇒ Applicative s ⇒ Newtype n a ⇒ Dual m s e a n
 fromNewtype = Dual.dual (Validator.hoistFn wrap) (unwrap >>> pure)
 
-check ∷ ∀ e i m s. Applicative m ⇒ Applicative s ⇒ Semigroup e ⇒ (i → Boolean) → (i → e) → Dual m s e i i
-check c e = Dual.dual' (Validator.check c e)
+check ∷ ∀ e i m s. Applicative m ⇒ Applicative s ⇒ Semigroup e ⇒ (i → e) → (i → Boolean) → Dual m s e i i
+check e c = Dual.dual' (Validator.check e c)
 
-checkM ∷ ∀ e i m s. Monad m ⇒ Applicative s ⇒ Semigroup e ⇒ (i → m Boolean) → (i → e) → Dual m s e i i
-checkM c e = Dual.dual' (Validator.checkM c e)
+checkM ∷ ∀ e i m s. Monad m ⇒ Applicative s ⇒ Semigroup e ⇒ (i → e) → (i → m Boolean) → Dual m s e i i
+checkM e c = Dual.dual' (Validator.checkM e c)
 
 lmapDual ∷ ∀ e e' i m o s. Monad m ⇒ (e → e') → Dual m s e i o → Dual m s e' i o
 lmapDual f (Dual.Dual (Dual.DualD prs ser)) = Dual.dual (lmapValidator f prs) ser

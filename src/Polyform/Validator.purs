@@ -105,21 +105,27 @@ hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e
 hoistFnEither f = hoistFnV $ f >>> either invalid pure
 
 -- | TODO: Switch arguments order as to be more "hoist" like ;-)
-hoistFnMaybe ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Maybe o) → (i → e) → Validator m e i o
-hoistFnMaybe f msg = hoistFnV $ \i → V (note (msg i) (f i))
+hoistFnMaybe ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → e) → (i → Maybe o) → Validator m e i o
+hoistFnMaybe err f = hoistFnV $ \i → V (note (err i) (f i))
 
 hoist ∷ ∀ e i n m o. Functor m ⇒ (m ~> n) → Validator m e i o → Validator n e i o
 hoist n (Validator (Star v)) = Validator $ Star (map (bihoistCompose n identity) v)
 
-check ∷ ∀ e i m. Applicative m ⇒ Semigroup e ⇒ (i → Boolean) → (i → e) → Validator m e i i
-check c e = hoistFnV \i → if c i
+check ∷ ∀ e i m. Applicative m ⇒ Semigroup e ⇒ (i → e) → (i → Boolean) → Validator m e i i
+check e c = hoistFnV \i → if c i
   then valid i
   else invalid (e i)
 
-checkM ∷ ∀ e i m. Monad m ⇒ Semigroup e ⇒ (i → m Boolean) → (i → e) → Validator m e i i
-checkM c e = hoistFnMV \i → c i >>= if _
+checkM ∷ ∀ e i m. Monad m ⇒ Semigroup e ⇒ (i → e) → (i → m Boolean) → Validator m e i i
+checkM e c = hoistFnMV \i → c i >>= if _
   then pure $ valid i
   else pure $ invalid (e i)
+
+valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
+valid = pure
+
+fail ∷ ∀ e i o m. Applicative m ⇒ e → Validator m e i o
+fail = Validator <<< Star <<< const <<< Compose <<< pure <<< invalid
 
 lift ∷ ∀ e i o m t. MonadTrans t ⇒ Monad m ⇒ Validator m e i o → Validator (t m) e i o
 lift = hoist Trans.Class.lift
@@ -150,9 +156,6 @@ optional ∷ ∀ e i o m. Monad m ⇒ Semigroup e ⇒ Validator m e i o → Vali
 optional v = hoistFnMV \i → do
   r ← runValidator v i
   pure $ unV (const $ pure Nothing) (pure <<< Just) r
-
-valid ∷ ∀ a e. Semigroup e ⇒ a → V e a
-valid = pure
 
 -- | TODO: Wrap results into `Exceptor`
 toStarExceptT ∷ ∀ e i m o. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o
