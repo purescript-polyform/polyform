@@ -4,17 +4,16 @@ module Polyform.Validator
   , check
   , checkM
   , fromStarExceptT
+  , liftFn
+  , liftFnEither
+  , liftFnM
+  , liftFnMV
+  , liftFnMaybe
+  , liftFnV
   , hoist
-  , hoistFn
-  , hoistFnEither
-  , hoistFnM
-  , hoistFnMV
-  , hoistFnMaybe
-  , hoistFnV
-  , lift
+  , liftM
   , lmapToStarExceptT
   , lmapValidator
-  , optional
   , runValidator
   , toStarExceptT
   , valid
@@ -31,7 +30,7 @@ import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.Either (Either(..), either, note)
 import Data.Functor.Compose (Compose(..), bihoistCompose)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
@@ -81,43 +80,39 @@ instance categoryValidator ∷ (Monad m, Semigroup e) ⇒ Category (Validator m 
   identity = Validator <<< Star $ Compose <<< pure <<< pure
 
 ask ∷ ∀ i m e. Monad m ⇒ Semigroup e ⇒ Validator m e i i
-ask = hoistFn identity
+ask = liftFn identity
 
 runValidator ∷ ∀ i m o e. Validator m e i o → (i → m (V e o))
 runValidator = map unwrap <<< unwrap <<< unwrap
 
 -- | These hoists set is used to lift functions into Validator
 
-hoistFn ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → o) → Validator m e i o
-hoistFn f = Validator $ Star $ f >>> pure >>> pure >>> Compose
+liftFn ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → o) → Validator m e i o
+liftFn f = Validator $ Star $ f >>> pure >>> pure >>> Compose
 
-hoistFnV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → V e o) → Validator m e i o
-hoistFnV f = Validator $ Star $ f >>> pure >>> Compose
+liftFnV ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → V e o) → Validator m e i o
+liftFnV f = Validator $ Star $ f >>> pure >>> Compose
 
-hoistFnM ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m o) → Validator m e i o
-hoistFnM f = Validator $ Star (map Compose $ map valid <$> f)
+liftFnM ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → m o) → Validator m e i o
+liftFnM f = Validator $ Star (map Compose $ map valid <$> f)
 
-hoistFnMV ∷ ∀ e i m o. (i → m (V e o)) → Validator m e i o
-hoistFnMV f = Validator $ Star $ map Compose f
+liftFnMV ∷ ∀ e i m o. (i → m (V e o)) → Validator m e i o
+liftFnMV f = Validator $ Star $ map Compose f
 
 -- | TODO: Drop it - its redundant
-hoistFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
-hoistFnEither f = hoistFnV $ f >>> either invalid pure
+liftFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
+liftFnEither f = liftFnV $ f >>> either invalid pure
 
--- | TODO: Switch arguments order as to be more "hoist" like ;-)
-hoistFnMaybe ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → e) → (i → Maybe o) → Validator m e i o
-hoistFnMaybe err f = hoistFnV $ \i → V (note (err i) (f i))
-
-hoist ∷ ∀ e i n m o. Functor m ⇒ (m ~> n) → Validator m e i o → Validator n e i o
-hoist n (Validator (Star v)) = Validator $ Star (map (bihoistCompose n identity) v)
+liftFnMaybe ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → e) → (i → Maybe o) → Validator m e i o
+liftFnMaybe err f = liftFnV $ \i → V (note (err i) (f i))
 
 check ∷ ∀ e i m. Applicative m ⇒ Semigroup e ⇒ (i → e) → (i → Boolean) → Validator m e i i
-check e c = hoistFnV \i → if c i
+check e c = liftFnV \i → if c i
   then valid i
   else invalid (e i)
 
 checkM ∷ ∀ e i m. Monad m ⇒ Semigroup e ⇒ (i → e) → (i → m Boolean) → Validator m e i i
-checkM e c = hoistFnMV \i → c i >>= if _
+checkM e c = liftFnMV \i → c i >>= if _
   then pure $ valid i
   else pure $ invalid (e i)
 
@@ -127,8 +122,12 @@ valid = pure
 fail ∷ ∀ e i o m. Applicative m ⇒ e → Validator m e i o
 fail = Validator <<< Star <<< const <<< Compose <<< pure <<< invalid
 
-lift ∷ ∀ e i o m t. MonadTrans t ⇒ Monad m ⇒ Validator m e i o → Validator (t m) e i o
-lift = hoist Trans.Class.lift
+-- | Lifts natural transformation so it hoists internal validator functor.
+hoist ∷ ∀ e i n m o. Functor m ⇒ m ~> n → Validator m e i o → Validator n e i o
+hoist n (Validator (Star v)) = Validator $ Star (map (bihoistCompose n identity) v)
+
+liftM ∷ ∀ e i o m t. MonadTrans t ⇒ Monad m ⇒ Validator m e i o → Validator (t m) e i o
+liftM = hoist Trans.Class.lift
 
 -- | Provides access to validation result
 -- | so you can `bimap` over `e` and `b` type in resulting `V e b`.
@@ -151,11 +150,6 @@ bimapValidator l r = unwrap <<< bimap l r <<< BifunctorValidator
 
 lmapValidator ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Validator m e i o → Validator m e' i o
 lmapValidator l = unwrap <<< lmap l <<< BifunctorValidator
-
-optional ∷ ∀ e i o m. Monad m ⇒ Semigroup e ⇒ Validator m e i o → Validator m e i (Maybe o)
-optional v = hoistFnMV \i → do
-  r ← runValidator v i
-  pure $ unV (const $ pure Nothing) (pure <<< Just) r
 
 -- | TODO: Wrap results into `Exceptor`
 toStarExceptT ∷ ∀ e i m o. Functor m ⇒ Validator m e i o → Star (ExceptT e m) i o

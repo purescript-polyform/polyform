@@ -1,4 +1,16 @@
-module Polyform.Dual where
+module Polyform.Dual
+  ( Dual(..)
+  , DualD(..)
+  , diverge
+  , dual
+  , dual'
+  , hoistParser
+  , hoistSerializer
+  , parser
+  , pureDual
+  , serializer
+  )
+  where
 
 import Prelude
 
@@ -56,8 +68,13 @@ serializer (Dual (DualD _ ser)) = ser
 pureDual ∷ ∀ i o p s. Applicative (p i) ⇒ Applicative s ⇒ Monoid i ⇒ o → Dual p s i o
 pureDual o = Dual (pure o)
 
-hoist ∷ ∀ i o p q s. (p i ~> q i) → Dual p s i o → Dual q s i o
-hoist f (Dual (DualD prs ser)) = dual prs' ser
+hoistSerializer ∷ ∀ i o p s s'. (s ~> s') → Dual p s i o → Dual p s' i o
+hoistSerializer f (Dual (DualD prs ser)) = dual prs ser'
+  where
+    ser' = map f ser
+
+hoistParser ∷ ∀ i o p q s. (p i ~> q i) → Dual p s i o → Dual q s i o
+hoistParser f (Dual (DualD prs ser)) = dual prs' ser
   where
     prs' = f prs
 

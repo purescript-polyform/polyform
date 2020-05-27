@@ -1,10 +1,24 @@
-module Polyform.Reporter.Dual where
+module Polyform.Reporter.Dual
+  ( Dual
+  , DualD
+  , changeSerializerWith
+  , fromValidatorDualWith'
+  , hoist
+  , hoistParser
+  , hoistSerializer
+  , liftValidatorDual
+  , liftValidatorDualWith
+  , runReporter
+  , runSerializer
+  , runSerializerM
+  )
+  where
 
 import Prelude
 
 import Data.Tuple (Tuple(..))
 import Polyform.Dual (Dual(..), DualD(..), dual, parser, serializer) as Dual
-import Polyform.Reporter (R, Reporter, fromValidatorWith, fromValidatorWith', hoist, hoistValidator, runReporter) as Reporter
+import Polyform.Reporter (R, Reporter, hoist, liftValidator, liftValidatorWith, liftValidatorWith', runReporter) as Reporter
 import Polyform.Validator (Validator) as Validator
 
 type Dual m s r i o = Dual.Dual (Reporter.Reporter m r) s i o
@@ -34,13 +48,13 @@ hoistSerializer nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs ser'
 hoist ∷ ∀ e i o m m' s s'. Functor m ⇒ (m ~> m') → (s ~> s') → Dual m s e i o → Dual m' s' e i o
 hoist mnt snt = hoistParser mnt <<< hoistSerializer snt
 
-hoistValidatorDual ∷ ∀ i m r s
+liftValidatorDual ∷ ∀ i m r s
   . Functor m
   ⇒ Monoid r
   ⇒ Dual.Dual (Validator.Validator m r) s i
   ~> Dual m s r i
-hoistValidatorDual d = Dual.dual
-  (Reporter.hoistValidator $ Dual.parser d)
+liftValidatorDual d = Dual.dual
+  (Reporter.liftValidator $ Dual.parser d)
   (Dual.serializer d)
 
 changeSerializerWith ∷ ∀ i m o r s s'
@@ -56,14 +70,14 @@ changeSerializerWith fo d = Dual.dual (Dual.parser d) ser
       in
         fo (flip Tuple o <$> s)
 
-fromValidatorDualWith ∷ ∀ e i m o r s
+liftValidatorDualWith ∷ ∀ e i m o r s
   . Functor m
   ⇒ (Tuple i e → r)
   → (Tuple i o → r)
   → Dual.Dual (Validator.Validator m e) s i o
   → Dual m s r i o
-fromValidatorDualWith fe fo d = Dual.dual
-  (Reporter.fromValidatorWith fe fo $ Dual.parser d)
+liftValidatorDualWith fe fo d = Dual.dual
+  (Reporter.liftValidatorWith fe fo $ Dual.parser d)
   (Dual.serializer d)
 
 fromValidatorDualWith' ∷ ∀ i m o r s
@@ -72,7 +86,7 @@ fromValidatorDualWith' ∷ ∀ i m o r s
   → Dual.Dual (Validator.Validator m r) s i o
   → Dual m s r i o
 fromValidatorDualWith' fo d = Dual.dual
-  (Reporter.fromValidatorWith' fo $ Dual.parser d)
+  (Reporter.liftValidatorWith' fo $ Dual.parser d)
   (Dual.serializer d)
 
 -- newtype Par m r a b = Dual (Reporter.Par.Par m r a b)
