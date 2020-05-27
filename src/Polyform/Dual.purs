@@ -9,6 +9,7 @@ module Polyform.Dual
   , parser
   , pureDual
   , serializer
+  , (~)
   )
   where
 
