@@ -2,7 +2,7 @@
 
 An attempt to build easy to use and composable validation toolkit. As a bonus it provides a different codec type formulation than in the codecs lib which is called `Dual`.
 
-Sorry for these sparse docs. I hope to extend them soon. Till then it is just better to take a look at the real world examples (json duals, urlencode validators etc.) in the `lambdaterms/purescript-polyform-validators` repo.
+Sorry for these sparse docs. I hope to extend them soon. Till then it is just better to take a look at the real world examples (json duals, urlencode validators etc.) in the [_purescript-polyform-batteries_](https://github.com/lambdaterms/purescript-polyform-batteries) repo.
 
 ## Core types
 
