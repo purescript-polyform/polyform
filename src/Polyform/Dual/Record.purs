@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Apply (lift2)
 import Polyform.Dual (Dual(..), DualD(..), dual)
-import Prim.Row (class Cons, class Lacks) as Row
+import Polyform.Type.Row (class Cons') as Row
 import Record (get) as Record
 import Record.Builder (Builder) as Record
 import Record.Builder (build, insert) as Record.Builder
@@ -23,10 +23,8 @@ instance categoryProductBuilder ∷ (Monoid i, Applicative s, Applicative (p i))
     (const $ pure mempty)
 
 insert ∷ ∀ i n o p prs prs' s ser ser'
-  . Row.Cons n o ser ser'
-  ⇒ Row.Lacks n ser
-  ⇒ Row.Cons n o prs prs'
-  ⇒ Row.Lacks n prs
+  . Row.Cons' n o ser ser'
+  ⇒ Row.Cons' n o prs prs'
   ⇒ IsSymbol n
   ⇒ Functor (p i)
   ⇒ SProxy n
