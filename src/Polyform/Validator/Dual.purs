@@ -7,7 +7,9 @@ module Polyform.Validator.Dual
   , hoist
   , hoistSerializer
   , hoistValidator
+  , invalidate
   , liftSmartConstructor
+  , liftFns
   , lmapDual
   , runSerializer
   , runSerializerM
@@ -52,12 +54,19 @@ hoistSerializer nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs ser'
 hoist ∷ ∀ e i o m m' s s'. Functor m ⇒ (m ~> m') → (s ~> s') → Dual m s e i o → Dual m' s' e i o
 hoist mnt snt = hoistValidator mnt <<< hoistSerializer snt
 
+liftFns ∷ ∀ e i m o s. Semigroup e ⇒ Applicative m ⇒ Applicative s ⇒ (i → o) → (o → i) → Dual m s e i o
+liftFns p s = Dual.dual (Validator.liftFn p) (s >>> pure)
+
+invalidate ∷ ∀ e i m s. Applicative m ⇒ Applicative s ⇒ (i → e) → Dual m s e i i
+invalidate e = Dual.dual (Validator.invalidate e) (identity >>> pure)
+
+-- | Using smart constructor so possibly fail
 liftSmartConstructor ∷ ∀ a e m n s. Monad m ⇒ Semigroup e ⇒ Applicative s ⇒ Newtype n a ⇒ (a → Maybe n) → (a → e) → Dual m s e a n
 liftSmartConstructor constructor e = Dual.dual
   (Validator.liftFnMaybe e constructor)
   (unwrap >>> pure)
 
--- | Using not so smart constructor
+-- | Using not so smart constructor so succeed all the time
 fromNewtype ∷ ∀ a e m n s. Monad m ⇒ Semigroup e ⇒ Applicative s ⇒ Newtype n a ⇒ Dual m s e a n
 fromNewtype = Dual.dual (Validator.liftFn wrap) (unwrap >>> pure)
 

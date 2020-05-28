@@ -8,7 +8,7 @@ import Polyform.Type.Row (class Cons') as Row
 import Record (get) as Record
 import Record.Builder (Builder) as Record
 import Record.Builder (build, insert) as Record.Builder
-import Type.Prelude (class IsSymbol, SProxy)
+import Type.Prelude (SProxy)
 
 newtype Builder p s i ser prs prs' = Builder (DualD p s i ser (Record.Builder prs prs'))
 
@@ -25,7 +25,6 @@ instance categoryProductBuilder ∷ (Monoid i, Applicative s, Applicative (p i))
 insert ∷ ∀ i n o p prs prs' s ser ser'
   . Row.Cons' n o ser ser'
   ⇒ Row.Cons' n o prs prs'
-  ⇒ IsSymbol n
   ⇒ Functor (p i)
   ⇒ SProxy n
   → Dual p s i o

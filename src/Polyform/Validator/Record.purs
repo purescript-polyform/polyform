@@ -2,7 +2,6 @@ module Polyform.Validator.Record where
 
 import Prelude
 
-import Data.Symbol (class IsSymbol)
 import Polyform.Type.Row (class Cons') as Row
 import Polyform.Validator (Validator)
 import Record.Builder (Builder) as Record
@@ -19,7 +18,6 @@ instance categoryBuilder ∷ (Monoid i, Semigroup e, Monad m) ⇒ Category (Buil
 
 insert ∷ ∀ a e i o o' n m
   . Row.Cons' n a o o'
-  ⇒ IsSymbol n
   ⇒ Semigroup e
   ⇒ Applicative m
   ⇒ SProxy n
