@@ -1,92 +1,86 @@
 module Polyform.Reporter.Dual
   ( Dual
   , DualD
-  , changeSerializerWith
-  , fromValidatorDualWith'
+  -- , changeSerializerWith
+  -- , fromValidatorDualWith'
   , hoist
-  , hoistParser
-  , hoistSerializer
   , liftValidatorDual
   , liftValidatorDualWith
   , runReporter
   , runSerializer
-  , runSerializerM
   )
   where
 
 import Prelude
 
-import Data.Tuple (Tuple(..))
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Writer (WriterT, runWriterT)
+import Control.Monad.Writer.Class (tell)
+import Control.Monad.Writer.Trans (mapWriterT)
+import Data.Tuple (Tuple)
 import Polyform.Dual (Dual(..), DualD(..), dual, parser, serializer) as Dual
-import Polyform.Reporter (R, Reporter, hoist, liftValidator, liftValidatorWith, liftValidatorWith', runReporter) as Reporter
-import Polyform.Validator (Validator) as Validator
+import Polyform.Reporter (R, Reporter, hoist, liftValidator, runReporter) as Reporter
+import Polyform.Validator.Dual (Dual) as Validator.Dual
 
-type Dual m s r i o = Dual.Dual (Reporter.Reporter m r) s i o
+type Dual m r i o = Dual.Dual (Reporter.Reporter m r) (WriterT r m) i o
 
-type DualD m s r i o' o = Dual.DualD (Reporter.Reporter m r) s i o' o
+type DualD m r i o' o = Dual.DualD (Reporter.Reporter m r) (WriterT r m) i o' o
 
-runReporter ∷ ∀ r i m o s. Dual.Dual (Reporter.Reporter m r) s i o → (i → m (Reporter.R r o))
+runReporter ∷ ∀ r i m o. Dual m r i o → (i → m (Reporter.R r o))
 runReporter = Reporter.runReporter <<< Dual.parser
 
-runSerializer ∷ ∀ e i o m s. Applicative m ⇒ Dual m s e i o → (o → s i)
-runSerializer = Dual.serializer
+runSerializer ∷ ∀ i o m r. Applicative m ⇒ Dual m r i o → (o → m (Tuple i r))
+runSerializer = map runWriterT <<< Dual.serializer
 
--- | A dirty hack to simplify type inference for polymorphic duals
-runSerializerM ∷ ∀ e i o m. Applicative m ⇒ Dual m m e i o → (o → m i)
-runSerializerM = Dual.serializer
-
-hoistParser ∷ ∀ e i o m m' s. Functor m ⇒ (m ~> m') → Dual m s e i o → Dual m' s e i o
-hoistParser nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs' ser
+hoist ∷ ∀ e i o m m'. Functor m ⇒ (m ~> m') → Dual m e i o → Dual m' e i o
+hoist nt (Dual.Dual (Dual.DualD reporter ser)) = Dual.dual reporter' ser'
   where
-    prs' = Reporter.hoist nt prs
+    reporter' = Reporter.hoist nt reporter
+    ser' = map (mapWriterT nt) ser
 
-hoistSerializer ∷ ∀ e i o m s s'. Functor m ⇒ (s ~> s') → Dual m s e i o → Dual m s' e i o
-hoistSerializer nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs ser'
-  where
-    ser' = map nt ser
-
-hoist ∷ ∀ e i o m m' s s'. Functor m ⇒ (m ~> m') → (s ~> s') → Dual m s e i o → Dual m' s' e i o
-hoist mnt snt = hoistParser mnt <<< hoistSerializer snt
-
-liftValidatorDual ∷ ∀ i m r s
-  . Functor m
+liftValidatorDual ∷ ∀ i m o r
+  . Monad m
   ⇒ Monoid r
-  ⇒ Dual.Dual (Validator.Validator m r) s i
-  ~> Dual m s r i
+  ⇒ Validator.Dual.Dual m r i o
+  -> Dual m r i o
 liftValidatorDual d = Dual.dual
   (Reporter.liftValidator $ Dual.parser d)
-  (Dual.serializer d)
+  (map lift (Dual.serializer d))
 
-changeSerializerWith ∷ ∀ i m o r s s'
-  . Functor s
-  ⇒ (s (Tuple i o) -> s' i)
-  → Dual m s r i o
-  → Dual m s' r i o
-changeSerializerWith fo d = Dual.dual (Dual.parser d) ser
-  where
-    ser o =
-      let
-         s = Dual.serializer d o
-      in
-        fo (flip Tuple o <$> s)
+liftValidatorDualWith ∷ ∀ i m o r
+  . Monoid r
+  ⇒ Monad m
+  ⇒ (i → m r)
+  → Validator.Dual.Dual m r i o
+  → Dual m r i o
+liftValidatorDualWith f d = Dual.dual
+  ( Reporter.liftValidator $ Dual.parser d )
+  ( Dual.serializer d <#> \mi → do
+      i ← lift mi
+      lift (f i) >>= tell
+      pure i
+  )
 
-liftValidatorDualWith ∷ ∀ e i m o r s
-  . Functor m
-  ⇒ (Tuple i e → r)
-  → (Tuple i o → r)
-  → Dual.Dual (Validator.Validator m e) s i o
-  → Dual m s r i o
-liftValidatorDualWith fe fo d = Dual.dual
-  (Reporter.liftValidatorWith fe fo $ Dual.parser d)
-  (Dual.serializer d)
-
-fromValidatorDualWith' ∷ ∀ i m o r s
-  . Functor m
-  ⇒ (Tuple i o → r)
-  → Dual.Dual (Validator.Validator m r) s i o
-  → Dual m s r i o
-fromValidatorDualWith' fo d = Dual.dual
-  (Reporter.liftValidatorWith' fo $ Dual.parser d)
-  (Dual.serializer d)
-
--- newtype Par m r a b = Dual (Reporter.Par.Par m r a b)
+-- changeSerializerWith ∷ ∀ i m o r s s'
+--   . Functor s
+--   ⇒ (s (Tuple i o) -> s' i)
+--   → Dual m s r i o
+--   → Dual m s' r i o
+-- changeSerializerWith fo d = Dual.dual (Dual.parser d) ser
+--   where
+--     ser o =
+--       let
+--          s = Dual.serializer d o
+--       in
+--         fo (flip Tuple o <$> s)
+-- 
+-- fromValidatorDualWith' ∷ ∀ i m o r s
+--   . Functor m
+--   ⇒ (Tuple i o → r)
+--   → Dual.Dual (Validator.Validator m r) s i o
+--   → Dual m s r i o
+-- fromValidatorDualWith' fo d = Dual.dual
+--   (Reporter.liftValidatorWith' fo $ Dual.parser d)
+--   (Dual.serializer d)
+-- 
+-- -- newtype Par m r a b = Dual (Reporter.Par.Par m r a b)
