@@ -1,5 +1,7 @@
 module Polyform.Validator
   ( ask
+  , bimapM
+  , bimapMWithInput
   , bimapValidator
   , check
   , checkM
@@ -9,8 +11,11 @@ module Polyform.Validator
   , liftFnM
   , liftFnMV
   , liftFnMaybe
+  , liftFnMMaybe
   , liftFnV
   , hoist
+  , lmapM
+  , lmapMWithInput
   , lmapValidator
   , runValidator
   -- , valid
@@ -30,6 +35,7 @@ import Data.Profunctor (class Profunctor)
 import Data.Profunctor.Choice (class Choice)
 import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (class Strong)
+import Data.Tuple (Tuple(..))
 import Data.Validation.Semigroup (V(..), invalid, unV)
 
 newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
@@ -100,6 +106,13 @@ liftFnEither f = liftFnV $ f >>> either invalid pure
 liftFnMaybe ∷ ∀ e i m o. Applicative m ⇒ (i → e) → (i → Maybe o) → Validator m e i o
 liftFnMaybe err f = liftFnV $ \i → V (note (err i) (f i))
 
+liftFnMMaybe ∷ ∀ e i m o. Applicative m ⇒ (i → m e) → (i → m (Maybe o)) → Validator m e i o
+liftFnMMaybe err f = liftFnMV \i → ado
+  r ← f i
+  e ← err i
+  in
+    V (note e r)
+
 invalidate ∷ ∀ e i o m. Applicative m ⇒ (i → e) → Validator m e i o
 invalidate inv = liftFnMaybe inv (const Nothing)
 
@@ -139,3 +152,32 @@ bimapValidator l r = unwrap <<< bimap l r <<< BifunctorValidator
 lmapValidator ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Validator m e i o → Validator m e' i o
 lmapValidator l = unwrap <<< lmap l <<< BifunctorValidator
 
+lmapM ∷ ∀ i m e e'. Monad m ⇒ (e → m e') → Validator m e i ~> Validator m e' i
+lmapM f v = liftFnMV $ runValidator v >=> case _ of
+  V (Left e) → invalid <$> f e
+  V (Right a) → pure $ V (Right a)
+
+lmapMWithInput ∷ ∀ i m e e'. Monad m ⇒ ((Tuple i e) -> m e') → Validator m e i ~> Validator m e' i
+lmapMWithInput f v = liftFnMV $ \i → runValidator v i >>= case _ of
+  V (Left e) → invalid <$> f (Tuple i e)
+  V (Right a) → pure $ V (Right a)
+
+bimapM
+  ∷ ∀ e e' i m o o'. Monad m
+  ⇒ Semigroup e'
+  ⇒ (e → m e')
+  → (o → m o')
+  → Validator m e i o
+  → Validator m e' i o'
+bimapM l r v = liftFnM r  <<< lmapM l v
+
+bimapMWithInput
+  ∷ ∀ e e' i m o o'. Monad m
+  ⇒ Semigroup e'
+  ⇒ ((Tuple i e) → m e')
+  → ((Tuple i o) → m o')
+  → Validator m e i o
+  → Validator m e' i o'
+bimapMWithInput f g v = liftFnMV \i → runValidator v i >>= case _ of
+  V (Left e) → invalid <$> f (Tuple i e)
+  V (Right o) → pure <$> g (Tuple i o)
