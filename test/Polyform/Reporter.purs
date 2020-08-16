@@ -3,16 +3,18 @@ module Test.Polyform.Reporter where
 import Prelude
 
 import Control.Alt (class Alt)
+import Control.Monad.Maybe.Trans (MaybeT(..))
+import Control.Monad.Writer (WriterT(..))
 import Control.Plus (class Plus)
 import Data.Array (all)
 import Data.Either (Either(..))
 import Data.Enum (class Enum, enumFromTo)
-import Data.Functor.Compose (Compose(..))
 import Data.Identity (Identity)
+import Data.Maybe (Maybe(..))
 import Data.Profunctor.Star (Star(..))
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
-import Polyform.Reporter (R(..), Reporter(..))
+import Polyform.Reporter (R, Reporter(..), runReporter)
 import Test.QuickCheck (class Arbitrary, class Coarbitrary, arbitrary)
 import Test.QuickCheck.Gen (Gen)
 import Test.QuickCheck.Laws (A, B, C, checkLaws)
@@ -24,11 +26,11 @@ import Unsafe.Coerce (unsafeCoerce)
 
 newtype AReporter e i o = AReporter (Reporter Identity e i o)
 instance eqAReporter ∷ (Eq o, Eq e, Bounded i, Enum i) ⇒ Eq (AReporter e i o) where
-  eq (AReporter (Reporter (Star v1))) (AReporter (Reporter (Star v2))) =
+  eq (AReporter r1) (AReporter r2) =
     let
       arr = (enumFromTo bottom top ∷ Array i)
     in
-      all (\i → v1 i `eq` v2 i) $ arr
+      all (\i → runReporter r1 i `eq` runReporter r2 i) $ arr
 
 fromEither ∷ ∀ a e. Either e a → R e a
 fromEither = unsafeCoerce
@@ -39,10 +41,10 @@ instance arbitraryA ∷ (Arbitrary e, Coarbitrary i, Arbitrary o) ⇒ Arbitrary 
     -- | Type annotation just for readability
     let
       gf = arbitrary ∷ Gen (i → Identity (Either e (Tuple e o)))
-      toR (Left e) = Failure e
-      toR (Right (Tuple e o)) = Success e o
+      toR (Left e) = Tuple Nothing e
+      toR (Right (Tuple e o)) = Tuple (Just o) e
     in
-      AReporter <<< Reporter <<< Star <<< map (Compose <<< (map toR)) <$> gf
+      AReporter <<< Reporter <<< Star <<< map (MaybeT <<< WriterT <<< map toR) <$> gf
 
 derive newtype instance functorAReporter ∷ (Semigroup e) ⇒ Functor (AReporter e i)
 derive newtype instance applyAReporter ∷ (Monoid e) ⇒ Apply (AReporter e i)
@@ -50,7 +52,7 @@ derive newtype instance applicativeAReporter ∷ (Monoid e) ⇒ Applicative (ARe
 derive newtype instance altAReporter ∷ (Monoid e) ⇒ Alt (AReporter e i)
 derive newtype instance plusAReporter ∷ (Monoid e) ⇒ Plus (AReporter e i)
 derive newtype instance semigroupoidAReporter ∷ (Monoid e) ⇒ Semigroupoid (AReporter e)
-derive newtype instance semigroupReporter ∷ (Semigroup o, Monoid e) ⇒ Semigroup (AReporter e i o)
+derive newtype instance semigroupReporter ∷ (Monoid o, Monoid e) ⇒ Semigroup (AReporter e i o)
 derive newtype instance monoidReporter ∷ (Monoid o, Monoid e) ⇒ Monoid (AReporter e i o)
 
 suite ∷ Effect Unit

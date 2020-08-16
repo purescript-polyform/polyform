@@ -17,8 +17,8 @@ import Unsafe.Coerce (unsafeCoerce)
 -- | Please take a look at `Polyform.Duals.Json.on` example
 -- | from `polyform-validators`.
 on ∷ ∀ a i l p r r' s
-  . IsSymbol l
-  ⇒ Row.Cons l a r r'
+  . Row.Cons l a r r'
+  ⇒ IsSymbol l
   ⇒ Alt (p i)
   ⇒ (∀ a' k. IsSymbol k ⇒ SProxy k → Dual p s i a' → Dual p s i a')
   → SProxy l

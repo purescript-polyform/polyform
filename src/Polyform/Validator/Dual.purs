@@ -3,12 +3,13 @@ module Polyform.Validator.Dual
   , DualD
   , check
   , checkM
+  , iso
+  , lmapDual
+  , lmapM
   , newtypeIso
   , hoist
   , invalidate
   , smartNewtypeIso
-  , iso
-  , lmapDual
   , runSerializer
   , runValidator
   )
@@ -63,3 +64,6 @@ checkM e c = Dual.dual' (Validator.checkM e c)
 
 lmapDual ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Dual m e i o → Dual m e' i o
 lmapDual f (Dual.Dual (Dual.DualD prs ser)) = Dual.dual (lmapValidator f prs) ser
+
+lmapM ∷ ∀ e e' i m o. Monad m ⇒ (e → m e') → Dual m e i o → Dual m e' i o
+lmapM f (Dual.Dual (Dual.DualD prs ser)) = Dual.dual (Validator.lmapM f prs) ser

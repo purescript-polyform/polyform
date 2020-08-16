@@ -1,4 +1,4 @@
-module Polyform.Type.Row (class Cons') where
+module Polyform.Type.Row where
 
 import Prim.Row (class Cons, class Lacks) as Row
 import Type.Prelude (class IsSymbol)
