@@ -2,10 +2,12 @@ module Polyform.Reporter.Dual
   ( Dual
   , DualD
   , hoist
+  , iso
   , liftValidatorDual
   , liftValidatorDualWith
   , liftValidatorDualWithM
   , lmapM
+  , newtypeIso
   , runReporter
   , runSerializer
   )
@@ -16,7 +18,7 @@ import Prelude
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer (WriterT, runWriterT, tell)
 import Control.Monad.Writer.Trans (mapWriterT)
-import Data.Newtype (un)
+import Data.Newtype (class Newtype, un, unwrap, wrap)
 import Data.Profunctor (lcmap) as Profunctor
 import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (first) as Profunctor.Strong
@@ -25,7 +27,7 @@ import Data.Tuple (Tuple(..))
 import Polyform.Dual (Dual(..), DualD(..), dual, parser, serializer) as Dual
 import Polyform.Reporter (R)
 import Polyform.Reporter (Reporter, hoist, liftValidator, liftValidatorWithM, lmapM, runReporter) as Reporter
-import Polyform.Validator.Dual (Dual) as Validator.Dual
+import Polyform.Validator.Dual (Dual, iso) as Validator.Dual
 
 type Dual m r i o = Dual.Dual (Reporter.Reporter m r) (WriterT r m) i o
 
@@ -92,4 +94,8 @@ lmapM f (Dual.Dual (Dual.DualD reporter ser)) = Dual.dual reporter' ser'
         -- f' ∷ Tuple i r → m (Tuple i r')
         f' = map f >>> sequence
 
+iso ∷ ∀ e i m o. Monoid e ⇒ Monad m ⇒ (i → o) → (o → i) → Dual m e i o
+iso p s = liftValidatorDual (Validator.Dual.iso p s)
 
+newtypeIso ∷ ∀ a e m n. Monad m ⇒ Monoid e ⇒ Newtype n a ⇒ Dual m e a n
+newtypeIso = iso wrap unwrap
