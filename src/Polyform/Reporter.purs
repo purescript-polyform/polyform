@@ -20,8 +20,7 @@ module Polyform.Reporter
 
 import Prelude
 
-import Control.Alt (class Alt, (<|>))
-import Control.Alternative (empty)
+import Control.Alt (class Alt)
 import Control.Monad.Maybe.Trans (MaybeT(..), mapMaybeT, runMaybeT)
 import Control.Monad.Writer (WriterT(..), runWriterT)
 import Control.Monad.Writer.Trans (mapWriterT)
@@ -42,11 +41,21 @@ import Polyform.Validator (Validator(..), runValidator)
 newtype Reporter m r i o = Reporter (Star (MaybeT (WriterT r m)) i o)
 derive instance newtypeReporter ∷ Newtype (Reporter m r i b) _
 derive newtype instance functorReporter ∷ (Functor m) ⇒ Functor (Reporter m e i)
-derive newtype instance applyReporter ∷ (Monad m, Monoid e) ⇒ Apply (Reporter m e i)
+instance applyReporter ∷ (Monad m, Monoid e) ⇒ Apply (Reporter m e i) where
+  -- | We need this instance as we want to execute
+  -- | all validation steps.
+  apply (Reporter (Star rf)) (Reporter (Star ra)) = Reporter $ Star \i → MaybeT $ do
+    mf ← runMaybeT (rf i)
+    ma ← runMaybeT (ra i)
+    pure (mf <*> ma)
 derive newtype instance applicativeReporter ∷ (Monad m, Monoid e) ⇒ Applicative (Reporter m e i)
 derive newtype instance profunctorReporter ∷ Functor m ⇒ Profunctor (Reporter m e)
 derive newtype instance choiceReporter ∷ (Monoid e, Monad m) ⇒ Choice (Reporter m e)
 derive newtype instance strongReporter ∷ (Monad m, Semigroup e) ⇒ Strong (Reporter m e)
+derive newtype instance altReporter ∷ (Monad m, Monoid r) ⇒ Alt (Reporter m r i)
+-- where alt (Reporter v1) (Reporter v2) = Reporter $ v1 <|> v2
+derive newtype instance plusReporter ∷ (Monad m, Monoid r) ⇒ Plus (Reporter m r i)
+-- where empty = Reporter empty
 
 type R r a = Tuple (Maybe a) r
 
@@ -63,12 +72,6 @@ liftVWith f g = unV (Tuple Nothing <<< f) (\a → Tuple (Just a) (g a))
 
 runReporter ∷ ∀ i o m r. Reporter m r i o → (i → m (Tuple (Maybe o) r))
 runReporter (Reporter (Star f)) = f >>> runMaybeT >>> runWriterT
-
-instance altReporter ∷ (Monad m, Monoid r) ⇒ Alt (Reporter m r i) where
-  alt (Reporter v1) (Reporter v2) = Reporter $ v1 <|> v2
-
-instance plusReporter ∷ (Monad m, Monoid r) ⇒ Plus (Reporter m r i) where
-  empty = Reporter empty
 
 instance semigroupReporter ∷ (Monad m, Monoid r, Monoid o) ⇒ Semigroup (Reporter m r i o) where
   append (Reporter (Star r1)) (Reporter (Star r2)) = Reporter (Star (\i → append <$> r1 i <*> r2 i))

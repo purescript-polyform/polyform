@@ -21,6 +21,6 @@
     , "variant"
     ]
 , packages = ../magusai/packages.dhall
-, repository = "https://github.com/paluh/purescript-polyform.git"
+, repository = "https://github.com/polyform/polyform.git"
 }
 
