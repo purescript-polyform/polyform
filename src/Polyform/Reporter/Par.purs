@@ -1,7 +1,7 @@
 module Polyform.Reporter.Par where
 
-import Prelude
-
+-- import Prelude
+-- 
 -- import Control.Alt (class Alt, (<|>))
 -- import Control.Parallel (class Parallel)
 -- import Control.Parallel as Parallel
