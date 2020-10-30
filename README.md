@@ -26,7 +26,7 @@ newtype Exceptor m e i o = Exceptor (Star (ExceptT e m) i o)
 
 ### `Reporter`
 
-We can imagine that report is built on top of a type like `Tuple r (Maybe a)` instead of `V r a` or `Either r a` (We process this type by using `MaybeT` over `WriterT` underneath).
+We can imagine that `Reporter` is built on top of a type like `Tuple r (Maybe a)` instead of `V r a` or `Either r a` (We process this type by using `MaybeT` over `WriterT` underneath).
 
 The idea of accumulating errors from the `V` type (from `purescript-validation`) is extended here. We can think of `r` value as not only the error representation but as the overall validation "report". These values are accumulated by all interesting instances (`Functor`, `Applicative`) of the `Reproter` type.
 
