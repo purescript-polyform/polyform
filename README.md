@@ -26,22 +26,16 @@ newtype Exceptor m e i o = Exceptor (Star (ExceptT e m) i o)
 
 ### `Reporter`
 
-Reporter is built on top the `R` type which seems a bit redundant type:
+We can imagine that report is built on top of a type like `Tuple r (Maybe a)` instead of `V r a` or `Either r a` (We process this type by using `MaybeT` over `WriterT` underneath).
 
-``` purescript
-data R r a = Failure r | Success r a
-```
-
-This type is isomorphic to `Tuple r (Maybe a)` - probably I should use this representation underneath (together with `WriterT` + `MaybeT`) but I've decided to provide it as is for now for "simplicity" sake.
-
-The idea of accumulating errors from the `V` type (from `purescript-validation`) is extended here. We can think of `r` value as not only the error representation but as the overall validation "report". These values are accumulated by all interesting instances (`Functor`, `Applicative`) of the `R` type.
+The idea of accumulating errors from the `V` type (from `purescript-validation`) is extended here. We can think of `r` value as not only the error representation but as the overall validation "report". These values are accumulated by all interesting instances (`Functor`, `Applicative`) of the `Reproter` type.
 
 When this type can be useful? When we consider for example HTML form rendering we can find that when form validation fails we want to present not only invalid parts of the form. In such a case we want to rerender the whole form. It is convenient to have already validated values in such a case and be able to provide some info based on this partially correct state.
 
 Of course we want to also use our favorite type `Star`. We wrap it in a `Reporter` newtype and provide some additional instances like `Alt` or `Category`:
 
 ``` purescript
-newtype Reporter m e i o = Reporter (Star (Compose m (R e)) i o)
+newtype Reporter m r i o = Reporter (Star (MaybeT (WriterT r m)) i o)
 ```
 
 ### `Dual`
