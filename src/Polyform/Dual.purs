@@ -17,6 +17,7 @@ import Prelude
 
 import Control.Alt (class Alt, (<|>))
 import Control.Alternative (class Plus, empty)
+import Control.Lazy (class Lazy, defer)
 import Data.Functor.Invariant (class Invariant)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor, dimap, lcmap)
@@ -43,6 +44,11 @@ instance plusDualD ∷ (Plus (p i), Alt (p i), Monoid (s i)) ⇒ Plus (DualD p s
 
 instance profunctorDualD ∷ (Functor (p i)) ⇒ Profunctor (DualD p s i) where
   dimap l r (DualD prs ser) = DualD (map r prs) (l >>> ser)
+
+instance lazyDualD ∷ (Lazy (p i o')) ⇒ Lazy (DualD p s i o o') where
+  defer f = DualD
+    (defer \_ → let DualD prs _ = f unit in prs)
+    (defer \_ → let DualD _ ser = f unit in ser)
 
 -- | `Dual` turns `DualD` into `Invariant` (it differs from `Join`).
 newtype Dual p s i o = Dual (DualD p s i o o)
@@ -85,6 +91,9 @@ instance semigroupoidDual ∷ (Monad s, Semigroupoid p) ⇒ Semigroupoid (Dual p
 
 instance categoryDual ∷ (Category p, Monad s) ⇒ Category (Dual p s) where
   identity = dual identity pure
+
+instance lazyDual ∷ (Lazy (p i o)) ⇒ Lazy (Dual p s i o) where
+  defer f = Dual (defer \_ → let Dual dd = f unit in dd)
 
 -- | This function provides a way to diverge component serialization
 -- | from parsing so we are able to "divide for a moment `o` type" and

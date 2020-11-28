@@ -25,6 +25,7 @@ module Polyform.Validator
 import Prelude
 
 import Control.Alt (class Alt)
+import Control.Lazy (class Lazy)
 import Control.Plus (class Plus)
 import Data.Bifunctor (class Bifunctor, bimap, lmap)
 import Data.Either (Either(..), either, note)
@@ -78,6 +79,9 @@ instance semigroupoidValidator ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Vali
 
 instance categoryValidator ∷ (Monad m, Semigroup e) ⇒ Category (Validator m e) where
   identity = Validator <<< Star $ Compose <<< pure <<< pure
+
+instance lazyValidator ∷ Lazy (Validator m r i o) where
+  defer f = Validator (Star \i → Compose (runValidator (f unit) i))
 
 ask ∷ ∀ i m e. Monad m ⇒ Semigroup e ⇒ Validator m e i i
 ask = liftFn identity
