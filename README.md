@@ -58,7 +58,7 @@ The above types allow to build bidirectional validation and serialization flows.
     )
 ```
 
-Composibility of this type - I mean `Applicative`, `Semigroup` or `Alt` instances are based on the assumption that `i` (which we can consider as a tokens stream or serialization result) has defined `Semigroupoid` instance. It can be a bit surprising but it is often the case and not a blocker - even for serialization and parsing a `Json` because `Object` can be combined or build in a monoidal way.
+Composibility of this type - I mean `Applicative`, `Alt`, `Semigroupoid`, `Category` instances are based on the assumption that `i` (which we can consider as a tokens stream or serialization result) has defined `Semigroup` instance. It can be a bit surprising but it is often the case and not a blocker - even for serialization and parsing a `Json` because `Object` can be combined or build in a monoidal way.
 Here we have some examples of `Dual` values definition which work with `Json` taken from [polyform-validators test suite](https://github.com/lambdaterms/purescript-polyform-validators/blob/master/test/Duals/Validators/Json.purs). We are using generic utils provided by the validators lib:
 
 
