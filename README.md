@@ -90,4 +90,4 @@ aSumDual = sum
 
 ## Name
 
-Initialy `polyform` was intended to provide some basic utils for HTTP form validation. It was polyomrphic on the form type hence the name. After the last rewrite this name has probably no sens any more, but as you know - "naming is the..."
+Initialy `polyform` was intended to provide some basic utils for HTTP form validation. It was polyomrphic on the form type hence the name. After the last rewrite this name ~~has probably no sens any more~~ can be interpreted in the conext of fully polymorphic bidirectional flows provided by `Dual`. We have serialization and deserialization of data... so you know, you can have your data represented in different formats and convert between them... :-P
