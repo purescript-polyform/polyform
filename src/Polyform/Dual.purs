@@ -10,11 +10,9 @@ module Polyform.Dual
   , pureDual
   , serializer
   , (~)
-  )
-  where
+  ) where
 
 import Prelude
-
 import Control.Alt (class Alt, (<|>))
 import Control.Alternative (class Plus, empty)
 import Control.Lazy (class Lazy, defer)
@@ -25,7 +23,8 @@ import Data.Profunctor (class Profunctor, dimap, lcmap)
 -- | __D__ from diverging as `o'` can be different from `o`.
 -- | They "join" in `Dual` type which wraps `DualD` a few
 -- | lines below.
-data DualD p s i o o' = DualD (p i o') (o → s i)
+data DualD p s i o o'
+  = DualD (p i o') (o → s i)
 
 derive instance functorDualD ∷ (Functor (p i)) ⇒ Functor (DualD p s i o)
 
@@ -36,8 +35,7 @@ instance applicativeDualD ∷ (Applicative (p i), Applicative s, Monoid i) ⇒ A
   pure a = DualD (pure a) (const $ pure mempty)
 
 instance altDualD ∷ (Alt (p i)) ⇒ Alt (DualD p s i o') where
-  alt (DualD prs1 ser1) (DualD prs2 _) =
-    DualD (prs1 <|> prs2) ser1
+  alt (DualD prs1 ser1) (DualD prs2 _) = DualD (prs1 <|> prs2) ser1
 
 instance plusDualD ∷ (Plus (p i), Alt (p i), Monoid (s i)) ⇒ Plus (DualD p s i o') where
   empty = DualD empty (const mempty)
@@ -46,21 +44,25 @@ instance profunctorDualD ∷ (Functor (p i)) ⇒ Profunctor (DualD p s i) where
   dimap l r (DualD prs ser) = DualD (map r prs) (l >>> ser)
 
 instance lazyDualD ∷ (Lazy (p i o')) ⇒ Lazy (DualD p s i o o') where
-  defer f = DualD
-    (defer \_ → let DualD prs _ = f unit in prs)
-    (defer \_ → let DualD _ ser = f unit in ser)
+  defer f =
+    DualD
+      (defer \_ → let DualD prs _ = f unit in prs)
+      (defer \_ → let DualD _ ser = f unit in ser)
 
 -- | `Dual` turns `DualD` into `Invariant` (it differs from `Join`).
-newtype Dual p s i o = Dual (DualD p s i o o)
+newtype Dual p s i o
+  = Dual (DualD p s i o o)
+
 derive instance newtypeDual ∷ Newtype (Dual p s i o) _
 
 instance invariantFunctor ∷ Functor (p i) ⇒ Invariant (Dual p s i) where
   imap f g (Dual d) = Dual (dimap g f d)
 
-dual ∷ ∀ i o p s
-  . (p i o)
-  → (o → s i)
-  → Dual p s i o
+dual ∷
+  ∀ i o p s.
+  (p i o) →
+  (o → s i) →
+  Dual p s i o
 dual prs = Dual <<< DualD prs
 
 dual' ∷ ∀ i p s. Applicative s ⇒ p i i → Dual p s i i
@@ -78,16 +80,15 @@ pureDual o = Dual (pure o)
 hoistSerializer ∷ ∀ i o p s s'. (s ~> s') → Dual p s i o → Dual p s' i o
 hoistSerializer f (Dual (DualD prs ser)) = dual prs ser'
   where
-    ser' = map f ser
+  ser' = map f ser
 
 hoistParser ∷ ∀ i o p q s. (p i ~> q i) → Dual p s i o → Dual q s i o
 hoistParser f (Dual (DualD prs ser)) = dual prs' ser
   where
-    prs' = f prs
+  prs' = f prs
 
 instance semigroupoidDual ∷ (Monad s, Semigroupoid p) ⇒ Semigroupoid (Dual p s) where
-  compose (Dual (DualD prs2 ser2)) (Dual (DualD prs1 ser1)) =
-    dual (prs2 <<< prs1) (ser1 <=< ser2)
+  compose (Dual (DualD prs2 ser2)) (Dual (DualD prs1 ser1)) = dual (prs2 <<< prs1) (ser1 <=< ser2)
 
 instance categoryDual ∷ (Category p, Monad s) ⇒ Category (Dual p s) where
   identity = dual identity pure
@@ -117,13 +118,12 @@ instance lazyDual ∷ (Lazy (p i o)) ⇒ Lazy (Dual p s i o) where
 -- | Of course these two steps can be handled by some generic layer.
 infixl 5 diverge as ~
 
-diverge
-  ∷ ∀ i o o' p s
-  . Functor (p i)
-  ⇒ Profunctor p
-  ⇒ (o' → o)
-  → Dual p s i o
-  → DualD p s i o' o
+diverge ∷
+  ∀ i o o' p s.
+  Functor (p i) ⇒
+  Profunctor p ⇒
+  (o' → o) →
+  Dual p s i o →
+  DualD p s i o' o
 diverge f = lcmap f <<< unwrap
-
 

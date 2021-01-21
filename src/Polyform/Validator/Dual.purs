@@ -5,6 +5,8 @@ module Polyform.Validator.Dual
   , checkM
   , iso
   , lmapDual
+  , lmapDualD
+  , liftEither
   , lmapM
   , newtypeIso
   , hoist
@@ -17,11 +19,14 @@ module Polyform.Validator.Dual
 
 import Prelude
 
+import Data.Either (Either(..))
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.Validation.Semigroup (V)
 import Polyform.Dual (Dual(..), DualD(..), dual, dual', parser, serializer) as Dual
+import Polyform.Dual (dual) as Polyform.Dual
 import Polyform.Validator (Validator, lmapValidator)
+import Polyform.Validator (liftFn, liftFnEither) as Validators
 import Polyform.Validator as Validator
 
 type Dual m e i o = Dual.Dual (Validator m e) m i o
@@ -62,8 +67,15 @@ check e c = Dual.dual' (Validator.check e c)
 checkM ∷ ∀ e i m. Monad m ⇒ Semigroup e ⇒ (i → e) → (i → m Boolean) → Dual m e i i
 checkM e c = Dual.dual' (Validator.checkM e c)
 
+lmapDualD ∷ ∀ e e' i m o o'. Monad m ⇒ (e → e') → DualD m e i o' o → DualD m e' i o' o
+lmapDualD f (Dual.DualD prs ser) = Dual.DualD (lmapValidator f prs) ser
+
 lmapDual ∷ ∀ e e' i m o. Monad m ⇒ (e → e') → Dual m e i o → Dual m e' i o
-lmapDual f (Dual.Dual (Dual.DualD prs ser)) = Dual.dual (lmapValidator f prs) ser
+lmapDual f (Dual.Dual dualD) = Dual.Dual (lmapDualD f dualD)
 
 lmapM ∷ ∀ e e' i m o. Monad m ⇒ (e → m e') → Dual m e i o → Dual m e' i o
 lmapM f (Dual.Dual (Dual.DualD prs ser)) = Dual.dual (Validator.lmapM f prs) ser
+
+liftEither ∷ ∀ e m o. Applicative m ⇒ Semigroup e ⇒ Dual m e (Either e o) o
+liftEither = Polyform.Dual.dual Validator.liftEither (Right >>> pure)
+

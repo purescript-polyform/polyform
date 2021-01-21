@@ -6,6 +6,7 @@ module Polyform.Validator
   , check
   , checkM
   , invalidate
+  , liftEither
   , liftFn
   , liftFnEither
   , liftFnM
@@ -106,6 +107,9 @@ liftFnMV f = Validator $ Star $ map Compose f
 -- | TODO: Drop it - its redundant
 liftFnEither ∷ ∀ e i m o. Applicative m ⇒ Semigroup e ⇒ (i → Either e o) → Validator m e i o
 liftFnEither f = liftFnV $ f >>> either invalid pure
+
+liftEither ∷ ∀ e m o. Applicative m ⇒ Semigroup e ⇒ Validator m e (Either e o) o
+liftEither = liftFnEither identity
 
 liftFnMaybe ∷ ∀ e i m o. Applicative m ⇒ (i → e) → (i → Maybe o) → Validator m e i o
 liftFnMaybe err f = liftFnV $ \i → V (note (err i) (f i))
