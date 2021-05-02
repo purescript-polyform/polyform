@@ -27,9 +27,9 @@ import Polyform.Reporter (R)
 import Polyform.Reporter (Reporter, hoist, liftValidator, liftValidatorWith, lmapM, runReporter) as Reporter
 import Polyform.Validator.Dual (Dual, iso) as Validator.Dual
 
-type Dual m r i o = Dual.Dual (Reporter.Reporter m r) (Writer r) i o
+type Dual m r = Dual.Dual (Reporter.Reporter m r) (Writer r)
 
-type DualD m r i o' o = Dual.DualD (Reporter.Reporter m r) (Writer r) i o' o
+type DualD m r = Dual.DualD (Reporter.Reporter m r) (Writer r)
 
 runReporter ∷ ∀ r i m o. Dual m r i o → (i → m (R r o))
 runReporter = Reporter.runReporter <<< Dual.parser

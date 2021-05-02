@@ -27,11 +27,11 @@ import Polyform.Dual (dual) as Polyform.Dual
 import Polyform.Validator (Validator, lmapValidator)
 import Polyform.Validator as Validator
 
-type Dual m e i o
-  = Dual.Dual (Validator m e) Identity i o
+type Dual m e
+  = Dual.Dual (Validator m e) Identity
 
-type DualD m e i o' o
-  = Dual.DualD (Validator m e) Identity i o' o
+type DualD m e
+  = Dual.DualD (Validator m e) Identity
 
 runValidator ∷ ∀ e i o m. Monad m ⇒ Dual.Dual (Validator m e) m i o → (i → m (V e o))
 runValidator = Validator.runValidator <<< Dual.parser
