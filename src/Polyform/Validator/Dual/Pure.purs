@@ -19,5 +19,6 @@ generalize = Dual.hoist g
 runValidator ∷ ∀ e i o. Dual e i o → i → V e o
 runValidator dual = un Identity <<< Dual.runValidator dual
 
+-- | TODO: Drop this.
 runSerializer ∷ ∀ e i o. Dual e i o → o → i
-runSerializer dual = un Identity <<< Dual.runSerializer dual
+runSerializer dual = Dual.runSerializer dual

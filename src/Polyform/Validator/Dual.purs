@@ -18,8 +18,9 @@ module Polyform.Validator.Dual
 
 import Prelude
 import Data.Either (Either(..))
+import Data.Identity (Identity(..))
 import Data.Maybe (Maybe)
-import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.Newtype (class Newtype, un, unwrap, wrap)
 import Data.Validation.Semigroup (V)
 import Polyform.Dual (Dual(..), DualD(..), dual, dual', parser, serializer) as Dual
 import Polyform.Dual (dual) as Polyform.Dual
@@ -27,22 +28,20 @@ import Polyform.Validator (Validator, lmapValidator)
 import Polyform.Validator as Validator
 
 type Dual m e i o
-  = Dual.Dual (Validator m e) m i o
+  = Dual.Dual (Validator m e) Identity i o
 
 type DualD m e i o' o
-  = Dual.DualD (Validator m e) m i o' o
+  = Dual.DualD (Validator m e) Identity i o' o
 
 runValidator ∷ ∀ e i o m. Monad m ⇒ Dual.Dual (Validator m e) m i o → (i → m (V e o))
 runValidator = Validator.runValidator <<< Dual.parser
 
-runSerializer ∷ ∀ e i o m. Applicative m ⇒ Dual m e i o → (o → m i)
-runSerializer = Dual.serializer
+runSerializer ∷ ∀ e i o m. Applicative m ⇒ Dual m e i o → (o → i)
+runSerializer = map (un Identity) <<< Dual.serializer
 
 hoist ∷ ∀ e i o m m'. Functor m ⇒ (m ~> m') → Dual m e i o → Dual m' e i o
-hoist nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs' ser'
+hoist nt (Dual.Dual (Dual.DualD prs ser)) = Dual.dual prs' ser
   where
-  ser' = map nt ser
-
   prs' = Validator.hoist nt prs
 
 iso ∷ ∀ e i m o. Semigroup e ⇒ Applicative m ⇒ (i → o) → (o → i) → Dual m e i o
