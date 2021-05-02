@@ -25,7 +25,7 @@ run = Validator.runValidator <<< unliftUntokenized
 
 -- | TODO: Do we want to handle end as a part of serializer type
 -- | so it is more isomorphic?
-end :: forall err i m. Monad m => Semigroup err => err -> Validator m err i Unit
+end :: forall err i m. Monad m => Semigroup err => (i → err) -> Validator m err i Unit
 end err = Tokenized.liftUntokenized $ Validator.liftFnEither case _ of
   Nothing → Right unit
-  Just _ → Left err
+  Just i → Left (err i)

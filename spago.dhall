@@ -20,7 +20,7 @@
     , "validation"
     , "variant"
     ]
-, packages = ../magusai/packages.dhall
+, packages = ./packages.dhall
 , repository = "https://github.com/polyform/polyform.git"
 }
 

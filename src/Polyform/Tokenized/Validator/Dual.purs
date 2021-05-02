@@ -26,7 +26,7 @@ runValidator = Tokenized.Validator.run <<< Tokenized.Dual.parser
 runSerializer ∷ ∀ err i o m. Applicative m ⇒ Dual m err i o → (o → m (List i))
 runSerializer = Tokenized.Dual.serializer
 
-end :: forall err i m. Monad m => Monoid err => err -> Dual m err i Unit
+end :: forall err i m. Monad m => Monoid err => (i → err) -> Dual m err i Unit
 end err = Tokenized.Dual.dual
   (Tokenized.Validator.end err)
   (const $ pure mempty)
