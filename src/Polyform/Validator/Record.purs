@@ -6,7 +6,7 @@ import Polyform.Type.Row (class Cons') as Row
 import Polyform.Validator (Validator)
 import Record.Builder (Builder) as Record
 import Record.Builder (build, insert) as Record.Builder
-import Type.Prelude (SProxy)
+import Type.Proxy (Proxy)
 
 newtype Builder m e i o o' = Builder (Validator m e i (Record.Builder o o'))
 
@@ -20,7 +20,7 @@ insert ∷ ∀ a e i o o' n m
   . Row.Cons' n a o o'
   ⇒ Semigroup e
   ⇒ Applicative m
-  ⇒ SProxy n
+  ⇒ Proxy n
   → Validator m e i a
   → Builder m e i ({ | o}) ({ | o'})
 insert l v = Builder $ (Record.Builder.insert l <$> v)
