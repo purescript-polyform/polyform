@@ -9,7 +9,7 @@ import Data.Variant (expand) as Variant
 import Polyform.Dual (Dual(..), DualD(..), dual)
 import Prim.Row (class Cons, class Lacks) as Row
 import Prim.Row (class Union)
-import Prim.RowList (class RowToList, Cons, Nil, kind RowList)
+import Prim.RowList (class RowToList, Cons, Nil, RowList)
 import Record (delete, get) as Record
 import Type.Prelude (class IsSymbol)
 import Type.Proxy (Proxy(..))
