@@ -1,4 +1,4 @@
-module Polyform.Dual.Variant where
+module Polyform.Dual.Variant (on, case_) where
 
 import Prelude
 
@@ -6,7 +6,6 @@ import Control.Alt (class Alt, (<|>))
 import Data.Symbol (SProxy)
 import Data.Variant (Variant, inj)
 import Data.Variant (on) as Variant
-import Global.Unsafe (unsafeStringify)
 import Partial.Unsafe (unsafeCrashWith)
 import Polyform.Dual (Dual(..), DualD(..), dual)
 import Prim.Row (class Cons) as Row
@@ -45,3 +44,4 @@ case_ = dual prs ser
     ser i = unsafeCrashWith ("Dual.Variant.case_: serializing empty Variant: " <> unsafeStringify i)
 
 
+foreign import unsafeStringify :: forall a. a -> String
