@@ -33,7 +33,7 @@ import Data.Profunctor.Choice (class Choice)
 import Data.Profunctor.Star (Star(..), hoistStar)
 import Data.Profunctor.Strong (class Strong)
 import Data.Tuple (Tuple(..))
-import Data.Validation.Semigroup (V(..), unV)
+import Data.Validation.Semigroup (V(..), validation)
 import Polyform.Validator (Validator(..), runValidator)
 
 newtype Reporter m r i o
@@ -77,7 +77,7 @@ toV (Tuple (Just a) r) = V (Right a)
 toV (Tuple _ r) = V (Left r)
 
 liftVWith ∷ ∀ a e r. (e → r) → (a → r) → V e a → R r a
-liftVWith f g = unV (Tuple Nothing <<< f) (\a → Tuple (Just a) (g a))
+liftVWith f g = validation (Tuple Nothing <<< f) (\a → Tuple (Just a) (g a))
 
 runReporter ∷ ∀ i o m r. Reporter m r i o → (i → m (Tuple (Maybe o) r))
 runReporter (Reporter (Star f)) = f >>> runMaybeT >>> runWriterT

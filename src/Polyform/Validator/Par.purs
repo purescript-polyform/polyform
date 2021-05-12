@@ -9,7 +9,7 @@ import Control.Plus (class Plus, empty)
 import Data.Functor.Compose (Compose(..))
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor.Star (Star(..))
-import Data.Validation.Semigroup (unV)
+import Data.Validation.Semigroup (validation)
 import Polyform.Validator (Validator(..))
 
 newtype Par m e i o = Par (Validator m e i o)
@@ -33,7 +33,7 @@ instance altPar ∷ (Monad m, Parallel f m, Monoid e) ⇒ Alt (Par m e i) where
       f i = Compose $ Parallel.sequential ado
         r1 ← Parallel.parallel (unwrap $ mv1 i)
         r2 ← Parallel.parallel (unwrap $ mv2 i)
-        in (unV (const r2) pure r1)
+        in (validation (const r2) pure r1)
 
 instance plusPar ∷ (Monad m, Monoid e, Parallel f m) ⇒ Plus (Par m e i) where
   empty = Par empty
