@@ -72,7 +72,7 @@ liftV (V (Right a)) = Tuple (Just a) mempty
 liftV (V (Left e)) = Tuple Nothing e
 
 toV ∷ ∀ a r. R r a → V r a
-toV (Tuple (Just a) r) = V (Right a)
+toV (Tuple (Just a) _) = V (Right a)
 
 toV (Tuple _ r) = V (Left r)
 

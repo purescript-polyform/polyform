@@ -62,7 +62,7 @@ liftValidatorDualWith fe fo d = Dual.dual
   ser
   where
     ser ∷ o → Writer r i
-    ser = attachOutput (Dual.serializer d) >>> lift >=> \t@(Tuple i o) → do
+    ser = attachOutput (Dual.serializer d) >>> lift >=> \t@(Tuple i _) → do
         let
           r = fo t
         tell r
