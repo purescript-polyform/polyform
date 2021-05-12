@@ -1,5 +1,4 @@
-{ sources =
-    [ "src/**/*.purs", "test/**/*.purs" ]
+{ sources = [ "src/**/*.purs", "test/**/*.purs" ]
 , license = "BSD-3-Clause"
 , name = "polyform"
 , dependencies =
