@@ -10,6 +10,7 @@ import Record.Builder (Builder) as Record
 import Record.Builder (build, insert) as Record.Builder
 import Type.Prelude (SProxy)
 
+newtype Builder :: (Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Type -> Type -> Type
 newtype Builder p s i ser prs prs' = Builder (DualD p s i ser (Record.Builder prs prs'))
 
 instance semigroupoidProductBuilder ∷ (Semigroup i, Applicative s, Applicative (p i)) ⇒ Semigroupoid (Builder p s i ser) where

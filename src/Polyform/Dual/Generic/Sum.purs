@@ -14,7 +14,8 @@ import Prim.Row (class Cons) as Row
 import Record (get) as Record
 import Type.Prelude (class IsSymbol)
 
-class GDualSum p s i rep (r ∷ # Type) | rep → r p i where
+class GDualSum :: (Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Row Type -> Constraint
+class GDualSum p s i rep r | rep → r p i where
   gDual
     ∷ Functor (p i)
     ⇒ Alt (p i)
@@ -50,6 +51,7 @@ instance gDualConstructor ::
       ser' (Constructor a) = ser a
       prs' = Constructor <$> prs
 
+class GDualCtr ∷ (Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Type -> Constraint
 class GDualCtr p s i o o' | o → o' where
   gDualCtr ∷ Functor (p i) ⇒ Dual p s i o → Dual p s i o'
 

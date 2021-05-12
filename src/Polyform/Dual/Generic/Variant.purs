@@ -14,7 +14,8 @@ import Prim.RowList (class RowToList, Cons, Nil, kind RowList)
 import Record (delete, get) as Record
 import Type.Prelude (class IsSymbol, RLProxy(..))
 
-class GDualVariant p s i (dl ∷ RowList) (d ∷ # Type) (v ∷ # Type) | dl → d p s i v where
+class GDualVariant :: (Type -> Type -> Type) -> (Type -> Type) -> Type -> RowList Type -> Row Type -> Row Type -> Constraint
+class GDualVariant p s i dl d v | dl → d p s i v where
   gDualV
     ∷ Alt (p i)
     ⇒ Functor (p i)
