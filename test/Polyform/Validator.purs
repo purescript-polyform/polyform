@@ -18,8 +18,7 @@ import Test.QuickCheck.Gen (Gen)
 import Test.QuickCheck.Laws (A, B, C, checkLaws)
 import Test.QuickCheck.Laws.Control as Control
 import Test.QuickCheck.Laws.Data as Data
-import Type.Prelude (Proxy(..))
-import Type.Proxy (Proxy2(..), Proxy3(..))
+import Type.Proxy (Proxy(..), Proxy2(..), Proxy3(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 newtype AValidator e i o = AValidator (Validator Identity e i o)
