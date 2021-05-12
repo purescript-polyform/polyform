@@ -6,7 +6,6 @@
     [ "debug"
     , "foreign"
     , "foreign-object"
-    , "generics-rep"
     , "invariant"
     , "newtype"
     , "ordered-collections"
@@ -23,4 +22,3 @@
 , packages = ./packages.dhall
 , repository = "https://github.com/polyform/polyform.git"
 }
-
