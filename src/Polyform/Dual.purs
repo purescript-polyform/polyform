@@ -127,4 +127,3 @@ diverge ∷
   Dual p s i o →
   DualD p s i o' o
 diverge f = lcmap f <<< unwrap
-

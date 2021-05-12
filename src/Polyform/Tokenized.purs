@@ -56,4 +56,3 @@ liftUntokenized p = Tokenized (Strong.second p)
 
 unliftUntokenized :: forall i o p. Profunctor p => Tokenized p i o -> p (List i) o
 unliftUntokenized (Tokenized v) = dimap uncons snd v
-

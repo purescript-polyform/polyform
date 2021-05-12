@@ -68,4 +68,3 @@ sequential
   . Par m e i o
   → Validator m e i o
 sequential (Par v) = v
-

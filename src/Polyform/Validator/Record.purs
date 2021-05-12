@@ -31,4 +31,3 @@ build ∷ ∀ e i m o
   ⇒ Builder m e i {} { |o}
   → Validator m e i { | o}
 build (Builder v) = (flip Record.Builder.build {} <$> v)
-

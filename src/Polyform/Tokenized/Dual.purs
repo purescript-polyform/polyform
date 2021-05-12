@@ -61,5 +61,3 @@ unliftUntokenized ∷ ∀ i o p s. Profunctor p ⇒ Dual p s i o → Polyform.Du
 unliftUntokenized d = Polyform.Dual.dual
   (Tokenized.unliftUntokenized $ parser d)
   (serializer d)
-
-

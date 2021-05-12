@@ -31,4 +31,3 @@ variant ∷ ∀ e i d dl m s v
   → { | d }
   → Dual (Validator m e) s i (Variant v)
 variant = Dual.Generic.variant
-

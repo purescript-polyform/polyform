@@ -41,5 +41,3 @@ build ∷ ∀ i o p s
 build (Builder (DualD prs ser)) = dual
   (flip Record.Builder.build {} <$> prs)
   ser
-
-
