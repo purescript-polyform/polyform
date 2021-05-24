@@ -44,7 +44,7 @@ instance altExceptor ∷ (Monad m) ⇒ Alt (Exceptor m e i) where
             runExceptT (v1 i)
               >>= case _ of
                   (Right o1) → pure $ pure o1
-                  (Left e1) → runExceptT (v2 i)
+                  (Left _) → runExceptT (v2 i)
 
 newtype ParExceptor f e i o
   = ParExceptor (Star (Compose f (Either e)) i o)

@@ -76,4 +76,3 @@ suite = checkLaws "Reporter" do
   prxReporter = Proxy ∷ Proxy (AReporter A B C)
   prx2Reporter = Proxy2 ∷ Proxy2 (AReporter A B)
   prx3Reporter = Proxy3 ∷ Proxy3 (AReporter A)
-

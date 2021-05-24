@@ -23,6 +23,7 @@ import Data.Profunctor (class Profunctor, dimap, lcmap)
 -- | __D__ from diverging as `o'` can be different from `o`.
 -- | They "join" in `Dual` type which wraps `DualD` a few
 -- | lines below.
+data DualD :: (Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Type -> Type
 data DualD p s i o o'
   = DualD (p i o') (o → s i)
 
@@ -126,4 +127,3 @@ diverge ∷
   Dual p s i o →
   DualD p s i o' o
 diverge f = lcmap f <<< unwrap
-

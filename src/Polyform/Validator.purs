@@ -38,7 +38,7 @@ import Data.Profunctor.Choice (class Choice)
 import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (class Strong)
 import Data.Tuple (Tuple(..))
-import Data.Validation.Semigroup (V(..), invalid, unV)
+import Data.Validation.Semigroup (V(..), invalid, validation)
 
 newtype Validator m e i o = Validator (Star (Compose m (V e)) i o)
 derive instance newtypeValidator ∷ Newtype (Validator m r i o) _
@@ -76,7 +76,7 @@ instance semigroupoidValidator ∷ (Monad m, Semigroup e) ⇒ Semigroupoid (Vali
       let
         Compose res = v1 i
       res' ← res
-      unV (pure <<< invalid) (\b → let Compose b' = v2 b in b') res'
+      validation (pure <<< invalid) (\b → let Compose b' = v2 b in b') res'
 
 instance categoryValidator ∷ (Monad m, Semigroup e) ⇒ Category (Validator m e) where
   identity = Validator <<< Star $ Compose <<< pure <<< pure

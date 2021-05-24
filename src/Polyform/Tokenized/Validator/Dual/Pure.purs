@@ -17,4 +17,3 @@ runValidator = map (un Identity) <<< Tokenized.Validator.Dual.runValidator
 
 runSerializer ∷ ∀ err i o. Dual err i o → (o → List i)
 runSerializer = Tokenized.Validator.Dual.runSerializer
-

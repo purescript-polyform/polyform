@@ -14,22 +14,35 @@
         "output"
     ],
     "dependencies": {
-        "purescript-foreign": "^v5.0.0",
-        "purescript-foreign-object": "^v2.0.3",
-        "purescript-generics-rep": "^v6.1.1",
-        "purescript-invariant": "^v4.1.0",
-        "purescript-newtype": "^v3.0.0",
-        "purescript-ordered-collections": "^v1.6.1",
-        "purescript-profunctor": "^v4.1.0",
-        "purescript-run": "^v3.0.1",
-        "purescript-transformers": "^v4.2.0",
-        "purescript-validation": "^v4.2.0",
-        "purescript-variant": "^v6.0.1"
+        "purescript-arrays": "^6.0.1",
+        "purescript-bifunctors": "^5.0.0",
+        "purescript-control": "^5.0.0",
+        "purescript-effect": "^3.0.0",
+        "purescript-either": "^5.0.0",
+        "purescript-enums": "^5.0.0",
+        "purescript-functors": "^4.1.1",
+        "purescript-identity": "^5.0.0",
+        "purescript-in^ariant": "^5.0.0",
+        "purescript-lists": "^6.0.1",
+        "purescript-maybe": "^5.0.0",
+        "purescript-newtype": "^4.0.0",
+        "purescript-parallel": "^5.0.0",
+        "purescript-partial": "^3.0.0",
+        "purescript-prelude": "^5.0.0",
+        "purescript-profunctor": "^5.0.0",
+        "purescript-record": "^3.0.0",
+        "purescript-transformers": "^5.1.0",
+        "purescript-tuples": "^6.0.1",
+        "purescript-typele^el-prelude": "^6.0.0",
+        "purescript-unsafe-coerce": "^5.0.0",
+        "purescript-^alidation": "^5.0.0",
+        "purescript-^ariant": "^7.0.2"
     },
-    "devDependencies": {
-        "purescript-debug": "^v4.0.0",
-        "purescript-psci-support": "^v4.0.0",
-        "purescript-quickcheck-laws": "^v5.1.0",
-        "purescript-test-unit": "^v15.0.0"
+    "de^Dependencies": {
+        "purescript-debug": "^5.0.0",
+        "purescript-psci-support": "^5.0.0",
+        "purescript-quickcheck": "^7.1.0",
+        "purescript-quickcheck-laws": "^6.0.1",
+        "purescript-test-unit": "^16.0.0"
     }
 }

@@ -7,18 +7,19 @@ import Control.Alternative ((<|>))
 import Data.Generic.Rep (class Generic, Argument(..), Constructor(..), NoArguments(..), Product, Sum(..), from, to)
 import Data.Newtype (unwrap, wrap)
 import Data.Profunctor (class Profunctor, dimap)
-import Data.Symbol (SProxy(..))
 import Polyform.Dual (Dual(..), DualD(..), dual)
 import Prelude (unit) as Prelude
 import Prim.Row (class Cons) as Row
 import Record (get) as Record
 import Type.Prelude (class IsSymbol)
+import Type.Proxy (Proxy(..))
 
-class GDualSum p s i rep (r ∷ # Type) | rep → r p i where
+class GDualSum :: (Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Row Type -> Constraint
+class GDualSum p s i rep r | rep → r p i where
   gDual
     ∷ Functor (p i)
     ⇒ Alt (p i)
-    ⇒ (∀ a l. IsSymbol l ⇒ SProxy l → Dual p s i a → Dual p s i a)
+    ⇒ (∀ a l. IsSymbol l ⇒ Proxy l → Dual p s i a → Dual p s i a)
     → { | r }
     → Dual p s i rep
 
@@ -44,12 +45,13 @@ instance gDualConstructor ::
   GDualSum p s i (Constructor sym b) r where
     gDual pre r = dual prs' ser'
       where
-      _s = SProxy ∷ SProxy sym
+      _s = Proxy ∷ Proxy sym
       Dual (DualD prs ser) = pre _s $
         (gDualCtr ∷ Dual p s i a → Dual p s i b) (Record.get _s r)
       ser' (Constructor a) = ser a
       prs' = Constructor <$> prs
 
+class GDualCtr ∷ (Type -> Type -> Type) -> (Type -> Type) -> Type -> Type -> Type -> Constraint
 class GDualCtr p s i o o' | o → o' where
   gDualCtr ∷ Functor (p i) ⇒ Dual p s i o → Dual p s i o'
 
@@ -76,7 +78,7 @@ sum ∷ ∀ a i p rep r s
   ⇒ Functor (p i)
   ⇒ Alt (p i)
   ⇒ Profunctor p
-  ⇒ (∀ x l. IsSymbol l ⇒ SProxy l → Dual p s i x → Dual p s i x)
+  ⇒ (∀ x l. IsSymbol l ⇒ Proxy l → Dual p s i x → Dual p s i x)
   → { | r }
   → Dual p s i a
 sum pre = wrap <<< dimap from to <<< unwrap <<< gDual pre
