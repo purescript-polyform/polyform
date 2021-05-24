@@ -36,7 +36,7 @@ type DualD m e
 runValidator ∷ ∀ e i o m. Monad m ⇒ Dual.Dual (Validator m e) m i o → (i → m (V e o))
 runValidator = Validator.runValidator <<< Dual.parser
 
-runSerializer ∷ ∀ e i o m. Applicative m ⇒ Dual m e i o → (o → i)
+runSerializer ∷ ∀ e i o m. Dual m e i o → (o → i)
 runSerializer = map (un Identity) <<< Dual.serializer
 
 hoist ∷ ∀ e i o m m'. Functor m ⇒ (m ~> m') → Dual m e i o → Dual m' e i o
