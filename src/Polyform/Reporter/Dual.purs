@@ -34,7 +34,7 @@ type DualD m r = Dual.DualD (Reporter.Reporter m r) (Writer r)
 runReporter ∷ ∀ r i m o. Dual m r i o → (i → m (R r o))
 runReporter = Reporter.runReporter <<< Dual.parser
 
-runSerializer ∷ ∀ i o m r. Applicative m ⇒ Dual m r i o → (o → i /\ r)
+runSerializer ∷ ∀ i o m r. Dual m r i o → (o → i /\ r)
 runSerializer = map runWriter <<< Dual.serializer
 
 hoist ∷ ∀ e i o m m'. Functor m ⇒ (m ~> m') → Dual m e i o → Dual m' e i o
