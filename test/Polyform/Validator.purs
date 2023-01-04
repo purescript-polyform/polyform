@@ -18,7 +18,7 @@ import Test.QuickCheck.Gen (Gen)
 import Test.QuickCheck.Laws (A, B, C, checkLaws)
 import Test.QuickCheck.Laws.Control as Control
 import Test.QuickCheck.Laws.Data as Data
-import Type.Proxy (Proxy(..), Proxy2(..), Proxy3(..))
+import Type.Proxy (Proxy(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 newtype AValidator e i o = AValidator (Validator Identity e i o)
@@ -72,5 +72,5 @@ suite = checkLaws "Validator" do
   -- Control.checkMonadPlus prx2Array
   where
   prxValidator = Proxy ∷ Proxy (AValidator A B C)
-  prx2Validator = Proxy2 ∷ Proxy2 (AValidator A B)
-  prx3Validator = Proxy3 ∷ Proxy3 (AValidator A)
+  prx2Validator = Proxy ∷ Proxy (AValidator A B)
+  prx3Validator = Proxy ∷ Proxy (AValidator A)

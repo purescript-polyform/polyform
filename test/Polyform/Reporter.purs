@@ -21,7 +21,6 @@ import Test.QuickCheck.Laws (A, B, C, checkLaws)
 import Test.QuickCheck.Laws.Control as Control
 import Test.QuickCheck.Laws.Data as Data
 import Type.Prelude (Proxy(..))
-import Type.Proxy (Proxy2(..), Proxy3(..))
 import Unsafe.Coerce (unsafeCoerce)
 
 newtype AReporter e i o = AReporter (Reporter Identity e i o)
@@ -74,5 +73,5 @@ suite = checkLaws "Reporter" do
   -- Control.checkMonadPlus prx2Array
   where
   prxReporter = Proxy ∷ Proxy (AReporter A B C)
-  prx2Reporter = Proxy2 ∷ Proxy2 (AReporter A B)
-  prx3Reporter = Proxy3 ∷ Proxy3 (AReporter A)
+  prx2Reporter = Proxy ∷ Proxy (AReporter A B)
+  prx3Reporter = Proxy ∷ Proxy (AReporter A)

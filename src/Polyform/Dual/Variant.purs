@@ -11,6 +11,7 @@ import Prim.Row (class Cons) as Row
 import Type.Prelude (class IsSymbol)
 import Type.Proxy (Proxy)
 import Unsafe.Coerce (unsafeCoerce)
+import JS.Unsafe.Stringify (unsafeStringify)
 
 -- |`prefix` can be used to encode tagging of a given option.
 -- | Please take a look at `Polyform.Duals.Json.on` example
@@ -44,4 +45,3 @@ case_ = dual prs ser
     ser i = unsafeCrashWith ("Dual.Variant.case_: serializing empty Variant: " <> unsafeStringify i)
 
 
-foreign import unsafeStringify :: forall a. a -> String

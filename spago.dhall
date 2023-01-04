@@ -20,7 +20,6 @@
   , "partial"
   , "prelude"
   , "profunctor"
-  , "psci-support"
   , "quickcheck"
   , "quickcheck-laws"
   , "record"
@@ -29,6 +28,7 @@
   , "type-equality"
   , "typelevel-prelude"
   , "unsafe-coerce"
+  , "js-unsafe-stringify"
   , "validation"
   , "variant"
   ]
